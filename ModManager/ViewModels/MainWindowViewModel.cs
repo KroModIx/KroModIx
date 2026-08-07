@@ -37,8 +37,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly PluginRegistryScanner _pluginScanner;
     private readonly PluginActivationPlanner _pluginPlanner;
     private readonly PluginActivator _pluginActivator;
+    private readonly PluginIndexService _pluginIndex;
+    private readonly PluginInstaller _pluginInstaller;
     private readonly AppSettingsService _settings;
     private readonly HostUpdateService _hostUpdate;
+
+    private PluginIndex? _indexCache;
 
     private readonly List<GameEntry> _allGames = new();
 
@@ -51,6 +55,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginScanner = services.GetRequiredService<PluginRegistryScanner>();
         _pluginPlanner = services.GetRequiredService<PluginActivationPlanner>();
         _pluginActivator = services.GetRequiredService<PluginActivator>();
+        _pluginIndex = services.GetRequiredService<PluginIndexService>();
+        _pluginInstaller = services.GetRequiredService<PluginInstaller>();
         _settings = services.GetRequiredService<AppSettingsService>();
         _hostUpdate = services.GetRequiredService<HostUpdateService>();
 
@@ -75,10 +81,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private ObservableCollection<TabItem>? _pluginTabs;
 
     [ObservableProperty]
+    private InstallCardViewModel? _installCard;
+
+    [ObservableProperty]
     private string _contentPlaceholderText = "";
 
     [ObservableProperty]
     private bool _showPluginTabs;
+
+    [ObservableProperty]
+    private bool _showInstallCard;
 
     [ObservableProperty]
     private bool _showContentPlaceholder = true;
@@ -114,9 +126,25 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // Plugin-Discovery + Activation
         await ActivatePluginsAsync(ct).ConfigureAwait(true);
 
+        // PluginIndex im Hintergrund laden — bestimmt "verfügbar-aber-nicht-installiert"-Sterne.
+        _ = LoadPluginIndexAsync(ct);
+
         ApplyFilterAndSort();
         RestoreLastSelection();
         StatusText = $"{_allGames.Count} Spiele erkannt.";
+    }
+
+    private async Task LoadPluginIndexAsync(CancellationToken ct)
+    {
+        try
+        {
+            _indexCache = await _pluginIndex.GetAsync(ct).ConfigureAwait(true);
+            RefreshPluginStates();
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Plugin-Index-Load fehlgeschlagen — nur installierte Sterne");
+        }
     }
 
     private async Task ActivatePluginsAsync(CancellationToken ct)
@@ -152,17 +180,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             .Select(id => id!.Value)
             .ToHashSet();
 
+        var appIdsWithAvailablePlugin = _indexCache?.Plugins
+            .SelectMany(p => p.SteamAppIds)
+            .ToHashSet() ?? new HashSet<int>();
+
         foreach (var g in _allGames)
         {
-            g.PluginState = g.Source.SteamAppId is int appId && appIdsWithLoadedPlugin.Contains(appId)
-                ? PluginState.Installed
-                : PluginState.None;
+            if (g.Source.SteamAppId is not int appId)
+            {
+                g.PluginState = PluginState.None;
+                continue;
+            }
+            if (appIdsWithLoadedPlugin.Contains(appId))
+                g.PluginState = PluginState.Installed;
+            else if (appIdsWithAvailablePlugin.Contains(appId))
+                g.PluginState = PluginState.Available;
+            else
+                g.PluginState = PluginState.None;
         }
 
-        // Neu-sortieren, damit Plugin-Spiele nach vorne rutschen
         ApplyFilterAndSort();
-
-        // Content für aktuell selektiertes Spiel ggf. neu rendern (Plugin ist neu da)
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
     }
 
@@ -239,14 +276,39 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, entry));
         if (loaded is null)
         {
+            // Plugin verfügbar, aber nicht installiert? → Install-Karte statt Placeholder.
+            var indexEntry = FindIndexEntryFor(entry);
+            if (indexEntry is not null)
+            {
+                InstallCard = new InstallCardViewModel(
+                    indexEntry, entry.DisplayName,
+                    _pluginInstaller, _pluginActivator, _pluginPlanner,
+                    ParseVersion(_hostUpdate.CurrentVersion),
+                    onInstalledLive: async () =>
+                    {
+                        RefreshPluginStates();
+                        RenderContentForSelected(entry);
+                        await Task.CompletedTask;
+                    });
+                ShowInstallCard = true;
+                ShowPluginTabs = false;
+                ShowContentPlaceholder = false;
+                return;
+            }
+
+            InstallCard = null;
+            ShowInstallCard = false;
             PluginTabs = null;
             ShowPluginTabs = false;
             ShowContentPlaceholder = true;
             ContentPlaceholderText =
-                $"Für „{entry.DisplayName}“ ist noch kein Plugin verfügbar.\n" +
-                "In einer späteren Version zeigt sich hier die Plugin-Install-Karte.";
+                $"Für „{entry.DisplayName}“ ist kein Plugin verfügbar.";
             return;
         }
+
+        // Plugin ist geladen → Install-Karte weg, Tabs zeigen.
+        InstallCard = null;
+        ShowInstallCard = false;
 
         var target = loaded.Manifest.Targets.FirstOrDefault(t => t.SteamAppId == entry.Source.SteamAppId);
         var detected = loaded.DetectedGames.FirstOrDefault(dg => dg.Target.SteamAppId == entry.Source.SteamAppId);
@@ -291,6 +353,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (entry.Source.SteamAppId is not int appId) return false;
         return loaded.DetectedGames.Any(dg => dg.Target.SteamAppId == appId);
+    }
+
+    private PluginIndexEntry? FindIndexEntryFor(GameEntry entry)
+    {
+        if (_indexCache is null) return null;
+        if (entry.Source.SteamAppId is not int appId) return null;
+        return _indexCache.Plugins.FirstOrDefault(p => p.SteamAppIds.Contains(appId));
     }
 
     [RelayCommand]

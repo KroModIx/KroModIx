@@ -28,6 +28,22 @@ public sealed class PluginActivationPlanner
         _settings = settings;
     }
 
+    /// <summary>Für Runtime-Install (M4 „Install-Karte"): ein einzelnes Plugin
+    /// entscheiden, ohne die installierte Games-Liste erneut zu iterieren.
+    /// Nutzt <see cref="GameDiscoveryService"/> nicht — Caller liefert bereits
+    /// gefilterte Info; wir prüfen nur MinHostVersion.</summary>
+    public PluginActivationDecision PlanSingle(DiscoveredPlugin plugin, Version hostVersion)
+    {
+        if (!TryParseVersion(plugin.Manifest.MinHostVersion, out var minHost))
+            return new PluginActivationDecision(plugin, false, ActivationSkipReason.HostTooOld,
+                Array.Empty<DiscoveredGame>());
+        if (hostVersion < minHost)
+            return new PluginActivationDecision(plugin, false, ActivationSkipReason.HostTooOld,
+                Array.Empty<DiscoveredGame>());
+        return new PluginActivationDecision(plugin, true, ActivationSkipReason.None,
+            Array.Empty<DiscoveredGame>());
+    }
+
     /// <summary>Löst discovered Plugins gegen die aktuell installierten Spiele auf.</summary>
     public IReadOnlyList<PluginActivationDecision> Plan(
         IReadOnlyList<DiscoveredPlugin> discovered,

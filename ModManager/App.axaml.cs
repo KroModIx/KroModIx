@@ -85,6 +85,8 @@ public partial class App : Application
         services.AddSingleton<PluginRegistryScanner>();
         services.AddSingleton<PluginActivationPlanner>();
         services.AddSingleton<PluginActivator>();
+        services.AddSingleton<PluginIndexService>();
+        services.AddSingleton<PluginInstaller>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
