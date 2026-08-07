@@ -123,7 +123,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedGameChanged(GameEntry? value)
     {
-        if (value is null) { PluginTabs = null; ShowPluginTabs = false; return; }
+        if (value is null)
+        {
+            PluginTabs = null;
+            ShowPluginTabs = false;
+            // Beim Filter-Wechsel („nur mit Plugin") ruft die ListBox
+            // ItemsSource.Clear() → SelectedItem = null. Wenn der Filter
+            // das gleiche Spiel gleich wieder selektiert, würde der
+            // Render-Cache den erneuten Render als redundant abtun und
+            // die Tabs blieben leer. Cache invalidieren.
+            _lastRenderKey = null;
+            return;
+        }
         RenderContentForSelected(value);
         if (_persistSelection)
             _settings.Update(s => s.LastSelectedGameId = value.Key);
