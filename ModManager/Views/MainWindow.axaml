@@ -182,6 +182,47 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Install-Karte: Plugin verfügbar aber nicht installiert.
+                         Bewusst KEIN DataContext-Wechsel am äußeren Border —
+                         sonst würde IsVisible gegen InstallCardViewModel gebunden
+                         (der hat kein ShowInstallCard) und die Bindung
+                         schlüge fehl → Border bliebe unsichtbar.
+                         DataContext-Wechsel erst am inneren StackPanel. -->
+                    <Border Classes="card" Padding="24"
+                            IsVisible="{Binding ShowInstallCard}"
+                            MaxWidth="620"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                        <StackPanel Spacing="14" DataContext="{Binding InstallCard}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="☆"
+                                           Foreground="{DynamicResource KrosteGoldBrush}"
+                                           FontSize="24" VerticalAlignment="Center" />
+                                <TextBlock Text="Plugin verfügbar" Classes="h1" FontSize="18"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding PluginTitle}" Classes="h2" />
+                            <TextBlock Text="{Binding PluginAuthor, StringFormat='von {0}'}"
+                                       Classes="muted" FontSize="12" />
+                            <TextBlock Text="{Binding PluginDescription}"
+                                       Classes="secondary" TextWrapping="Wrap" />
+                            <Rectangle Classes="divider-h" />
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button Classes="accent" Content="⬇  Installieren"
+                                        Command="{Binding InstallCommand}"
+                                        IsEnabled="{Binding !IsBusy}"
+                                        MinWidth="160" />
+                                <ProgressBar IsIndeterminate="True"
+                                             IsVisible="{Binding IsBusy}"
+                                             VerticalAlignment="Center"
+                                             Width="180" />
+                                <TextBlock Text="{Binding StatusMessage}"
+                                           Classes="secondary"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Plugin-Tabs -->
                     <TabControl ItemsSource="{Binding PluginTabs}"
                                 IsVisible="{Binding ShowPluginTabs}"
