@@ -316,9 +316,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             : null) ?? VisibleGames.FirstOrDefault();
     }
 
+    // Cache-Key des letzten Rendern-Zustands: entry.Key + PluginState + LoadedPluginId +
+    // (int)IndexCache-Count. Ändert sich nichts davon, ist der Render redundant.
+    private string? _lastRenderKey;
+
     private void RenderContentForSelected(GameEntry entry)
     {
         var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, entry));
+        var currentKey = $"{entry.Key}|{entry.PluginState}|{loaded?.Manifest.Id ?? ""}|{_indexCache?.Plugins.Count ?? -1}";
+        if (currentKey == _lastRenderKey) return;
+        _lastRenderKey = currentKey;
+
         Log.Info("Render {Key} ({Name}) → Loaded={LoadedId} IndexCache={IdxCount} State={State}",
             entry.Key, entry.DisplayName,
             loaded?.Manifest.Id ?? "<none>",

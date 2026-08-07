@@ -24,20 +24,42 @@ public sealed class SteamLibraryService
     // Proton legt "My Documents" (XP-Style) statt "Documents" an.
     private static readonly string[] DocumentsFolderCandidates = ["My Documents", "Documents"];
 
+    // In-Memory-Cache pro Service-Instanz. Wird beim Start populiert und danach
+    // von allen internen Aufrufen (EnumerateInstalledGames, FindProtonPrefix,
+    // FindProtonUserDocumentsDir) wiederverwendet — Filesystem-Scans sind nicht
+    // billig, und der Log wurde sonst voll mit „Steam library roots: 6 gefunden".
+    private IReadOnlyList<string>? _cachedRoots;
+    private readonly object _cacheLock = new();
+
     /// <summary>Alle Library-Roots (Ordner, in denen ein <c>steamapps/</c>-Unterordner
-    /// existiert), dedupliziert und in Discovery-Reihenfolge.</summary>
+    /// existiert), dedupliziert und in Discovery-Reihenfolge. Gecacht pro Service-
+    /// Instanz — via <see cref="InvalidateCache"/> zurücksetzbar (z.B. bei Steam-
+    /// Neuinstall zur Laufzeit).</summary>
     public IReadOnlyList<string> EnumerateLibraryRoots()
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>();
-        foreach (var root in EnumerateLibraryRootCandidates())
+        lock (_cacheLock)
         {
-            if (!Directory.Exists(Path.Combine(root, "steamapps"))) continue;
-            var normalized = root.TrimEnd(Path.DirectorySeparatorChar);
-            if (seen.Add(normalized)) result.Add(normalized);
+            if (_cachedRoots is not null) return _cachedRoots;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<string>();
+            foreach (var root in EnumerateLibraryRootCandidates())
+            {
+                if (!Directory.Exists(Path.Combine(root, "steamapps"))) continue;
+                var normalized = root.TrimEnd(Path.DirectorySeparatorChar);
+                if (seen.Add(normalized)) result.Add(normalized);
+            }
+            Log.Debug("Steam library roots: {N} gefunden (gecacht)", result.Count);
+            _cachedRoots = result;
+            return result;
         }
-        Log.Debug("Steam library roots: {N} gefunden", result.Count);
-        return result;
+    }
+
+    /// <summary>Wirft den Library-Roots-Cache weg. Aufrufen wenn Steam neu
+    /// installiert oder libraryfolders.vdf zur Laufzeit angepasst wurde.</summary>
+    public void InvalidateCache()
+    {
+        lock (_cacheLock) _cachedRoots = null;
     }
 
     /// <summary>Alle installierten Steam-Spiele über alle Library-Roots hinweg.
