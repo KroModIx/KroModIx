@@ -11,6 +11,15 @@
 
 ## Aktueller Stand
 
+**M3–M5 (Live-Install + LS25 + Icarus) — abgeschlossen mit v0.3.0:**
+- **Steam-Tools-Filter** (`SteamGameFilter`): Steam Linux Runtimes, alle Proton-Versionen 4.11–10.0, Steamworks Common Redistributables werden aus der Sidebar ausgeblendet. Bekannte AppIds als Blacklist + Namens-Präfixe (`Steam Linux Runtime`, `Proton `, `Steamworks Common Redistributables`) für neue/unbekannte Versionen. Auf Lars' Bazzite: 32 Manifeste → 8 Tools weg → 24 echte Spiele.
+- **PluginIndex-Anbindung** (M4): Meta-Repo `Kroste/ModManager.PluginIndex` mit `plugins.json`; `PluginIndexService` lädt es beim App-Start (24 h Cache, Stale-Fallback bei Netzfehler). Matcht `steamAppIds` gegen installierte Spiele → **umrandeter goldener Stern** (`PluginState.Available`) auf der Sidebar-Kachel.
+- **Install-Karte** (M4): Klick auf Kachel mit umrandetem Stern → Content-Bereich zeigt Karte „Plugin verfügbar. ⬇ Installieren". `PluginInstaller` löst das neueste GitHub-Release-Asset (ZIP), entpackt es nach `~/.config/ModManager/plugins/<id>/`, `PluginActivator.ActivateOneAsync` bringt es **live in den laufenden Prozess** (kein App-Restart), Stern wechselt sofort zu gefüllt, TabHost rendert die Plugin-Tabs.
+- **Erste zwei echte Game-Plugins** (M3 + M5):
+  - **`Kroste/ModManager.Plugins.LS25` v0.1.0**: Extraktion des LS-ModManager-Kerns (ModDescReader für modDesc.xml, ModInstallService mit ZIP-Install/Enable/Disable/Uninstall via `.zip.disabled`-Rename). `Ls25PathResolver` nutzt vom Host geliefertes `DetectedGame.UserDataDir` (Proton-Docs auf Linux, Documents/My Games auf Windows). Tab „Installiert" mit Toolbar (Install-ZIP, Refresh, Ordner öffnen, Toggle, Uninstall mit Confirm). Katalog/KI/Backup in v0.2–v0.5 der Plugin-Roadmap.
+  - **`Kroste/ModManager.Plugins.Icarus` v0.1.0**: PAK-Mod-Verwaltung für Icarus (Unreal Engine). `IcarusPathResolver` baut `<InstallDir>/Icarus/Content/Paks/~mods/`. Tab „Installiert" analog LS25 mit .pak/.pak.disabled-Toggle.
+- Tests: 25 grün (+9 SteamGameFilterTests seit v0.2.0).
+
 **M2 (Steam-Discovery + Sidebar + Plugin-Loading) — abgeschlossen mit v0.2.0:**
 - `ModManager.PluginContracts` inhaltlich gefüllt (flacher Namespace, C# 12 Records + Interfaces): `PluginManifest` (Schema 1, System.Text.Json), `PluginMetadata`, `PluginUpdateSource`, `GameTarget`, `DetectedGame`, `Platforms`, `RuntimeKind`, `GameSource`; `IGameModPlugin`, `IGameTabContribution`; Host-Contracts `IHostServices`, `ISecretProtection`, `IDialogService`, `INotificationSink`, `IProgressScope`, `ILocalization`, `IHostShell`. Wird beim Host-Release als NuGet-Package auf GitHub Packages veröffentlicht.
 - Steam-Discovery: `SteamLibraryService` (extrahiert aus LS-ModManager `ModPathService`, generisiert — enumeriert Library-Roots, parst `appmanifest_*.acf`, findet Proton-Präfixe, deduped nach AppId gegen Bazzite-`/var/home`-Symlink-Duplikate). Auf Lars' Bazzite-System: 32 Steam-Spiele in 6 Library-Roots (Home + 2 externe Platten mit Symlink-Split).
@@ -29,11 +38,15 @@
 
 ## Roadmap
 
-- **M3 — LS25-Plugin**: eigenes Repo `Kroste/ModManager.Plugins.LS25`, Kern-Logik aus LS-ModManager extrahiert (ModDescReader, ModInstallService, ModHubService, HofHirschfeldCatalogService, ModhosterCatalogService, CatalogCache, DdsToPngConverter, ModBackupService). Tab-Contributions: „Installiert", „ModHub", „Hof Hirschfeld", „modhoster", „Downloads".
+- **M4.5 — PluginUpdateService**: Update-Check pro geladenem Plugin gegen GitHub-Release des Plugin-Repos, mit Restart-Hint (Assembly ist geladen, kann nicht ersetzt werden).
 
-- **M4 — PluginIndex + Install-Karte + Auto-Update**: Klick auf Spiel mit umrandetem Stern → Plugin herunterladen und **live aktivieren ohne Prozess-Restart** (`PluginActivator.ActivateAsync`). Restart-Hint nur bei Updates schon geladener Plugins.
+- **M3.2–M3.6 — LS25-Plugin ausbauen**: ModHub-Katalog (v0.2), Hof Hirschfeld (v0.3), modhoster (v0.4), Backup + KI-Zusammenfassung (v0.5), DDS-Preview (v0.6). Siehe Plugin-Repo CLAUDE.md.
 
-- **M5** Icarus, **M6** Satisfactory (Bottles/Wine-Sonderweg), **M7** Ren'Py (optional).
+- **M5.2 — Icarus-Katalog**: `GitHubReleaseCatalog`-Helper in Contracts, Icarus-Plugin v0.2 mit Katalog-Tab.
+
+- **M6 — Satisfactory-Plugin**: Bottles/Wine-Sonderweg (Custom-Locator statt Steam-Discovery), Anbindung an ficsit.app.
+
+- **M7 — Ren'Py-Plugin** (optional).
 
 ## Referenz
 

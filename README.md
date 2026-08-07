@@ -6,7 +6,7 @@
 
 One mod manager for all your Steam games. Cross-platform (Windows + Linux native — no Wine wrappers), Steam-aware, extensible via plugins.
 
-> **Status:** Milestone 2 (Steam Discovery + Plugin Loading). The app auto-discovers your Steam library, shows all installed games with large cover art in a scrollable sidebar, and loads game plugins from `~/.config/ModManager/plugins/`. The first real game plugin (LS25) lands in M3.
+> **Status:** Milestone 5. Steam library auto-discovery + plugin catalog + 1-click plugin install with **live activation (no app restart)** + first two real game plugins (LS25, Icarus). Steam-Tools (Runtimes, Proton, Redistributables) are hidden from the sidebar.
 
 ## Motivation
 
@@ -36,19 +36,28 @@ chmod +x ModManager-*-x86_64.AppImage
 
 - **Sidebar (left)** lists all installed Steam games (auto-discovered from all Steam library roots including external drives). Search box filters by title, the „only games with plugin"-toggle hides everything without a loaded plugin. Sort order: games with a plugin first, then alphabetical.
 - **Add non-Steam game** with the ➕ button: name + directory (mandatory) + executable + cover + optional Steam-AppId (auto-loads the cover from Steam CDN when set). Entries persist in `~/.config/ModManager/manual-games.json`.
-- **Star overlay** on each tile: filled gold ★ = plugin loaded and active. Outline (M4) will mean „plugin available in index, not installed". No star = no plugin known.
-- **Click a game** → the content area shows the plugin's tabs. Games without a plugin show a placeholder card.
-- **Plugin deployment (M2)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/ModManager/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. From M4 onward: the app installs plugins live from GitHub with no restart.
+- **Star overlay** on each tile: **filled gold ★** = plugin loaded and active · **outlined gold ☆** = plugin available in the [PluginIndex](https://github.com/Kroste/ModManager.PluginIndex), not yet installed · **no star** = no plugin known.
+- **Click a game with an outlined star** → the content area shows an install card: "Plugin available (Kroste). ⬇ Install". One click downloads the plugin from its GitHub release, extracts it, and activates it live — no app restart. The star immediately turns filled and the plugin's tabs appear.
+- **Click a game with a filled star** → the plugin's tabs render in the content area.
+- **Plugin deployment (manual)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/ModManager/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. Live install (as above) is preferred.
+
+## Available plugins
+
+- [`Kroste/ModManager.Plugins.LS25`](https://github.com/Kroste/ModManager.Plugins.LS25) — Landwirtschafts-Simulator 25
+- [`Kroste/ModManager.Plugins.Icarus`](https://github.com/Kroste/ModManager.Plugins.Icarus) — Icarus (RocketWerkz)
+- [`Kroste/ModManager.Plugins.Dummy`](https://github.com/Kroste/ModManager.Plugins.Dummy) — Demo plugin (end-to-end proof)
+
+The catalog is served from [`Kroste/ModManager.PluginIndex`](https://github.com/Kroste/ModManager.PluginIndex). Send a PR to add your own.
 
 ## Roadmap
 
 - **M1 — Foundation** ✅ shell, tray, About + Settings, self-update via GitHub releases
-- **M2 — Steam discovery + plugin loader** ✅ sidebar shows all installed Steam games with cover art, manual add for non-Steam games, plugin manifest scanning + activation, dummy plugin proves the chain
-- **M3 — LS25 plugin** *(next)*: first real plugin, ports the LS-ModManager core (ModHub / Hof Hirschfeld / modhoster catalogs, ZIP install, backup)
-- **M4 — Plugin index + install card + auto-update**: click a game with a golden star → install its plugin live from GitHub, no restart needed
-- **M5 — Icarus plugin**
-- **M6 — Satisfactory plugin** (custom locator for Bottles/Wine)
-- **M7 — Ren'Py plugin** (optional)
+- **M2 — Steam discovery + plugin loader** ✅ sidebar with large cover art, manual add, plugin scanning + activation
+- **M3 — LS25 plugin** ✅ installed-mods tab (Enable/Disable/Uninstall). Catalogs in v0.2+.
+- **M4 — Plugin index + install card + live activation** ✅ one-click install from GitHub, no restart.
+- **M5 — Icarus plugin** ✅ PAK-mod skeleton.
+- **M6 — Satisfactory plugin** (custom locator for Bottles/Wine).
+- **M7 — Ren'Py plugin** (optional).
 
 ## Development
 
