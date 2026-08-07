@@ -121,14 +121,20 @@
                                                        Foreground="{DynamicResource KrosteMutedTextBrush}"
                                                        TextWrapping="Wrap" TextAlignment="Center"
                                                        Margin="12" />
-                                            <!-- Stern-Overlay oben links -->
-                                            <TextBlock Text="{Binding StarSymbol}"
-                                                       IsVisible="{Binding StarSymbol, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                       Foreground="{DynamicResource KrosteGoldBrush}"
-                                                       FontSize="24"
-                                                       HorizontalAlignment="Left"
-                                                       VerticalAlignment="Top"
-                                                       Margin="6,2,0,0" />
+                                            <!-- Stern-Overlay oben links: dunkler Halo + goldener Vordergrund,
+                                                 damit er auch auf hellen Cover-Ecken sichtbar bleibt. -->
+                                            <Border HorizontalAlignment="Left"
+                                                    VerticalAlignment="Top"
+                                                    Margin="4,4,0,0"
+                                                    Padding="4,0"
+                                                    CornerRadius="4"
+                                                    Background="#B3000000"
+                                                    IsVisible="{Binding StarSymbol, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <TextBlock Text="{Binding StarSymbol}"
+                                                           Foreground="{DynamicResource KrosteGoldBrush}"
+                                                           FontSize="26"
+                                                           FontWeight="Bold" />
+                                            </Border>
                                         </Panel>
                                         <TextBlock Text="{Binding DisplayName}"
                                                    Foreground="{DynamicResource KrosteTextBrush}"
@@ -151,12 +157,21 @@
                 <Grid>
                     <!-- Placeholder wenn kein Plugin oder kein Spiel -->
                     <Border Classes="card-flat" Padding="24"
-                            IsVisible="{Binding ShowContentPlaceholder}">
-                        <StackPanel Spacing="12"
+                            IsVisible="{Binding ShowContentPlaceholder}"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch">
+                        <StackPanel Spacing="16"
                                     VerticalAlignment="Center"
-                                    HorizontalAlignment="Center">
+                                    HorizontalAlignment="Center"
+                                    MaxWidth="520">
+                            <TextBlock Text="🎮"
+                                       FontSize="48"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource KrosteMutedTextBrush}"
+                                       Opacity="0.5" />
                             <TextBlock Text="{Binding ContentPlaceholderText}"
-                                       Classes="muted"
+                                       Classes="secondary"
+                                       FontSize="14"
                                        HorizontalAlignment="Center"
                                        TextAlignment="Center"
                                        TextWrapping="Wrap" />

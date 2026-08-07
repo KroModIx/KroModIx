@@ -104,33 +104,52 @@ public sealed class GameCoverService
 
     private async Task<string?> DownloadFromCdnAsync(int appId, CancellationToken ct)
     {
-        var url = $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/library_600x900.jpg";
-        try
+        // Steam bietet mehrere Bildformate. library_600x900 (Portrait) ist das
+        // beste für unsere Kachel, existiert aber nicht bei jedem Spiel — bei
+        // älteren oder kleineren Titeln fällt Valve auf header.jpg zurück.
+        // Wir probieren die Kandidaten der Reihe nach:
+        //   1. library_600x900.jpg — 600×900 Portrait, ideal
+        //   2. library_600x900_2x.jpg — 1200×1800 Retina
+        //   3. capsule_616x353.jpg  — 616×353, "Steam Market"-Header
+        //   4. header.jpg           — 460×215 Standard-Header (fast immer da)
+        var candidates = new[]
         {
-            var handler = new HttpClientHandler
-            {
-                Proxy = WebRequest.DefaultWebProxy,
-                DefaultProxyCredentials = CredentialCache.DefaultCredentials,
-            };
-            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("ModManager-CoverFetch");
+            $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/library_600x900.jpg",
+            $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/library_600x900_2x.jpg",
+            $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/capsule_616x353.jpg",
+            $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/header.jpg",
+        };
 
-            using var response = await http.GetAsync(url, ct).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                Log.Debug("Kein Cover auf CDN für {AppId} (HTTP {Status})", appId, (int)response.StatusCode);
-                return null;
-            }
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
-            var target = Path.Combine(CacheDir, appId + ".jpg");
-            await File.WriteAllBytesAsync(target, bytes, ct).ConfigureAwait(false);
-            Log.Debug("Cover für {AppId} vom CDN geladen ({Bytes} B)", appId, bytes.Length);
-            return target;
-        }
-        catch (Exception ex)
+        var handler = new HttpClientHandler
         {
-            Log.Debug(ex, "Cover-Download fehlgeschlagen für {AppId}", appId);
-            return null;
+            Proxy = WebRequest.DefaultWebProxy,
+            DefaultProxyCredentials = CredentialCache.DefaultCredentials,
+        };
+        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("ModManager-CoverFetch");
+
+        foreach (var url in candidates)
+        {
+            try
+            {
+                using var response = await http.GetAsync(url, ct).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Log.Debug("Kein Cover unter {Url} (HTTP {Status})", url, (int)response.StatusCode);
+                    continue;
+                }
+                var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+                var target = Path.Combine(CacheDir, appId + ".jpg");
+                await File.WriteAllBytesAsync(target, bytes, ct).ConfigureAwait(false);
+                Log.Debug("Cover für {AppId} geladen: {Url} ({Bytes} B)", appId, url, bytes.Length);
+                return target;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Cover-Download fehlgeschlagen: {Url}", url);
+            }
         }
+        Log.Debug("Alle Cover-Kandidaten für {AppId} fehlgeschlagen", appId);
+        return null;
     }
 }

@@ -84,7 +84,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private InstallCardViewModel? _installCard;
 
     [ObservableProperty]
-    private string _contentPlaceholderText = "";
+    private string _contentPlaceholderText = "Wähle links ein Spiel aus.";
 
     [ObservableProperty]
     private bool _showPluginTabs;
@@ -138,8 +138,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            _indexCache = await _pluginIndex.GetAsync(ct).ConfigureAwait(true);
-            RefreshPluginStates();
+            var idx = await _pluginIndex.GetAsync(ct).ConfigureAwait(false);
+            // Auf UI-Thread setzen, damit Bindings (Sterne + Install-Karte)
+            // die Änderungen sicher sehen.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _indexCache = idx;
+                RefreshPluginStates();
+                Log.Info("Plugin-Index in UI übernommen: {N} Plugin(s), Sterne aktualisiert",
+                    idx.Plugins.Count);
+            });
         }
         catch (Exception ex)
         {
