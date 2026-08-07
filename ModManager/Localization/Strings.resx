@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- App / Windows -->
+  <data name="App_Title" xml:space="preserve"><value>Kroste ModManager</value></data>
+  <data name="Window_Settings" xml:space="preserve"><value>ModManager — Settings</value></data>
+  <data name="Window_About" xml:space="preserve"><value>About ModManager</value></data>
+
+  <!-- MainWindow -->
+  <data name="Main_Header_Subtitle" xml:space="preserve"><value>Cross-platform mod manager for your Steam games</value></data>
+  <data name="Main_Sidebar_Search_Placeholder" xml:space="preserve"><value>Search games…</value></data>
+  <data name="Main_Sidebar_FilterOnlyWithPlugin" xml:space="preserve"><value>Only games with plugin</value></data>
+  <data name="Main_Sidebar_AddGame" xml:space="preserve"><value>➕ Add game</value></data>
+  <data name="Main_NoGamesDetected" xml:space="preserve"><value>No games detected yet</value></data>
+  <data name="Main_NoGamesDetected_Hint" xml:space="preserve"><value>Install a Steam game or add one manually. Game discovery starts automatically at app launch.</value></data>
+  <data name="Main_SelectGamePrompt" xml:space="preserve"><value>Select a game from the sidebar.</value></data>
+
+  <!-- Common actions -->
+  <data name="Common_Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Common_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Common_About" xml:space="preserve"><value>About</value></data>
+
+  <!-- Settings -->
+  <data name="Settings_Section_UiLanguage" xml:space="preserve"><value>APPLICATION LANGUAGE</value></data>
+  <data name="Settings_UiLanguage" xml:space="preserve"><value>Application language</value></data>
+  <data name="Settings_UiLanguage_Hint" xml:space="preserve"><value>Changes are applied immediately — no restart needed.</value></data>
+
+  <!-- About -->
+  <data name="About_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="About_CheckForUpdate" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="About_Website" xml:space="preserve"><value>GitHub Repository</value></data>
+  <data name="About_BuyMeACoffee" xml:space="preserve"><value>Buy me a coffee</value></data>
+  <data name="About_OpenLogFolder" xml:space="preserve"><value>Open log folder</value></data>
+  <data name="About_Description" xml:space="preserve"><value>One mod manager for all your games. Steam-aware, cross-platform, extensible via plugins.</value></data>
+
+  <!-- Status -->
+  <data name="Status_Ready" xml:space="preserve"><value>Ready.</value></data>
+</root>

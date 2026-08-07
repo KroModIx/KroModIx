@@ -1,0 +1,28 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json,xml,csproj,slnx,props,targets,axaml,xaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# File-scoped Namespaces
+csharp_style_namespace_declarations = file_scoped:error
+# Accessibility-Modifier erzwingen
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:error
+# using-Direktiven außerhalb Namespaces
+csharp_using_directive_placement = outside_namespace:error
+# Var-Präferenz
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+# Nullable inline
+csharp_style_prefer_null_check_over_type_check = true:suggestion

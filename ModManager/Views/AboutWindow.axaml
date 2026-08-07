@@ -1,0 +1,38 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:ModManager.Views"
+        xmlns:controls="using:ModManager.Controls"
+        xmlns:loc="using:ModManager.Localization"
+        x:Class="ModManager.Views.AboutWindow"
+        Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        MinWidth="380" MinHeight="320"
+        Title="{loc:Tr Window_About}"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{loc:Tr Window_About}" />
+        <StackPanel Margin="24" Spacing="16">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Kroste ModManager" Classes="h1" FontSize="22" />
+                <TextBlock Text="{loc:Tr About_Description}" Classes="secondary" TextWrapping="Wrap" />
+                <TextBlock x:Name="VersionText" Classes="muted" FontSize="12" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <Rectangle Classes="divider-h" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="UpdateButton" Classes="accent" Content="{loc:Tr About_CheckForUpdate}" />
+                <TextBlock x:Name="UpdateResult" VerticalAlignment="Center" Classes="secondary" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="GithubButton" Content="{loc:Tr About_Website}" />
+                <Button x:Name="BmcButton" Content="{loc:Tr About_BuyMeACoffee}" />
+                <Button x:Name="LogFolderButton" Classes="ghost" Content="{loc:Tr About_OpenLogFolder}" />
+            </StackPanel>
+
+            <TextBlock Text="MIT License · © 2026 Lars Oste (Kroste)"
+                       Foreground="#6B7280" FontSize="11" />
+        </StackPanel>
+    </DockPanel>
+</views:ChromeWindow>

@@ -1,0 +1,31 @@
+<Project>
+  <!-- Central Package Management: EINZIGER Ort für Paketversionen. -->
+  <ItemGroup>
+    <!-- Avalonia 12.x. DiagnosticsSupport folgt eigener 2.x-Reihe. -->
+    <PackageVersion Include="Avalonia" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.2" />
+
+    <!-- MVVM & DI -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+
+    <!-- Logging -->
+    <PackageVersion Include="NLog" Version="6.1.4" />
+
+    <!-- DPAPI unter Windows (Cross-Platform-Paket, kein Windows-Zwang) -->
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+
+    <!-- Versionierung -->
+    <PackageVersion Include="MinVer" Version="7.0.0" />
+
+    <!-- Tests: xunit.v3 (nicht das alte xunit), FluentAssertions gepinnt < 8 (Xceed) -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="FluentAssertions" Version="[7.2.2,8.0.0)" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,33 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:ModManager.Views"
+        xmlns:controls="using:ModManager.Controls"
+        xmlns:loc="using:ModManager.Localization"
+        xmlns:vm="using:ModManager.ViewModels"
+        x:Class="ModManager.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Width="520" Height="380" MinWidth="440" MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        Title="{loc:Tr Window_Settings}"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{loc:Tr Window_Settings}" />
+
+        <Border Padding="24">
+            <StackPanel Spacing="18">
+                <TextBlock Text="{loc:Tr Settings_Section_UiLanguage}" Classes="section-label" />
+                <Border Classes="card">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="{loc:Tr Settings_UiLanguage}" Classes="h2" FontSize="13" />
+                        <ComboBox ItemsSource="{Binding Languages}"
+                                  SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                  DisplayMemberBinding="{Binding DisplayLabel}"
+                                  HorizontalAlignment="Stretch" />
+                        <TextBlock Text="{loc:Tr Settings_UiLanguage_Hint}"
+                                   Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </DockPanel>
+</views:ChromeWindow>

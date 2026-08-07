@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Kroste ModManager
+Comment=Cross-platform mod manager for Steam games (extensible via plugins)
+Exec=ModManager
+Icon=mod-manager
+Type=Application
+Categories=Game;Utility;
+Terminal=false

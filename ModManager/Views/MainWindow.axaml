@@ -1,0 +1,80 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="using:ModManager.Views"
+        xmlns:controls="using:ModManager.Controls"
+        xmlns:loc="using:ModManager.Localization"
+        xmlns:vm="using:ModManager.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
+        x:Class="ModManager.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1200" Height="750" MinWidth="900" MinHeight="600"
+        Title="{loc:Tr App_Title}"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{loc:Tr App_Title}" />
+
+        <!-- Header: App-Titel + Untertitel + globale Aktionen -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource KrosteTitleBarBrush}"
+                BorderBrush="{DynamicResource KrosteBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="18,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="{loc:Tr App_Title}" Classes="h1" />
+                    <TextBlock Text="{loc:Tr Main_Header_Subtitle}" Classes="muted" FontSize="12" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Classes="ghost"
+                            Content="{loc:Tr Common_Settings}"
+                            Command="{Binding OpenSettingsCommand}" />
+                    <Button Classes="ghost"
+                            Content="{loc:Tr Common_About}"
+                            Command="{Binding OpenAboutCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Statusbar unten -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{DynamicResource KrosteTitleBarBrush}"
+                BorderBrush="{DynamicResource KrosteBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="14,6">
+            <TextBlock Text="{loc:Tr Status_Ready}" Classes="muted" FontSize="11" />
+        </Border>
+
+        <!-- Body: Sidebar links + Content rechts. In M1 beides Placeholder. -->
+        <Grid ColumnDefinitions="260,*">
+            <Border Grid.Column="0"
+                    Background="{DynamicResource KrosteTitleBarBrush}"
+                    BorderBrush="{DynamicResource KrosteBorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <StackPanel Margin="12" Spacing="6" VerticalAlignment="Top">
+                    <TextBlock Text="GAMES" Classes="section-label" />
+                    <Border Classes="card-flat" Padding="12">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{loc:Tr Main_NoGamesDetected}"
+                                       Classes="secondary" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Tr Main_NoGamesDetected_Hint}"
+                                       Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Padding="24">
+                <Border Classes="card-flat" Padding="24">
+                    <StackPanel Spacing="12" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="{loc:Tr Main_SelectGamePrompt}"
+                                   Classes="muted" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Border>
+        </Grid>
+    </DockPanel>
+</views:ChromeWindow>

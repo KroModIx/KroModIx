@@ -1,0 +1,15 @@
+bin/
+obj/
+publish/
+*.user
+.vs/
+.idea/
+# Persönliche VS-Code-Einstellungen (yoloMode etc.) — Repo enthält nur launch.json + tasks.json
+.vscode/settings.json
+.vscode/*.log
+# Lokaler NuGet-Offline-Feed (Arbeitslaptop) — nie einchecken
+NuGet-Local/
+# NLog-Runtime-Artefakte
+logs/
+# App-lokale Konfiguration
+appsettings.local.json
