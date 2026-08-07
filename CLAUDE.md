@@ -36,9 +36,13 @@
 
 **Begleit-Repo `Kroste/ModManager.Plugins.Dummy` (v0.1.0):** minimales Plugin als End-to-End-Beweis. Zwei Tabs („Hello", „Info") mit Kontext-Info + drei Test-Aktionen (Log, Notification, HTTP-Probe). Targets: CS2 (730), TF2 (440), Proton Experimental (1493710) als Linux-Dev-Fallback. Referenziert `Kroste.ModManager.PluginContracts` als PackageReference aus GitHub Packages, nuget.config mit Package-Source-Mapping (Pflicht bei CPM+multi-source).
 
-## Roadmap
+**M4.5 (PluginUpdateService) — abgeschlossen mit v0.4.0:**
+- `PluginUpdateService`: prüft pro geladenem Plugin die aktuelle Version im `updateSource`-Repo auf GitHub. Async-Check läuft im Hintergrund am App-Start; `UpdatesChanged`-Event synchronisiert das MainWindow-Badge.
+- Update-Badge im MainWindow-Header (nur sichtbar wenn Updates > 0, zeigt „↑ N", Kroste-Akzentfarbe). Klick öffnet `PluginUpdatesWindow` mit Liste (Alte→Neue Version, ⬇ Installieren pro Zeile, „Jetzt prüfen"-Button).
+- Install-Flow: Download ZIP → Sibling-Staging-Ordner → File.Copy overwrite ins Plugin-Verzeichnis. Auf Windows: geladene DLL lockt sich; Fallback legt `.dll.new` daneben. Nach Install: Restart-Hint-Banner in gelb-rot im Fenster („⚠ Bitte die App neu starten…").
+- End-to-End verifiziert mit lokal auf 0.1.0 gepinnt Dummy-Plugin vs. GitHub v0.1.1 → Update-Check meldet 1 verfügbares Update.
 
-- **M4.5 — PluginUpdateService**: Update-Check pro geladenem Plugin gegen GitHub-Release des Plugin-Repos, mit Restart-Hint (Assembly ist geladen, kann nicht ersetzt werden).
+## Roadmap
 
 - **M3.2–M3.6 — LS25-Plugin ausbauen**: ModHub-Katalog (v0.2), Hof Hirschfeld (v0.3), modhoster (v0.4), Backup + KI-Zusammenfassung (v0.5), DDS-Preview (v0.6). Siehe Plugin-Repo CLAUDE.md.
 

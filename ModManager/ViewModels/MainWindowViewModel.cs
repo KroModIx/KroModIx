@@ -39,6 +39,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly PluginActivator _pluginActivator;
     private readonly PluginIndexService _pluginIndex;
     private readonly PluginInstaller _pluginInstaller;
+    private readonly PluginUpdateService _pluginUpdates;
     private readonly AppSettingsService _settings;
     private readonly HostUpdateService _hostUpdate;
 
@@ -57,10 +58,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginActivator = services.GetRequiredService<PluginActivator>();
         _pluginIndex = services.GetRequiredService<PluginIndexService>();
         _pluginInstaller = services.GetRequiredService<PluginInstaller>();
+        _pluginUpdates = services.GetRequiredService<PluginUpdateService>();
         _settings = services.GetRequiredService<AppSettingsService>();
         _hostUpdate = services.GetRequiredService<HostUpdateService>();
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
+        _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            AvailableUpdateCount = _pluginUpdates.AvailableUpdates.Count;
+        });
     }
 
     public ObservableCollection<GameEntry> VisibleGames { get; } = new();
@@ -97,6 +103,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _statusText = "Starte …";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAvailableUpdates))]
+    [NotifyPropertyChangedFor(nameof(UpdateBadgeText))]
+    private int _availableUpdateCount;
+
+    public bool HasAvailableUpdates => AvailableUpdateCount > 0;
+    public string UpdateBadgeText => AvailableUpdateCount > 0 ? $"↑ {AvailableUpdateCount}" : "";
 
     partial void OnSearchTextChanged(string value) => ApplyFilterAndSort();
     partial void OnOnlyWithPluginChanged(bool value) => ApplyFilterAndSort();
@@ -141,6 +155,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // Ab jetzt sind Wechsel „echte" User-Klicks → persistieren.
         _persistSelection = true;
         StatusText = $"{_allGames.Count} Spiele erkannt.";
+
+        // Plugin-Update-Check im Hintergrund für alle geladenen Plugins.
+        _ = Task.Run(async () =>
+        {
+            try { await _pluginUpdates.CheckAllAsync(ct); }
+            catch (Exception ex) { Log.Debug(ex, "Initial Plugin-Update-Check fehlgeschlagen"); }
+        }, ct);
     }
 
     private async Task LoadPluginIndexAsync(CancellationToken ct)
@@ -406,6 +427,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void OpenAbout()
     {
         var window = new AboutWindow(_hostUpdate);
+        var owner = MainWindow();
+        if (owner is not null) window.ShowDialog(owner); else window.Show();
+    }
+
+    [RelayCommand]
+    private void OpenPluginUpdates()
+    {
+        var vm = new PluginUpdatesViewModel(_pluginUpdates);
+        var window = new PluginUpdatesWindow { DataContext = vm };
         var owner = MainWindow();
         if (owner is not null) window.ShowDialog(owner); else window.Show();
     }

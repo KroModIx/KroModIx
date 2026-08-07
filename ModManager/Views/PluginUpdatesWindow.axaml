@@ -1,0 +1,67 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:ModManager.Views"
+        xmlns:controls="using:ModManager.Controls"
+        xmlns:vm="using:ModManager.ViewModels"
+        x:Class="ModManager.Views.PluginUpdatesWindow"
+        x:DataType="vm:PluginUpdatesViewModel"
+        Width="640" Height="480" MinWidth="500" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        Title="Plugin-Updates"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="Plugin-Updates" />
+
+        <Border Padding="20">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10"
+                            Margin="0,0,0,12">
+                    <Button Classes="accent" Content="🔄  Jetzt prüfen"
+                            Command="{Binding CheckNowCommand}" />
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Classes="secondary" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom"
+                        Background="#5A2A19"
+                        BorderBrush="#8A3F27"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,8"
+                        Margin="0,12,0,0"
+                        IsVisible="{Binding RestartHinted}">
+                    <TextBlock Text="⚠  Bitte die App neu starten, damit die Updates aktiv werden. Die geladenen Assemblies können im laufenden Prozess nicht ersetzt werden."
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <ListBox ItemsSource="{Binding Rows}"
+                         Background="{DynamicResource KrosteCardBrush}"
+                         BorderThickness="1"
+                         BorderBrush="{DynamicResource KrosteBorderBrush}"
+                         CornerRadius="6"
+                         Padding="4">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:UpdateRow">
+                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="6" ColumnSpacing="10">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding VersionLabel}"
+                                               Classes="muted" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Status}"
+                                           Classes="secondary"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="2"
+                                        Classes="accent"
+                                        Content="⬇ Installieren"
+                                        Command="{Binding $parent[ListBox].((vm:PluginUpdatesViewModel)DataContext).InstallCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</views:ChromeWindow>

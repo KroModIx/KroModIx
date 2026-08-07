@@ -56,6 +56,7 @@ The catalog is served from [`Kroste/ModManager.PluginIndex`](https://github.com/
 - **M3 — LS25 plugin** ✅ installed-mods tab (Enable/Disable/Uninstall). Catalogs in v0.2+.
 - **M4 — Plugin index + install card + live activation** ✅ one-click install from GitHub, no restart.
 - **M5 — Icarus plugin** ✅ PAK-mod skeleton.
+- **M4.5 — Plugin update service** ✅ badge in the header + install flow with restart hint (assembly is loaded, can't be swapped hot).
 - **M6 — Satisfactory plugin** (custom locator for Bottles/Wine).
 - **M7 — Ren'Py plugin** (optional).
 
