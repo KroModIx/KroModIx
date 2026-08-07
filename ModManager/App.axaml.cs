@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using ModManager.Localization;
+using ModManager.PluginContracts;
 using ModManager.Services;
 using ModManager.ViewModels;
 using ModManager.Views;

@@ -2,6 +2,7 @@ using System;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
+using ModManager.PluginContracts;
 using NLog;
 
 namespace ModManager.Services;
@@ -93,10 +94,4 @@ public sealed class SecretProtection : ISecretProtection
         string material = $"{Environment.MachineName}|{Environment.UserName}|kroste-modmanager";
         return SHA256.HashData(Encoding.UTF8.GetBytes(material));
     }
-}
-
-public interface ISecretProtection
-{
-    string? Protect(string? plaintext);
-    string? Unprotect(string? ciphertext);
 }

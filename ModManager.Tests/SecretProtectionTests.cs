@@ -1,4 +1,5 @@
 using FluentAssertions;
+using ModManager.PluginContracts;
 using ModManager.Services;
 using Xunit;
 
