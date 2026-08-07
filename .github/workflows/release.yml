@@ -7,9 +7,12 @@ on:
 
 permissions:
   contents: write
+  packages: write # für NuGet-Publish der PluginContracts auf GitHub Packages
 
-# Muster aus Amtsschimmel: native Builds pro OS mit Tests,
-# Linux zusätzlich als AppImage, Release-Job sammelt die Artefakte ein.
+# Native Builds pro OS mit Tests, Linux zusätzlich als AppImage.
+# Zusätzlicher Publish-Job packt ModManager.PluginContracts als NuGet-Package
+# und pusht es auf GitHub Packages — Plugin-Repos referenzieren es via
+# PackageReference (siehe references/plugins.md).
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -102,8 +105,34 @@ jobs:
             ModManager-*-x86_64.AppImage
           retention-days: 7
 
+  publish-contracts:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: PluginContracts packen
+        run: >
+          dotnet pack ModManager.PluginContracts/ModManager.PluginContracts.csproj
+          -c Release -o dist-nuget
+
+      - name: Auf GitHub Packages pushen
+        run: >
+          dotnet nuget push "dist-nuget/*.nupkg"
+          --source "https://nuget.pkg.github.com/Kroste/index.json"
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --skip-duplicate
+
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, publish-contracts]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:

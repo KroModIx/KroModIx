@@ -11,30 +11,25 @@
 
 ## Aktueller Stand
 
-**M1 (Fundament) — abgeschlossen mit v0.1.0:**
-- Repo-Grundgerüst: `.slnx`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, `.gitignore`, `LICENSE` (MIT), `FUNDING.yml` (BMC-Handle `kroste`).
-- Drei Projekte angelegt: `ModManager/`, `ModManager.PluginContracts/` (Placeholder — Inhalte kommen in M2), `ModManager.Tests/`.
-- Utility-Services aus LS-ModManager/RenPack übernommen und generalisiert: `AppPaths` (Config/Cache/State-Roots, User- und Bundled-Plugin-Dirs), `AppSettingsService` (atomar tmp+move, `.broken`-Backup), `SecretProtection` (DPAPI/AES), `LocalizationService` + `LocalizedString` + `TrExtension` + `L`-Helper (EN + DE-resx), `MaskingLayoutRenderer` (Secrets-Maskierung fürs Log).
-- Avalonia-Shell: `App.axaml` mit Kroste-Palette und vollem Style-Set, `Program.cs` (MaskingLayoutRenderer registriert VOR erstem Log-Aufruf), `ChromeWindow`-Basis, `TitleBar`-UserControl, `MainWindow` (Header + Sidebar-Placeholder + Content-Placeholder + Statusbar), `SettingsWindow` (Language-Selector mit Emoji-Flaggen und Live-Wechsel), `AboutWindow` (Version + Update-Check + GitHub + BMC + Log-Ordner öffnen), `TrayController` (Minimize→Hide, GC-Referenz in `App`), `GlobalExceptionHandler`, `HostUpdateService` (Self-Update Win-ZIP / Linux-AppImage / Linux-tar.gz, Repo `Kroste/Mod-Manager`).
-- App-Icon: Puzzleteil-Motiv in Kroste-Gold auf dunklem Grund, `scripts/build_icon.py` (Pillow) erzeugt PNG + Multi-Res-ICO.
-- GitHub Actions: `ci.yml` (build+test bei Push/PR), `release.yml` (Win-ZIP + linux-x64 tar.gz + AppImage bei Tag `v*`), `dependabot.yml` (FluentAssertions <8 gepinnt).
-- Packaging: `packaging/linux/` (AppRun, build-appimage.sh, mod-manager.desktop). VSCode: `launch.json` + `tasks.json` (build/test/watch/clean/clean-hard/publish/release-tag+push).
-- Tests: `AppPathsTests`, `SecretProtectionTests` (Roundtrip, Null-Handling, Format-Validierung).
+**M2 (Steam-Discovery + Sidebar + Plugin-Loading) — abgeschlossen mit v0.2.0:**
+- `ModManager.PluginContracts` inhaltlich gefüllt (flacher Namespace, C# 12 Records + Interfaces): `PluginManifest` (Schema 1, System.Text.Json), `PluginMetadata`, `PluginUpdateSource`, `GameTarget`, `DetectedGame`, `Platforms`, `RuntimeKind`, `GameSource`; `IGameModPlugin`, `IGameTabContribution`; Host-Contracts `IHostServices`, `ISecretProtection`, `IDialogService`, `INotificationSink`, `IProgressScope`, `ILocalization`, `IHostShell`. Wird beim Host-Release als NuGet-Package auf GitHub Packages veröffentlicht.
+- Steam-Discovery: `SteamLibraryService` (extrahiert aus LS-ModManager `ModPathService`, generisiert — enumeriert Library-Roots, parst `appmanifest_*.acf`, findet Proton-Präfixe, deduped nach AppId gegen Bazzite-`/var/home`-Symlink-Duplikate). Auf Lars' Bazzite-System: 32 Steam-Spiele in 6 Library-Roots (Home + 2 externe Platten mit Symlink-Split).
+- `GameCoverService`: 4-stufige Cover-Auflösung Steam-Cache → Steam-CDN → User-Custom → null, Cache in `~/.cache/ModManager/game-covers/`.
+- `ManualGamesService`: JSON-Persistenz atomar in `~/.config/ModManager/manual-games.json` mit `.broken`-Backup.
+- `GameDiscoveryService`: verheiratet Steam + Manual, dedupliziert auf identische SteamAppId (Steam gewinnt, Manual-Eintrag bleibt persistiert aber nicht doppelt sichtbar).
+- Plugin-Loader-Kette: `PluginRegistryScanner` (findet plugin.json OHNE Assembly-Load), `PluginActivationPlanner` (matcht SteamAppIds + `AlwaysActivePluginIds`, prüft `MinHostVersion`, löst Konflikte via höhere SemVer), `PluginActivator` (`Assembly.LoadFrom` ohne LoadContext — Checkmk-Muster; unterstützt Runtime-Aktivierung für M4).
+- Host-Impls der Plugin-Contracts: `HostServicesImpl` (plugin-scoped Logger/PluginDataDir/PluginCacheDir + Proxy-aware HttpClient-Factory), `HostShellImpl`, `LocalizationBridge`, `DialogServiceImpl` (StorageProvider für File/Folder-Picker + eigener Confirm-Dialog), `NotificationSinkImpl`, `StatusProgressCoordinator`.
+- MainWindow-Sidebar mit **großen Cover-Kacheln** (176×238, Portrait 600×900 Steam-Library-Look), Suchfeld, „nur mit Plugin"-Toggle, „➕ Spiel hinzufügen"-Button, Sortierung Plugin-Spiele zuerst + alphabetisch, gefüllter goldener ★ bei Spielen mit geladenem Plugin. Content-Bereich mit TabControl für Plugin-Tabs oder Placeholder.
+- `AddGameDialog`: Formular Name/Verzeichnis/Executable/Cover/optional SteamAppId, File-Picker für alle drei Pfade.
+- `LastSelectedGameId` in Settings persistiert und beim Start wiederhergestellt.
+- Release-Workflow um `publish-contracts`-Job erweitert: `dotnet pack` + `dotnet nuget push` auf `https://nuget.pkg.github.com/Kroste/index.json` mit `GITHUB_TOKEN` (packages:write).
+- Tests: 16 grün — `AppPathsTests`, `SecretProtectionTests`, `PluginManifestTests`, `PluginActivationPlannerTests`, `ManualGamesServiceTests`.
+
+**Begleit-Repo `Kroste/ModManager.Plugins.Dummy` (v0.1.0):** minimales Plugin als End-to-End-Beweis. Zwei Tabs („Hello", „Info") mit Kontext-Info + drei Test-Aktionen (Log, Notification, HTTP-Probe). Targets: CS2 (730), TF2 (440), Proton Experimental (1493710) als Linux-Dev-Fallback. Referenziert `Kroste.ModManager.PluginContracts` als PackageReference aus GitHub Packages, nuget.config mit Package-Source-Mapping (Pflicht bei CPM+multi-source).
 
 ## Roadmap
 
-- **M2 — Steam-Discovery + Sidebar + Plugin-Loading (erste Sichtbarkeit)**
-  - `SteamLibraryService` extrahiert aus `LS-ModManager/LSModManager/Services/ModPathService.cs` (libraryfolders.vdf, appmanifest_*.acf, Bazzite-Mount-Points).
-  - `GameCoverService` (Steam-Cache → Steam-CDN → Custom → Platzhalter, Cache in `~/.cache/ModManager/game-covers/`).
-  - `ManualGamesService` (JSON in `~/.config/ModManager/manual-games.json`, atomar).
-  - Sidebar mit großen Cover-Kacheln + Suchfeld + „nur mit Plugin"-Toggle + „➕ Spiel hinzufügen".
-  - `AddGameDialog` (Name/Verzeichnis/Executable/Cover/optional SteamAppId).
-  - `ModManager.PluginContracts` mit `IGameModPlugin`, `IHostServices`, `IGameTabContribution`, `PluginManifest`, `DetectedGame`, `GameTarget`, etc.
-  - NuGet-Publishing der PluginContracts als `Kroste.ModManager.PluginContracts.<version>.nupkg` auf GitHub Packages (Release-Workflow erweitern).
-  - `PluginRegistryScanner` (liest `plugin.json` OHNE Assembly-Load), `PluginActivationPlanner` (matcht SteamAppIds), `PluginActivator` (Assembly.LoadFrom, kein LoadContext, unterstützt sowohl Startup-Aktivierung als auch Runtime-Aktivierung für M4).
-  - Zweites Repo `Kroste/ModManager.Plugins.Dummy` als End-to-End-Proof.
-
-- **M3 — LS25-Plugin**: eigenes Repo `Kroste/ModManager.Plugins.LS25`, Kern-Logik aus LS-ModManager extrahiert.
+- **M3 — LS25-Plugin**: eigenes Repo `Kroste/ModManager.Plugins.LS25`, Kern-Logik aus LS-ModManager extrahiert (ModDescReader, ModInstallService, ModHubService, HofHirschfeldCatalogService, ModhosterCatalogService, CatalogCache, DdsToPngConverter, ModBackupService). Tab-Contributions: „Installiert", „ModHub", „Hof Hirschfeld", „modhoster", „Downloads".
 
 - **M4 — PluginIndex + Install-Karte + Auto-Update**: Klick auf Spiel mit umrandetem Stern → Plugin herunterladen und **live aktivieren ohne Prozess-Restart** (`PluginActivator.ActivateAsync`). Restart-Hint nur bei Updates schon geladener Plugins.
 

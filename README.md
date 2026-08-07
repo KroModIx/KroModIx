@@ -6,7 +6,7 @@
 
 One mod manager for all your Steam games. Cross-platform (Windows + Linux native — no Wine wrappers), Steam-aware, extensible via plugins.
 
-> **Status:** Milestone 1 (Foundation). The app boots, discovers zero games (Steam discovery arrives in M2), and provides the shared shell — window chrome, tray, About + Settings, self-update. Real game plugins land from M3 onward.
+> **Status:** Milestone 2 (Steam Discovery + Plugin Loading). The app auto-discovers your Steam library, shows all installed games with large cover art in a scrollable sidebar, and loads game plugins from `~/.config/ModManager/plugins/`. The first real game plugin (LS25) lands in M3.
 
 ## Motivation
 
@@ -32,11 +32,19 @@ chmod +x ModManager-*-x86_64.AppImage
 
 **Linux (tar.gz):** unpack `ModManager-X.Y.Z-linux-x64.tar.gz` and run `./ModManager`.
 
+## Bedienung
+
+- **Sidebar (left)** lists all installed Steam games (auto-discovered from all Steam library roots including external drives). Search box filters by title, the „only games with plugin"-toggle hides everything without a loaded plugin. Sort order: games with a plugin first, then alphabetical.
+- **Add non-Steam game** with the ➕ button: name + directory (mandatory) + executable + cover + optional Steam-AppId (auto-loads the cover from Steam CDN when set). Entries persist in `~/.config/ModManager/manual-games.json`.
+- **Star overlay** on each tile: filled gold ★ = plugin loaded and active. Outline (M4) will mean „plugin available in index, not installed". No star = no plugin known.
+- **Click a game** → the content area shows the plugin's tabs. Games without a plugin show a placeholder card.
+- **Plugin deployment (M2)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/ModManager/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. From M4 onward: the app installs plugins live from GitHub with no restart.
+
 ## Roadmap
 
-- **M1 — Foundation** *(current)*: shell, tray, About + Settings, self-update via GitHub releases
-- **M2 — Steam discovery + plugin loader**: sidebar shows all installed Steam games with cover art, manual add for non-Steam games, plugin manifest scanning + activation, dummy plugin proves the chain
-- **M3 — LS25 plugin**: first real plugin, ports the LS-ModManager core (ModHub / Hof Hirschfeld / modhoster catalogs, ZIP install, backup)
+- **M1 — Foundation** ✅ shell, tray, About + Settings, self-update via GitHub releases
+- **M2 — Steam discovery + plugin loader** ✅ sidebar shows all installed Steam games with cover art, manual add for non-Steam games, plugin manifest scanning + activation, dummy plugin proves the chain
+- **M3 — LS25 plugin** *(next)*: first real plugin, ports the LS-ModManager core (ModHub / Hof Hirschfeld / modhoster catalogs, ZIP install, backup)
 - **M4 — Plugin index + install card + auto-update**: click a game with a golden star → install its plugin live from GitHub, no restart needed
 - **M5 — Icarus plugin**
 - **M6 — Satisfactory plugin** (custom locator for Bottles/Wine)
