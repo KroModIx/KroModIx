@@ -101,11 +101,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     partial void OnSearchTextChanged(string value) => ApplyFilterAndSort();
     partial void OnOnlyWithPluginChanged(bool value) => ApplyFilterAndSort();
 
+    // Wird während des App-Start-Bootstraps auf false gesetzt, damit die
+    // vielen impliziten Selection-Wechsel (ListBox-Auto-Select nach Clear+Add,
+    // Sortier-Refresh nach PluginIndex-Load) den persistierten
+    // LastSelectedGameId nicht überschreiben, bevor RestoreLastSelection läuft.
+    private bool _persistSelection;
+
     partial void OnSelectedGameChanged(GameEntry? value)
     {
         if (value is null) { PluginTabs = null; ShowPluginTabs = false; return; }
         RenderContentForSelected(value);
-        _settings.Update(s => s.LastSelectedGameId = value.Key);
+        if (_persistSelection)
+            _settings.Update(s => s.LastSelectedGameId = value.Key);
     }
 
     /// <summary>Kompletter Init-Ablauf beim App-Start: Discovery → Cover-Load
@@ -131,6 +138,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         ApplyFilterAndSort();
         RestoreLastSelection();
+        // Ab jetzt sind Wechsel „echte" User-Klicks → persistieren.
+        _persistSelection = true;
         StatusText = $"{_allGames.Count} Spiele erkannt.";
     }
 
@@ -192,6 +201,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             .SelectMany(p => p.SteamAppIds)
             .ToHashSet() ?? new HashSet<int>();
 
+        int installedCount = 0, availableCount = 0;
         foreach (var g in _allGames)
         {
             if (g.Source.SteamAppId is not int appId)
@@ -199,13 +209,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 g.PluginState = PluginState.None;
                 continue;
             }
-            if (appIdsWithLoadedPlugin.Contains(appId))
-                g.PluginState = PluginState.Installed;
-            else if (appIdsWithAvailablePlugin.Contains(appId))
-                g.PluginState = PluginState.Available;
-            else
-                g.PluginState = PluginState.None;
+            if (appIdsWithLoadedPlugin.Contains(appId)) { g.PluginState = PluginState.Installed; installedCount++; }
+            else if (appIdsWithAvailablePlugin.Contains(appId)) { g.PluginState = PluginState.Available; availableCount++; }
+            else g.PluginState = PluginState.None;
         }
+        Log.Info("RefreshPluginStates: {Installed} installed, {Available} available (of {Total} games); selected={Sel}",
+            installedCount, availableCount, _allGames.Count, SelectedGame?.Key ?? "<none>");
 
         ApplyFilterAndSort();
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
@@ -263,11 +272,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             .ThenBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
+        // WICHTIG: Avalonias ListBox setzt SelectedItem auf null wenn die
+        // ItemsSource.Clear() aufgerufen wird — bei TwoWay-Binding rennt das
+        // durch bis zu unserem SelectedGame und nullt es. Deshalb vorher
+        // sichern und nach dem Refill wiederherstellen.
+        var previouslySelected = SelectedGame;
+
         VisibleGames.Clear();
         foreach (var g in sorted) VisibleGames.Add(g);
 
-        // Selektion beibehalten wenn noch sichtbar
-        if (SelectedGame is not null && !VisibleGames.Contains(SelectedGame))
+        if (previouslySelected is not null && VisibleGames.Contains(previouslySelected))
+            SelectedGame = previouslySelected;
+        else if (SelectedGame is null)
             SelectedGame = VisibleGames.FirstOrDefault();
     }
 
@@ -282,6 +298,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void RenderContentForSelected(GameEntry entry)
     {
         var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, entry));
+        Log.Info("Render {Key} ({Name}) → Loaded={LoadedId} IndexCache={IdxCount} State={State}",
+            entry.Key, entry.DisplayName,
+            loaded?.Manifest.Id ?? "<none>",
+            _indexCache?.Plugins.Count ?? -1,
+            entry.PluginState);
+
         if (loaded is null)
         {
             // Plugin verfügbar, aber nicht installiert? → Install-Karte statt Placeholder.
@@ -301,6 +323,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 ShowInstallCard = true;
                 ShowPluginTabs = false;
                 ShowContentPlaceholder = false;
+                Log.Info("→ Install-Karte gezeigt für Plugin {PluginId}", indexEntry.Id);
                 return;
             }
 
