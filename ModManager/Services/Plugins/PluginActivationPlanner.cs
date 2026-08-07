@@ -29,10 +29,14 @@ public sealed class PluginActivationPlanner
     }
 
     /// <summary>Für Runtime-Install (M4 „Install-Karte"): ein einzelnes Plugin
-    /// entscheiden, ohne die installierte Games-Liste erneut zu iterieren.
-    /// Nutzt <see cref="GameDiscoveryService"/> nicht — Caller liefert bereits
-    /// gefilterte Info; wir prüfen nur MinHostVersion.</summary>
-    public PluginActivationDecision PlanSingle(DiscoveredPlugin plugin, Version hostVersion)
+    /// entscheiden. Der Caller MUSS die aktuelle Games-Liste mitgeben — sonst
+    /// bekommt das Plugin bei InitializeAsync eine leere activatedGames-Liste
+    /// und liefert später keine Tabs (Bug in v0.4.0: Live-Install zeigte
+    /// Install-Karte statt Plugin-Tabs, weil DetectedGames leer blieb).</summary>
+    public PluginActivationDecision PlanSingle(
+        DiscoveredPlugin plugin,
+        IReadOnlyList<DiscoveredGame> games,
+        Version hostVersion)
     {
         if (!TryParseVersion(plugin.Manifest.MinHostVersion, out var minHost))
             return new PluginActivationDecision(plugin, false, ActivationSkipReason.HostTooOld,
@@ -40,8 +44,18 @@ public sealed class PluginActivationPlanner
         if (hostVersion < minHost)
             return new PluginActivationDecision(plugin, false, ActivationSkipReason.HostTooOld,
                 Array.Empty<DiscoveredGame>());
-        return new PluginActivationDecision(plugin, true, ActivationSkipReason.None,
-            Array.Empty<DiscoveredGame>());
+
+        var installedAppIds = games
+            .Where(g => g.SteamAppId is not null)
+            .Select(g => g.SteamAppId!.Value)
+            .ToHashSet();
+        var matched = new List<DiscoveredGame>();
+        foreach (var target in plugin.Manifest.Targets)
+        {
+            if (target.SteamAppId is int appId && installedAppIds.Contains(appId))
+                matched.AddRange(games.Where(g => g.SteamAppId == appId));
+        }
+        return new PluginActivationDecision(plugin, true, ActivationSkipReason.None, matched);
     }
 
     /// <summary>Löst discovered Plugins gegen die aktuell installierten Spiele auf.</summary>

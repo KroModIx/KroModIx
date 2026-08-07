@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ModManager.PluginContracts;
+using ModManager.Services.Games;
 using ModManager.Services.Plugins;
 using NLog;
 
@@ -19,6 +21,7 @@ public sealed partial class InstallCardViewModel : ViewModelBase
     private readonly PluginActivator _activator;
     private readonly PluginActivationPlanner _planner;
     private readonly Version _hostVersion;
+    private readonly Func<IReadOnlyList<DiscoveredGame>> _gamesProvider;
     private readonly Func<Task> _onInstalledLive;
 
     public InstallCardViewModel(
@@ -28,6 +31,7 @@ public sealed partial class InstallCardViewModel : ViewModelBase
         PluginActivator activator,
         PluginActivationPlanner planner,
         Version hostVersion,
+        Func<IReadOnlyList<DiscoveredGame>> gamesProvider,
         Func<Task> onInstalledLive)
     {
         _entry = entry;
@@ -35,6 +39,7 @@ public sealed partial class InstallCardViewModel : ViewModelBase
         _activator = activator;
         _planner = planner;
         _hostVersion = hostVersion;
+        _gamesProvider = gamesProvider;
         _onInstalledLive = onInstalledLive;
         GameDisplayName = gameDisplayName;
     }
@@ -67,8 +72,10 @@ public sealed partial class InstallCardViewModel : ViewModelBase
                 return;
             }
 
-            // Live-Aktivierung (ohne App-Restart)
-            var decision = _planner.PlanSingle(discovered, _hostVersion);
+            // Live-Aktivierung (ohne App-Restart). PlanSingle MUSS die aktuelle
+            // Games-Liste bekommen, sonst wird das Plugin ohne DetectedGames
+            // initialisiert und liefert später keine Tabs.
+            var decision = _planner.PlanSingle(discovered, _gamesProvider(), _hostVersion);
             if (!decision.Activate)
             {
                 StatusMessage = $"Plugin heruntergeladen, aber nicht aktivierbar ({decision.SkipReason}).";

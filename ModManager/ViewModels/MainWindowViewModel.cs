@@ -335,6 +335,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     indexEntry, entry.DisplayName,
                     _pluginInstaller, _pluginActivator, _pluginPlanner,
                     ParseVersion(_hostUpdate.CurrentVersion),
+                    // Snapshot der aktuellen Games — der Planner braucht sie um
+                    // MatchedGames für das Plugin auszurechnen. Ohne diesen
+                    // Snapshot wird das Plugin ohne Spiel-Kontext initialisiert
+                    // und die Install-Karte bleibt sichtbar statt der Plugin-Tabs.
+                    gamesProvider: () => _allGames.Select(g => g.Source).ToList(),
                     onInstalledLive: async () =>
                     {
                         RefreshPluginStates();
