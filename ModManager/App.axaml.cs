@@ -1,10 +1,15 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using ModManager.Localization;
 using ModManager.PluginContracts;
 using ModManager.Services;
+using ModManager.Services.Games;
+using ModManager.Services.Plugins;
+using ModManager.Services.Steam;
 using ModManager.ViewModels;
 using ModManager.Views;
 using NLog;
@@ -17,8 +22,8 @@ public partial class App : Application
 
     public IServiceProvider Services { get; private set; } = null!;
 
-    // GC-Referenz auf TrayController halten (Kroste-Standard, sonst wird sie GC'd
-    // und das Tray-Icon verschwindet nach dem ersten Minimieren).
+    // GC-Referenz halten, sonst wird der TrayController eingesammelt und das
+    // Tray-Icon verschwindet nach dem ersten Minimieren.
     private TrayController? _tray;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -27,8 +32,6 @@ public partial class App : Application
     {
         Services = BuildServiceProvider();
 
-        // Gespeicherte UI-Sprache anwenden BEVOR das erste Fenster gebaut wird,
-        // sonst flackert der Wechsel beim App-Start.
         var settings = Services.GetRequiredService<AppSettingsService>();
         LocalizationService.Instance.SetCulture(settings.Current.UiCulture);
 
@@ -41,6 +44,11 @@ public partial class App : Application
             _tray.Install();
 
             desktop.MainWindow = mainWindow;
+
+            // Discovery + Plugin-Activation asynchron im Hintergrund starten;
+            // MainWindow steht schon während der Discovery.
+            mainWindow.Opened += (_, _) => _ = mainVm.InitializeAsync();
+
             desktop.Exit += (_, _) =>
             {
                 try { settings.Save(); }
@@ -55,10 +63,28 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        // Utility-Services
+        // Utility
         services.AddSingleton<AppSettingsService>();
         services.AddSingleton<ISecretProtection, SecretProtection>();
         services.AddSingleton<HostUpdateService>();
+
+        // Games-Discovery
+        services.AddSingleton<SteamLibraryService>();
+        services.AddSingleton<GameCoverService>();
+        services.AddSingleton<ManualGamesService>();
+        services.AddSingleton<GameDiscoveryService>();
+
+        // Plugin-System — Host-Impls der Plugin-Contracts
+        services.AddSingleton<HostShellImpl>();
+        services.AddSingleton<IHostShell>(sp => sp.GetRequiredService<HostShellImpl>());
+        services.AddSingleton<ILocalization, LocalizationBridge>();
+        services.AddSingleton<IDialogService, DialogServiceImpl>();
+        services.AddSingleton<NotificationSinkImpl>();
+        services.AddSingleton<INotificationSink>(sp => sp.GetRequiredService<NotificationSinkImpl>());
+        services.AddSingleton<StatusProgressCoordinator>();
+        services.AddSingleton<PluginRegistryScanner>();
+        services.AddSingleton<PluginActivationPlanner>();
+        services.AddSingleton<PluginActivator>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();

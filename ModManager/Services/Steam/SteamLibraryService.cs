@@ -40,11 +40,15 @@ public sealed class SteamLibraryService
         return result;
     }
 
-    /// <summary>Alle installierten Steam-Spiele über alle Library-Roots hinweg.</summary>
+    /// <summary>Alle installierten Steam-Spiele über alle Library-Roots hinweg.
+    /// Bazzite/Symlink-Falle: derselbe Root taucht via <c>/var/home/…</c> und
+    /// <c>/home/…</c> beide auf; wir deduplizieren nach AppId (erste Auflösung gewinnt).</summary>
     public IReadOnlyList<InstalledSteamGame> EnumerateInstalledGames()
     {
+        var seen = new HashSet<int>();
         var games = new List<InstalledSteamGame>();
-        foreach (var root in EnumerateLibraryRoots())
+        var roots = EnumerateLibraryRoots();
+        foreach (var root in roots)
         {
             var appsDir = Path.Combine(root, "steamapps");
             IEnumerable<string> manifests;
@@ -58,11 +62,13 @@ public sealed class SteamLibraryService
             foreach (var manifest in manifests)
             {
                 var game = TryParseManifest(manifest, root);
-                if (game is not null) games.Add(game);
+                if (game is null) continue;
+                if (!seen.Add(game.AppId)) continue;
+                games.Add(game);
             }
         }
         Log.Info("Steam-Discovery: {Count} Spiele in {Roots} Library-Roots",
-            games.Count, EnumerateLibraryRoots().Count);
+            games.Count, roots.Count);
         return games;
     }
 

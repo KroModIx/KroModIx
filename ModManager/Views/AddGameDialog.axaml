@@ -1,0 +1,74 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:ModManager.Views"
+        xmlns:controls="using:ModManager.Controls"
+        xmlns:vm="using:ModManager.ViewModels"
+        x:Class="ModManager.Views.AddGameDialog"
+        x:DataType="vm:AddGameDialogViewModel"
+        Width="560" Height="470" MinWidth="480" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Title="Spiel hinzufügen"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="Spiel hinzufügen" />
+
+        <Border Padding="20">
+            <StackPanel Spacing="14">
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Name" Classes="section-label" />
+                    <TextBox Text="{Binding DisplayName, Mode=TwoWay}"
+                             PlaceholderText="z.B. Satisfactory" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Verzeichnis (Pflicht)" Classes="section-label" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding InstallDir, Mode=TwoWay}"
+                                 PlaceholderText="/pfad/zum/spiel" />
+                        <Button Grid.Column="1" x:Name="PickDirButton" Margin="8,0,0,0"
+                                Content="Wählen…" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Executable (optional)" Classes="section-label" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding ExecutablePath, Mode=TwoWay}"
+                                 PlaceholderText="Spiel.exe" />
+                        <Button Grid.Column="1" x:Name="PickExeButton" Margin="8,0,0,0"
+                                Content="Wählen…" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Cover-Bild (optional)" Classes="section-label" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding CoverPath, Mode=TwoWay}"
+                                 PlaceholderText="Portrait 600×900 empfohlen" />
+                        <Button Grid.Column="1" x:Name="PickCoverButton" Margin="8,0,0,0"
+                                Content="Wählen…" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Steam-AppId (optional)" Classes="section-label" />
+                    <TextBox Text="{Binding SteamAppIdText, Mode=TwoWay}"
+                             PlaceholderText="wenn angegeben → Cover automatisch vom Steam-CDN" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="{DynamicResource KrosteDangerBrush}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                           TextWrapping="Wrap" />
+
+                <StackPanel Orientation="Horizontal" Spacing="10"
+                            HorizontalAlignment="Right">
+                    <Button Content="Abbrechen" Command="{Binding CancelCommand}" MinWidth="100" />
+                    <Button Classes="accent" Content="Hinzufügen"
+                            Command="{Binding ConfirmCommand}" MinWidth="120" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </DockPanel>
+</views:ChromeWindow>
