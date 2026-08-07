@@ -4,6 +4,7 @@ using System.Linq;
 using ModManager.Services.Steam;
 using NLog;
 
+
 namespace ModManager.Services.Games;
 
 /// <summary>
@@ -24,14 +25,18 @@ public sealed class GameDiscoveryService
         _manual = manual;
     }
 
-    /// <summary>Fresh scan of Steam + manual entries. Nicht gecacht — Caller entscheidet Cadence.</summary>
+    /// <summary>Fresh scan of Steam + manual entries. Nicht gecacht — Caller entscheidet Cadence.
+    /// Steam-Tools (Runtimes, Proton, Redistributables) werden via
+    /// <see cref="SteamGameFilter"/> ausgeblendet.</summary>
     public IReadOnlyList<DiscoveredGame> Discover()
     {
         var result = new List<DiscoveredGame>();
         var steamAppIdsSeen = new HashSet<int>();
+        var toolsSkipped = 0;
 
         foreach (var s in _steam.EnumerateInstalledGames())
         {
+            if (SteamGameFilter.IsTool(s.AppId, s.Name)) { toolsSkipped++; continue; }
             steamAppIdsSeen.Add(s.AppId);
             result.Add(new DiscoveredGame(
                 Key: $"steam:{s.AppId}",
@@ -42,6 +47,8 @@ public sealed class GameDiscoveryService
                 CustomCoverPath: null,
                 Source: DiscoveredGameSource.Steam));
         }
+        if (toolsSkipped > 0)
+            Log.Debug("Discovery: {N} Steam-Tools ausgefiltert (Runtimes/Proton/Redistributables)", toolsSkipped);
 
         foreach (var m in _manual.All)
         {
