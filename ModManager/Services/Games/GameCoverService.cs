@@ -46,6 +46,16 @@ public sealed class GameCoverService
         var cached = FindCached(appId);
         if (cached is not null) return cached;
 
+        // (a2) Marker „hat kein Cover" aus vorherigem 404-Versuch? Spart pro
+        // Start 4 HTTP-Requests je Cover-loses Spiel. Marker wird nach 7 Tagen
+        // ignoriert damit neu-veröffentlichte Cover doch noch reinkommen.
+        var missMarker = Path.Combine(CacheDir, appId + ".404");
+        if (File.Exists(missMarker) &&
+            DateTime.UtcNow - File.GetLastWriteTimeUtc(missMarker) < TimeSpan.FromDays(7))
+        {
+            return null;
+        }
+
         // (b) Steam eigener Cache?
         var steamCached = FindSteamCached(appId);
         if (steamCached is not null)
@@ -150,6 +160,13 @@ public sealed class GameCoverService
             }
         }
         Log.Debug("Alle Cover-Kandidaten für {AppId} fehlgeschlagen", appId);
+        // Marker anlegen — spart beim nächsten Start die 4 HTTP-Requests.
+        try
+        {
+            var marker = Path.Combine(CacheDir, appId + ".404");
+            await File.WriteAllBytesAsync(marker, Array.Empty<byte>(), ct).ConfigureAwait(false);
+        }
+        catch { /* best-effort */ }
         return null;
     }
 }
