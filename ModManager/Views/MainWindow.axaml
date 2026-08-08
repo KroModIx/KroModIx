@@ -29,12 +29,19 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
                             VerticalAlignment="Center">
-                    <!-- Update-Badge: sichtbar wenn Plugin-Updates verfügbar. -->
+                    <!-- Update-Badge: accent-Style wenn Plugin-Updates verfügbar,
+                         sonst ghost mit „Plugins verwalten" — gleicher Command,
+                         öffnet den Plugin-Manager (Updates + installierte Plugins). -->
                     <Button Classes="accent"
                             Content="{Binding UpdateBadgeText}"
                             IsVisible="{Binding HasAvailableUpdates}"
                             Command="{Binding OpenPluginUpdatesCommand}"
                             ToolTip.Tip="Plugin-Updates verfügbar" />
+                    <Button Classes="ghost"
+                            Content="🧩 Plugins"
+                            IsVisible="{Binding !HasAvailableUpdates}"
+                            Command="{Binding OpenPluginUpdatesCommand}"
+                            ToolTip.Tip="Installierte Plugins verwalten (installieren, updaten, deinstallieren)" />
                     <Button Classes="ghost"
                             Content="{loc:Tr Common_Settings}"
                             Command="{Binding OpenSettingsCommand}" />

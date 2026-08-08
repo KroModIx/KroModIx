@@ -559,7 +559,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenPluginUpdates()
     {
-        var vm = new PluginUpdatesViewModel(_pluginUpdates);
+        // Ehemals „Plugin-Updates" — jetzt kompletter Plugin-Manager mit
+        // Updates-Sektion + installierte-Plugins-Sektion + Uninstall.
+        var vm = _services.GetRequiredService<PluginUpdatesViewModel>();
         var window = new PluginUpdatesWindow { DataContext = vm };
         var owner = MainWindow();
         if (owner is not null) window.ShowDialog(owner); else window.Show();

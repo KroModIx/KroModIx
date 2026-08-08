@@ -89,6 +89,7 @@ public partial class App : Application
         services.AddSingleton<PluginActivator>();
         services.AddSingleton<PluginIndexService>();
         services.AddSingleton<PluginInstaller>();
+        services.AddSingleton<PluginUninstaller>();
         services.AddSingleton<PluginUpdateService>();
 
         // KI — Kroste-Baukasten. AiSettingsService persistiert Provider/
@@ -102,6 +103,7 @@ public partial class App : Application
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
+        services.AddTransient<PluginUpdatesViewModel>();
 
         return services.BuildServiceProvider();
     }
