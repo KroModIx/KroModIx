@@ -24,6 +24,7 @@ public sealed class HostServicesImpl : IHostServices
         INotificationSink notifications,
         ILocalization localization,
         IHostShell shell,
+        IAiService ai,
         Func<string, IProgressScope> progressFactory)
     {
         _pluginId = pluginId;
@@ -33,6 +34,7 @@ public sealed class HostServicesImpl : IHostServices
         Notifications = notifications;
         Localization = localization;
         Shell = shell;
+        Ai = ai;
         _progressFactory = progressFactory;
 
         PluginDataDir = Path.Combine(AppPaths.ConfigRoot, "plugin-data", pluginId);
@@ -51,6 +53,7 @@ public sealed class HostServicesImpl : IHostServices
     public INotificationSink Notifications { get; }
     public ILocalization Localization { get; }
     public IHostShell Shell { get; }
+    public IAiService Ai { get; }
 
     public HttpClient CreateHttpClient(string? subsystem = null)
     {

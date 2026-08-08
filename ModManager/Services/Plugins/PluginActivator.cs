@@ -34,6 +34,7 @@ public sealed class PluginActivator
     private readonly INotificationSink _notifications;
     private readonly ILocalization _localization;
     private readonly IHostShell _shell;
+    private readonly IAiService _ai;
     private readonly StatusProgressCoordinator _progress;
 
     private readonly List<LoadedPlugin> _loaded = new();
@@ -46,6 +47,7 @@ public sealed class PluginActivator
         INotificationSink notifications,
         ILocalization localization,
         IHostShell shell,
+        IAiService ai,
         StatusProgressCoordinator progress)
     {
         _steam = steam;
@@ -54,6 +56,7 @@ public sealed class PluginActivator
         _notifications = notifications;
         _localization = localization;
         _shell = shell;
+        _ai = ai;
         _progress = progress;
     }
 
@@ -116,7 +119,7 @@ public sealed class PluginActivator
 
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
-                manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell,
+                manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
                 title => _progress.Begin(title));
 
             var detectedGames = BuildDetectedGames(decision);

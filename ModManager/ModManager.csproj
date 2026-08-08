@@ -24,6 +24,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="NLog" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>

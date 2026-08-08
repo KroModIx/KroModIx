@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ModManager.Localization;
 using ModManager.PluginContracts;
 using ModManager.Services;
+using ModManager.Services.Ai;
 using ModManager.Services.Games;
 using ModManager.Services.Plugins;
 using ModManager.Services.Steam;
@@ -89,6 +90,14 @@ public partial class App : Application
         services.AddSingleton<PluginIndexService>();
         services.AddSingleton<PluginInstaller>();
         services.AddSingleton<PluginUpdateService>();
+
+        // KI — Kroste-Baukasten. AiSettingsService persistiert Provider/
+        // Endpoint/Modell/verschlüsselte API-Keys. HostAiServiceImpl wrappt
+        // AiProviderFactory für die Plugin-Contract-API IAiService.
+        services.AddHttpClient();
+        services.AddSingleton<AiSettingsService>();
+        services.AddSingleton<AiProviderFactory>();
+        services.AddSingleton<IAiService, HostAiServiceImpl>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();

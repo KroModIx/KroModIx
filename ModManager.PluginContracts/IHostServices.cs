@@ -33,6 +33,12 @@ public interface IHostServices
     ILocalization Localization { get; }
     IHostShell Shell { get; }
 
+    /// <summary>Zentraler KI-Provider. Config (Provider/Endpoint/Modell/Key)
+    /// und Setup-UI liegen im Host, Plugin ruft nur <see cref="IAiService.CompleteAsync"/>.
+    /// Vor Nutzung <see cref="IAiService.IsAvailableAsync"/> prüfen und Nutzer
+    /// auf Host-Einstellungen verweisen falls false.</summary>
+    IAiService Ai { get; }
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
