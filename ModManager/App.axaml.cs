@@ -73,6 +73,7 @@ public partial class App : Application
         services.AddSingleton<GameCoverService>();
         services.AddSingleton<ManualGamesService>();
         services.AddSingleton<GameDiscoveryService>();
+        services.AddSingleton<GamesCacheService>();
 
         // Plugin-System — Host-Impls der Plugin-Contracts
         services.AddSingleton<HostShellImpl>();

@@ -32,6 +32,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private readonly IServiceProvider _services;
     private readonly GameDiscoveryService _discovery;
+    private readonly GamesCacheService _gamesCache;
     private readonly GameCoverService _covers;
     private readonly ManualGamesService _manual;
     private readonly PluginRegistryScanner _pluginScanner;
@@ -51,6 +52,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         _services = services;
         _discovery = services.GetRequiredService<GameDiscoveryService>();
+        _gamesCache = services.GetRequiredService<GamesCacheService>();
         _covers = services.GetRequiredService<GameCoverService>();
         _manual = services.GetRequiredService<ManualGamesService>();
         _pluginScanner = services.GetRequiredService<PluginRegistryScanner>();
@@ -140,39 +142,115 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             _settings.Update(s => s.LastSelectedGameId = value.Key);
     }
 
-    /// <summary>Kompletter Init-Ablauf beim App-Start: Discovery → Cover-Load
-    /// → Plugin-Scan+Activation → UI aktualisieren.</summary>
+    /// <summary>Kompletter Init-Ablauf beim App-Start:
+    /// <list type="number">
+    /// <item>Cache-Load — instant, Sidebar zeigt sofort die zuletzt bekannten Spiele</item>
+    /// <item>Plugin-Discovery + Activation — läuft gegen die Cache-Games</item>
+    /// <item>UI-Restore (LastSelectedGame)</item>
+    /// <item>Fresh Discovery im Background — diff't neue/entfernte Spiele in die
+    ///     Sidebar zurück und aktualisiert den Cache</item>
+    /// </list>
+    /// Beim ersten Start (leerer Cache) läuft Discovery synchron als Fallback.
+    /// </summary>
     public async Task InitializeAsync(CancellationToken ct = default)
     {
-        StatusText = "Discovery …";
-        var games = await Task.Run(() => _discovery.Discover(), ct).ConfigureAwait(true);
+        // 1) Cache-Load — instant.
+        var cached = _gamesCache.Load();
+        if (cached.Count > 0)
+        {
+            _allGames.Clear();
+            foreach (var g in cached) _allGames.Add(new GameEntry(g));
+            Log.Info("Sidebar aus Cache: {Count} Spiele geladen", _allGames.Count);
+            StatusText = $"{_allGames.Count} Spiele (Cache).";
+        }
+        else
+        {
+            // Erster App-Start: Discovery synchron, sonst startet die App
+            // mit leerer Sidebar bis der Background-Job fertig ist.
+            StatusText = "Discovery …";
+            var initial = await Task.Run(() => _discovery.Discover(), ct).ConfigureAwait(true);
+            _allGames.Clear();
+            foreach (var g in initial) _allGames.Add(new GameEntry(g));
+            _gamesCache.Save(initial);
+            Log.Info("Sidebar (Erst-Discovery): {Count} Spiele geladen", _allGames.Count);
+            StatusText = $"{_allGames.Count} Spiele erkannt.";
+        }
 
-        _allGames.Clear();
-        foreach (var g in games) _allGames.Add(new GameEntry(g));
-        Log.Info("Sidebar: {Count} Spiele geladen", _allGames.Count);
-
-        // Cover parallel im Background laden, aber nur limitiert. Cover werden
-        // im UI angezeigt sobald sie verfügbar sind (Bitmap-Property ist Observable).
+        // 2) Cover parallel im Background laden (limitiert).
         _ = LoadCoversAsync(_allGames.ToArray(), ct);
 
-        // Plugin-Discovery + Activation
+        // 3) Plugin-Discovery + Activation gegen die Cache-Games.
         await ActivatePluginsAsync(ct).ConfigureAwait(true);
 
-        // PluginIndex im Hintergrund laden — bestimmt "verfügbar-aber-nicht-installiert"-Sterne.
+        // 4) PluginIndex im Hintergrund laden.
         _ = LoadPluginIndexAsync(ct);
 
+        // 5) UI-Filter + LastSelection wiederherstellen.
         ApplyFilterAndSort();
         RestoreLastSelection();
-        // Ab jetzt sind Wechsel „echte" User-Klicks → persistieren.
         _persistSelection = true;
-        StatusText = $"{_allGames.Count} Spiele erkannt.";
 
-        // Plugin-Update-Check im Hintergrund für alle geladenen Plugins.
+        // 6) Fresh Discovery im Background — Diff einpflegen.
+        _ = RefreshDiscoveryAsync(ct);
+
+        // Plugin-Update-Check im Hintergrund.
         _ = Task.Run(async () =>
         {
             try { await _pluginUpdates.CheckAllAsync(ct); }
             catch (Exception ex) { Log.Debug(ex, "Initial Plugin-Update-Check fehlgeschlagen"); }
         }, ct);
+    }
+
+    /// <summary>Fresh Steam-Discovery im Hintergrund. Vergleicht das Ergebnis
+    /// mit dem aktuellen <see cref="_allGames"/>-State und synchronisiert:
+    /// neue Spiele werden hinzugefügt, verschwundene entfernt. Der Cache wird
+    /// nur überschrieben wenn die Discovery tatsächlich etwas Neues zeigt —
+    /// bei kaputter Steam-Installation bleibt der Cache erhalten.</summary>
+    private async Task RefreshDiscoveryAsync(CancellationToken ct)
+    {
+        try
+        {
+            var fresh = await Task.Run(() => _discovery.Discover(), ct).ConfigureAwait(false);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var freshKeys = new HashSet<string>(fresh.Select(g => g.Key), StringComparer.Ordinal);
+                var currentKeys = new HashSet<string>(_allGames.Select(g => g.Key), StringComparer.Ordinal);
+
+                var added = new List<DiscoveredGame>();
+                foreach (var g in fresh)
+                    if (!currentKeys.Contains(g.Key)) added.Add(g);
+
+                var removed = new List<GameEntry>();
+                foreach (var entry in _allGames)
+                    if (!freshKeys.Contains(entry.Key)) removed.Add(entry);
+
+                foreach (var g in added) _allGames.Add(new GameEntry(g));
+                foreach (var entry in removed) _allGames.Remove(entry);
+
+                if (added.Count > 0 || removed.Count > 0)
+                {
+                    Log.Info("Discovery-Refresh: +{Added} / -{Removed} Spiel(e)", added.Count, removed.Count);
+                    _gamesCache.Save(fresh);
+                    ApplyFilterAndSort();
+                    RefreshPluginStates();
+                    if (added.Count > 0)
+                        _ = LoadCoversAsync(added.Select(g => _allGames.First(e => e.Key == g.Key)).ToArray(), ct);
+                    StatusText = $"{_allGames.Count} Spiele (aktualisiert: +{added.Count}/-{removed.Count}).";
+                }
+                else
+                {
+                    // Cache-Timestamp trotzdem auffrischen — Cache-Files älter als
+                    // ein paar Tage würden bei fehlender Steam-Session wieder auf
+                    // die alte Liste zeigen.
+                    _gamesCache.Save(fresh);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Discovery-Refresh im Hintergrund fehlgeschlagen");
+        }
     }
 
     private async Task LoadPluginIndexAsync(CancellationToken ct)
