@@ -34,6 +34,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly GameDiscoveryService _discovery;
     private readonly GamesCacheService _gamesCache;
     private readonly GameCoverService _covers;
+    private readonly GameLauncherService _launcher;
     private readonly ManualGamesService _manual;
     private readonly PluginRegistryScanner _pluginScanner;
     private readonly PluginActivationPlanner _pluginPlanner;
@@ -55,6 +56,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _discovery = services.GetRequiredService<GameDiscoveryService>();
         _gamesCache = services.GetRequiredService<GamesCacheService>();
         _covers = services.GetRequiredService<GameCoverService>();
+        _launcher = services.GetRequiredService<GameLauncherService>();
         _manual = services.GetRequiredService<ManualGamesService>();
         _pluginScanner = services.GetRequiredService<PluginRegistryScanner>();
         _pluginPlanner = services.GetRequiredService<PluginActivationPlanner>();
@@ -85,6 +87,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGame))]
+    [NotifyPropertyChangedFor(nameof(CanLaunchSelected))]
     private GameEntry? _selectedGame;
 
     public bool HasSelectedGame => SelectedGame is not null;
@@ -555,6 +558,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var owner = MainWindow();
         if (owner is not null) window.ShowDialog(owner); else window.Show();
     }
+
+    /// <summary>Startet das aktuell ausgewählte Spiel. Wird sowohl vom
+    /// „▶ Starten"-Button im Content-Header als auch vom Sidebar-
+    /// Doppelklick aufgerufen. Ohne Selection ein No-Op.</summary>
+    [RelayCommand]
+    private void LaunchSelectedGame()
+    {
+        if (SelectedGame is null) return;
+        var result = _launcher.Launch(SelectedGame.Source);
+        StatusText = result.Message;
+        Log.Info("LaunchSelectedGame → {Ok}: {Msg}", result.Success, result.Message);
+    }
+
+    public bool CanLaunchSelected =>
+        SelectedGame is not null &&
+        (SelectedGame.Source.SteamAppId is not null || !string.IsNullOrWhiteSpace(SelectedGame.Source.ExecutablePath));
 
     [RelayCommand]
     private void OpenPluginUpdates()

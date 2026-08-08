@@ -111,9 +111,13 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Kachel-Liste -->
+                    <!-- Kachel-Liste. DoubleTapped auf ListBoxItem startet
+                         das gerade angeklickte Spiel — Steam-Library-Verhalten.
+                         Einfach-Klick selektiert nur (Content-Bereich rendert
+                         die Plugin-Tabs bzw. Install-Karte). -->
                     <ListBox ItemsSource="{Binding VisibleGames}"
                              SelectedItem="{Binding SelectedGame, Mode=TwoWay}"
+                             DoubleTapped="OnGameDoubleTapped"
                              Background="Transparent" BorderThickness="0"
                              Padding="6,4"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -191,7 +195,29 @@
 
             <!-- Content -->
             <Border Grid.Column="1" Padding="20">
-                <Grid>
+                <DockPanel>
+                    <!-- Content-Header: Spielname + ▶ Starten. Nur sichtbar wenn
+                         ein Spiel selektiert ist. Klick oder Sidebar-Doppelklick
+                         starten das Spiel (LaunchSelectedGameCommand).
+                         CanLaunchSelected disabled den Button wenn weder
+                         Steam-AppId noch Executable-Pfad da sind. -->
+                    <Grid DockPanel.Dock="Top"
+                          ColumnDefinitions="*,Auto"
+                          Margin="0,0,0,14"
+                          IsVisible="{Binding HasSelectedGame}">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding SelectedGame.DisplayName}"
+                                   Classes="h1" FontSize="18"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Classes="accent"
+                                Content="▶  Spiel starten"
+                                Command="{Binding LaunchSelectedGameCommand}"
+                                IsEnabled="{Binding CanLaunchSelected}"
+                                ToolTip.Tip="Doppelklick auf die Kachel in der Sidebar startet das Spiel ebenfalls" />
+                    </Grid>
+
+                    <Grid>
                     <!-- Placeholder wenn kein Plugin oder kein Spiel -->
                     <Border Classes="card-flat" Padding="24"
                             IsVisible="{Binding ShowContentPlaceholder}"
@@ -264,7 +290,8 @@
                     <TabControl ItemsSource="{Binding PluginTabs}"
                                 IsVisible="{Binding ShowPluginTabs}"
                                 Background="Transparent" />
-                </Grid>
+                    </Grid>
+                </DockPanel>
             </Border>
         </Grid>
     </DockPanel>

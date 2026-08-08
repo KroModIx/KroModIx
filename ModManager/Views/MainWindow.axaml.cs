@@ -1,3 +1,7 @@
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using ModManager.ViewModels;
+
 namespace ModManager.Views;
 
 // KEIN manuelles InitializeComponent — der Name-Generator emittiert es
@@ -7,5 +11,17 @@ public partial class MainWindow : ChromeWindow
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    /// <summary>Doppelklick auf eine Sidebar-Kachel startet das Spiel.
+    /// Command-Aufruf ist idempotent — wenn kein Spiel selektiert ist,
+    /// tut LaunchSelectedGame nichts.</summary>
+    private void OnGameDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && vm.CanLaunchSelected)
+        {
+            vm.LaunchSelectedGameCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 }

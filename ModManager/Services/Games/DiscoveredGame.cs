@@ -12,6 +12,9 @@ namespace ModManager.Services.Games;
 /// <param name="SteamAppId">Steam-App-ID (bei Manual falls vom User gesetzt).</param>
 /// <param name="ManualId">Bei Manual: die <see cref="ManualGameEntry.Id"/>.</param>
 /// <param name="CustomCoverPath">User-gesetztes Cover-Bild (bei Manual).</param>
+/// <param name="ExecutablePath">Absoluter Pfad zur .exe (Manual-Games).
+///   Für Steam-Games null — dort startet <see cref="Plugins.GameLauncherService"/>
+///   via <c>steam://run/&lt;appId&gt;</c>.</param>
 /// <param name="Source">Steam oder Manual.</param>
 public sealed record DiscoveredGame(
     string Key,
@@ -20,7 +23,8 @@ public sealed record DiscoveredGame(
     int? SteamAppId,
     string? ManualId,
     string? CustomCoverPath,
-    DiscoveredGameSource Source);
+    DiscoveredGameSource Source,
+    string? ExecutablePath = null);
 
 public enum DiscoveredGameSource
 {
