@@ -43,6 +43,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly PluginUpdateService _pluginUpdates;
     private readonly AppSettingsService _settings;
     private readonly HostUpdateService _hostUpdate;
+    private readonly StatusProgressCoordinator _statusProgress;
 
     private PluginIndex? _indexCache;
 
@@ -63,11 +64,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginUpdates = services.GetRequiredService<PluginUpdateService>();
         _settings = services.GetRequiredService<AppSettingsService>();
         _hostUpdate = services.GetRequiredService<HostUpdateService>();
+        _statusProgress = services.GetRequiredService<StatusProgressCoordinator>();
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
         _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             AvailableUpdateCount = _pluginUpdates.AvailableUpdates.Count;
+        });
+        _statusProgress.Changed += (_, e) => Dispatcher.UIThread.Post(() =>
+        {
+            ProgressIsActive = e.IsActive;
+            ProgressTitle = e.Title ?? "";
+            ProgressMessage = e.Message ?? "";
+            ProgressFraction = e.Fraction;
+            ProgressIndeterminate = e.Indeterminate;
         });
     }
 
@@ -105,6 +115,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _statusText = "Starte …";
+
+    // Progress-Anzeige — wird vom StatusProgressCoordinator gefüttert. Plugin-
+    // Aktionen wie Downloads rufen IHostServices.BeginProgress → das feuert
+    // Changed-Events, die hier landen und die Statusbar aktualisieren.
+    [ObservableProperty] private bool _progressIsActive;
+    [ObservableProperty] private string _progressTitle = "";
+    [ObservableProperty] private string _progressMessage = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProgressFraction))]
+    private double? _progressFraction;
+    [ObservableProperty] private bool _progressIndeterminate;
+
+    public bool HasProgressFraction => ProgressFraction is not null;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAvailableUpdates))]
