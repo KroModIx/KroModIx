@@ -86,6 +86,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ProgressFraction = e.Fraction;
             ProgressIndeterminate = e.Indeterminate;
         });
+
+        // Persistierten Sidebar-Filter beim Start übernehmen.
+        _showAllGames = _settings.Current.SidebarShowAllGames;
     }
 
     public ObservableCollection<GameEntry> VisibleGames { get; } = new();
@@ -100,8 +103,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _searchText = string.Empty;
 
+    /// <summary>Sidebar-Filter: wenn true, werden auch Non-Plugin-Games
+    /// angezeigt (ausgegraut). Persistiert in <see cref="AppSettings.SidebarShowAllGames"/>.
+    /// Default: false (nur Plugin-Games).</summary>
     [ObservableProperty]
-    private bool _onlyWithPlugin;
+    private bool _showAllGames;
 
     [ObservableProperty]
     private ObservableCollection<TabItem>? _pluginTabs;
@@ -181,7 +187,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilterAndSort();
-    partial void OnOnlyWithPluginChanged(bool value) => ApplyFilterAndSort();
+    partial void OnShowAllGamesChanged(bool value)
+    {
+        _settings.Update(s => s.SidebarShowAllGames = value);
+        ApplyFilterAndSort();
+        RefreshDimmingFlags();
+    }
 
     // Wird während des App-Start-Bootstraps auf false gesetzt, damit die
     // vielen impliziten Selection-Wechsel (ListBox-Auto-Select nach Clear+Add,
@@ -251,7 +262,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // 4) PluginIndex im Hintergrund laden.
         _ = LoadPluginIndexAsync(ct);
 
-        // 5) UI-Filter + LastSelection wiederherstellen.
+        // 5) UI-Filter + Dimming + LastSelection wiederherstellen.
+        RefreshDimmingFlags();
         ApplyFilterAndSort();
         RestoreLastSelection();
         _persistSelection = true;
@@ -393,7 +405,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             installedCount, availableCount, _allGames.Count, SelectedGame?.Key ?? "<none>");
 
         ApplyFilterAndSort();
+        RefreshDimmingFlags();
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+    }
+
+    /// <summary>Setzt <see cref="GameEntry.IsDimmed"/> für alle Spiele.
+    /// Dimming greift nur wenn <see cref="ShowAllGames"/> aktiv ist UND das
+    /// Spiel kein Plugin hat — bei „nur mit Plugin" (Default-Filter) sind
+    /// alle sichtbaren Spiele voll deckend.</summary>
+    private void RefreshDimmingFlags()
+    {
+        foreach (var g in _allGames)
+            g.IsDimmed = ShowAllGames && g.PluginState == PluginState.None;
     }
 
     private async Task LoadCoversAsync(GameEntry[] entries, CancellationToken ct)
@@ -405,8 +428,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             if (ct.IsCancellationRequested) break;
             try
             {
+                // User-Override aus dem Sidebar-Kontextmenü hat Vorrang vor
+                // dem Manual-Game CustomCoverPath aus dem AddGame-Dialog.
+                var userOverride = _settings.Current.CustomGameCovers is { } dict
+                                    && dict.TryGetValue(entry.Key, out var op) ? op : null;
+                var customPath = userOverride ?? entry.Source.CustomCoverPath;
                 var path = await _covers.ResolveCoverAsync(
-                    entry.Source.SteamAppId, entry.Source.CustomCoverPath, ct).ConfigureAwait(false);
+                    entry.Source.SteamAppId, customPath, ct).ConfigureAwait(false);
                 if (path is null || !File.Exists(path)) continue;
                 Bitmap? bmp = null;
                 try
@@ -436,10 +464,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         var q = SearchText?.Trim() ?? string.Empty;
 
-        IEnumerable<GameEntry> filtered = _allGames;
+        // Vom User versteckte Spiele (Kontextmenü „Aus KroModIx entfernen" auf
+        // einem Steam-Spiel) niemals in der Sidebar zeigen — auch nicht wenn
+        // ShowAllGames aktiv ist.
+        var hidden = new HashSet<string>(_settings.Current.HiddenGameKeys, StringComparer.Ordinal);
+
+        IEnumerable<GameEntry> filtered = _allGames.Where(g => !hidden.Contains(g.Key));
         if (!string.IsNullOrEmpty(q))
             filtered = filtered.Where(g => g.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase));
-        if (OnlyWithPlugin)
+        // Default: nur mit Plugin. ShowAllGames aktiv → alles (Non-Plugin-Games
+        // werden im XAML ausgegraut via IsDimmed).
+        if (!ShowAllGames)
             filtered = filtered.Where(g => g.PluginState != PluginState.None);
 
         var sorted = filtered
@@ -648,6 +683,84 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ApplyFilterAndSort();
             SelectedGame = entry;
         }
+    }
+
+    /// <summary>Sidebar-Kontextmenü „🖼 Kachelbild ändern": öffnet File-Picker,
+    /// kopiert das ausgewählte Bild in <see cref="AppPaths.UserCoverDir"/>
+    /// (persistent an unser Cache-Verzeichnis gebunden, damit der User seinen
+    /// Ordner umbenennen kann), speichert den Pfad in
+    /// <see cref="AppSettings.CustomGameCovers"/> und lädt die Kachel neu.</summary>
+    [RelayCommand]
+    private async Task ChangeCoverAsync(GameEntry? entry)
+    {
+        if (entry is null) return;
+        var dialog = _services.GetRequiredService<IDialogService>();
+        var picked = await dialog.PickFileAsync(
+            $"Neues Kachelbild für '{entry.DisplayName}'",
+            ("Bilder", new[] { "*.png", "*.jpg", "*.jpeg", "*.webp" }));
+        if (string.IsNullOrWhiteSpace(picked) || !File.Exists(picked)) return;
+
+        try
+        {
+            var ext = Path.GetExtension(picked);
+            if (string.IsNullOrEmpty(ext)) ext = ".png";
+            // Ordner-fähigen Dateinamen aus dem Key ableiten (steam:2300320 → steam_2300320)
+            var safeKey = entry.Key.Replace(':', '_').Replace('/', '_');
+            var target = Path.Combine(AppPaths.UserCoverDir, safeKey + ext);
+            File.Copy(picked, target, overwrite: true);
+
+            _settings.Update(s =>
+            {
+                s.CustomGameCovers ??= new Dictionary<string, string>();
+                s.CustomGameCovers[entry.Key] = target;
+            });
+
+            // Cover neu laden — LoadCoversAsync bevorzugt den CustomGameCovers-Override.
+            _ = LoadCoversAsync(new[] { entry }, default);
+            StatusText = $"Kachelbild für '{entry.DisplayName}' aktualisiert.";
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Kachelbild-Wechsel für {Key} fehlgeschlagen", entry.Key);
+            StatusText = $"Fehler beim Setzen des Kachelbilds: {ex.Message}";
+        }
+    }
+
+    /// <summary>Sidebar-Kontextmenü „🗑 Aus KroModIx entfernen": bei Manual-
+    /// Games löscht es den Eintrag in <see cref="ManualGamesService"/>; bei
+    /// Steam-Games (die von der Steam-Discovery immer wieder auftauchen)
+    /// merkt es sich den Key in <see cref="AppSettings.HiddenGameKeys"/>
+    /// als Blacklist, sodass die Discovery ihn beim nächsten Refresh
+    /// ausfiltert. In beiden Fällen sofortige UI-Aktualisierung.</summary>
+    [RelayCommand]
+    private async Task RemoveGameAsync(GameEntry? entry)
+    {
+        if (entry is null) return;
+        var dialog = _services.GetRequiredService<IDialogService>();
+        var confirmed = await dialog.ConfirmAsync(
+            title: "Spiel entfernen?",
+            message: entry.IsManual
+                ? $"'{entry.DisplayName}' aus KroModIx entfernen? Der Manual-Eintrag wird gelöscht (Steam-Ordner bleibt unangetastet)."
+                : $"'{entry.DisplayName}' aus der Sidebar ausblenden? Steam-Discovery findet es beim nächsten Refresh wieder — die Blacklist verhindert die Anzeige.");
+        if (!confirmed) return;
+
+        if (entry.IsManual && !string.IsNullOrEmpty(entry.Source.ManualId))
+        {
+            _manual.Remove(entry.Source.ManualId);
+        }
+        else
+        {
+            _settings.Update(s =>
+            {
+                s.HiddenGameKeys ??= new List<string>();
+                if (!s.HiddenGameKeys.Contains(entry.Key))
+                    s.HiddenGameKeys.Add(entry.Key);
+            });
+        }
+        _allGames.Remove(entry);
+        if (ReferenceEquals(SelectedGame, entry)) SelectedGame = null;
+        ApplyFilterAndSort();
+        StatusText = $"'{entry.DisplayName}' entfernt.";
     }
 
     private static Window? MainWindow() =>

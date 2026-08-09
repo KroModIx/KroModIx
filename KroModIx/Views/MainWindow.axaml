@@ -113,12 +113,16 @@
                                  Text="{Binding SearchText, Mode=TwoWay}"
                                  PlaceholderText="{loc:Tr Main_Sidebar_Search_Placeholder}" />
                         <Grid ColumnDefinitions="*,Auto">
-                            <CheckBox Name="OnlyWithPluginCheckBox"
-                                      Grid.Column="0"
-                                      Content="{loc:Tr Main_Sidebar_FilterOnlyWithPlugin}"
-                                      IsChecked="{Binding OnlyWithPlugin, Mode=TwoWay}"
-                                      Foreground="{DynamicResource KrosteSecondaryTextBrush}"
-                                      FontSize="12" />
+                            <!-- Toggle „Alle Spiele" statt binärer OnlyWithPlugin.
+                                 An = zeigt auch Non-Plugin-Games (ausgegraut).
+                                 Aus (Default) = nur Spiele mit Plugin. -->
+                            <ToggleSwitch Name="ShowAllGamesToggle"
+                                          Grid.Column="0"
+                                          OnContent="Alle Spiele"
+                                          OffContent="Nur mit Plugin"
+                                          IsChecked="{Binding ShowAllGames, Mode=TwoWay}"
+                                          Foreground="{DynamicResource KrosteSecondaryTextBrush}"
+                                          FontSize="12" />
                             <Button Name="AddGameButton"
                                     Grid.Column="1" Classes="ghost" FontSize="12"
                                     Content="{loc:Tr Main_Sidebar_AddGame}"
@@ -154,7 +158,21 @@
                         </ListBox.Styles>
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:GameEntry">
-                                <Border Padding="6" CornerRadius="4">
+                                <!-- Opacity 0.35 bei IsDimmed (ShowAllGames aktiv + kein Plugin)
+                                     — reicht als „ausgegraut"-Look ohne teuren Shader-Effekt.
+                                     ContextMenu bindet via $parent auf die MainWindowVM-Commands. -->
+                                <Border Padding="6" CornerRadius="4"
+                                        Opacity="{Binding IsDimmed, Converter={x:Static vm:DimOpacityConverter.Instance}}">
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="🖼  Kachelbild ändern…"
+                                                      Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).ChangeCoverCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="🗑  Aus KroModIx entfernen"
+                                                      Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).RemoveGameCommand}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
                                     <StackPanel Spacing="6">
                                         <!-- Cover mit Stern-Overlay -->
                                         <Panel Width="176" Height="238">

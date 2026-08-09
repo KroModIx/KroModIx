@@ -73,6 +73,19 @@ public static class AppPaths
         }
     }
 
+    /// <summary>Vom User über das Sidebar-Kontextmenü hochgeladene Cover-Bilder.
+    /// Getrennt vom Steam-Cache, damit ein Cache-Cleanup die User-Overrides
+    /// nicht zerstört.</summary>
+    public static string UserCoverDir
+    {
+        get
+        {
+            var dir = Path.Combine(GameCoverCacheDir, "user");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+    }
+
     /// <summary>Update-Arbeitsverzeichnis für Self-Update (NIE AppContext.BaseDirectory —
     /// AppImage-Squashfs ist read-only, siehe RenPack/LS-ModManager UpdateService).</summary>
     public static string UpdateWorkDir

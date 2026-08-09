@@ -42,6 +42,20 @@ public sealed partial class GameEntry : ObservableObject
         _ => string.Empty,
     };
 
+    /// <summary>UI-Hint für den Sidebar-Filter „Alle Spiele anzeigen":
+    /// Spiele ohne Plugin werden bei aktivem Toggle mit reduzierter Opacity
+    /// dargestellt (Graustufen-Look). Wird vom MainWindowViewModel gesetzt,
+    /// nicht aus PluginState allein berechnet — der aktuelle Filter-Modus
+    /// wird auch berücksichtigt.</summary>
+    [ObservableProperty]
+    private bool _isDimmed;
+
+    /// <summary>Convenience für XAML-Bindings: true wenn das Spiel manuell
+    /// hinzugefügt wurde (steuert Sichtbarkeit von „Aus KroModIx entfernen"
+    /// im Kontextmenü — Steam-Games können nur ausgeblendet werden, das ist
+    /// dieselbe Aktion in der UI aber semantisch ein anderer Weg im VM).</summary>
+    public bool IsManual => Source.Source == DiscoveredGameSource.Manual;
+
     partial void OnPluginStateChanged(PluginState value) => OnPropertyChanged(nameof(StarSymbol));
 }
 
