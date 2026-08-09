@@ -135,6 +135,9 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [ObservableProperty] private VramOption? _selectedVramOption;
     [ObservableProperty] private bool _isVramOverride;
 
+    // Sidebar/Plugin-Verhalten
+    [ObservableProperty] private bool _pluginAutoCleanupOnGameUninstall;
+
     // REST-API-Sektion
     [ObservableProperty] private bool _apiEnabled;
     [ObservableProperty] private int _apiPort = 5100;
@@ -202,6 +205,7 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         ApiEnabled = settings.Current.ApiEnabled;
         ApiPort = settings.Current.ApiPort <= 0 ? 5100 : settings.Current.ApiPort;
         ApiBearerToken = settings.Current.ApiBearerToken ?? "";
+        PluginAutoCleanupOnGameUninstall = settings.Current.PluginAutoCleanupOnGameUninstall;
 
         // Cloud-Model-Options mit kuratierten Presets initial füllen —
         // Live-Modelle werden asynchron beim Öffnen bzw. Provider-Wechsel dazu-
@@ -244,6 +248,11 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         var iso = string.IsNullOrEmpty(value.Iso) ? null : value.Iso;
         _settings.Update(s => s.UiCulture = iso);
         LocalizationService.Instance.SetCulture(iso ?? CultureInfo.InvariantCulture.TwoLetterISOLanguageName);
+    }
+
+    partial void OnPluginAutoCleanupOnGameUninstallChanged(bool value)
+    {
+        _settings.Update(s => s.PluginAutoCleanupOnGameUninstall = value);
     }
 
     partial void OnSelectedOpenAiCompatiblePresetChanged(AiProviderPreset? value)

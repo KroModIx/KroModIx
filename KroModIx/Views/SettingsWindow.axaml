@@ -15,7 +15,7 @@
 
         <TabControl Name="SettingsTabs" TabStripPlacement="Top" Padding="0" Background="Transparent">
 
-            <!-- Tab 1: Allgemein (Sprache) -->
+            <!-- Tab 1: Allgemein (Sprache + Sidebar-Verhalten) -->
             <TabItem Name="SettingsTabGeneral" Header="🌐  Allgemein">
                 <ScrollViewer>
                     <Border Padding="24">
@@ -30,6 +30,17 @@
                                               HorizontalAlignment="Stretch" />
                                     <TextBlock Text="{loc:Tr Settings_UiLanguage_Hint}"
                                                Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="PLUGIN-VERHALTEN" Classes="section-label" Margin="0,8,0,0" />
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <CheckBox Name="PluginAutoCleanupCheckBox"
+                                              Content="Plugins automatisch entfernen wenn kein Zielspiel mehr installiert ist"
+                                              IsChecked="{Binding PluginAutoCleanupOnGameUninstall, Mode=TwoWay}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Standard aus: Plugins bleiben erhalten, auch wenn du das zugehörige Spiel deinstallierst — so sind deine Mod-Konfigurationen noch da wenn du das Spiel neu installierst. Aktiviere die Option nur, wenn du nach jeder Steam-Deinstallation aufräumen möchtest. Die Deinstallation wird zur nächsten Discovery-Runde ausgeführt, das Plugin bleibt bis zum nächsten App-Start noch geladen." />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

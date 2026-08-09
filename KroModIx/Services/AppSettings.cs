@@ -48,6 +48,14 @@ public sealed class AppSettings
     /// <see cref="ManualGamesService"/> gelöscht (dann ist der Key hier
     /// überflüssig aber schadet nicht).</summary>
     public List<string> HiddenGameKeys { get; set; } = new();
+
+    /// <summary>Wenn true: nach einem Discovery-Refresh, der ein Zielspiel
+    /// eines geladenen Plugins entfernt hat UND dieses Plugin kein anderes
+    /// noch-installiertes Zielspiel mehr hat, wird das Plugin-Verzeichnis
+    /// unter <c>~/.config/KroModIx/plugins/</c> automatisch gelöscht.
+    /// Default aus — Plugin-Persistenz ist die vorsichtigere Wahl (der User
+    /// deinstalliert vielleicht ein Spiel nur temporär).</summary>
+    public bool PluginAutoCleanupOnGameUninstall { get; set; }
 }
 
 public sealed class WindowStateDto

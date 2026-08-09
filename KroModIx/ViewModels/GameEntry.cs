@@ -50,6 +50,27 @@ public sealed partial class GameEntry : ObservableObject
     [ObservableProperty]
     private bool _isDimmed;
 
+    /// <summary>Anzahl ausstehender Mod-Updates für dieses Spiel (aus
+    /// <see cref="Services.Plugins.GameUpdateBadgeService"/>). 0 = kein Badge,
+    /// &gt; 0 = grüner ↑-Badge oben rechts auf der Kachel.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdates))]
+    [NotifyPropertyChangedFor(nameof(UpdateBadgeText))]
+    private int _pendingUpdateCount;
+
+    /// <summary>Tooltip-Text vom Plugin (z.B. „3 Mod-Updates bei modhoster.de"),
+    /// wird auf den Badge gelegt.</summary>
+    [ObservableProperty]
+    private string? _updateBadgeTooltip;
+
+    public bool HasUpdates => PendingUpdateCount > 0;
+    public string UpdateBadgeText => PendingUpdateCount switch
+    {
+        0    => "",
+        > 99 => "99+",
+        var n => n.ToString(),
+    };
+
     /// <summary>Convenience für XAML-Bindings: true wenn das Spiel manuell
     /// hinzugefügt wurde (steuert Sichtbarkeit von „Aus KroModIx entfernen"
     /// im Kontextmenü — Steam-Games können nur ausgeblendet werden, das ist

@@ -205,6 +205,43 @@ internal static class ApiEndpoints
             return Results.NoContent();
         });
 
+        app.MapPost("/events/badge", async (HttpContext ctx) =>
+        {
+            // Debug/Iteration: setzt einen Update-Badge auf einer Sidebar-Kachel.
+            // Payload: { "steamAppId": 2300320, "count": 3, "summary": "3 Mod-Updates" }
+            // Für Test-Screenshots + zukünftige Automatisierung wo noch kein
+            // Plugin IUpdateNotifier implementiert (die produktive Quelle).
+            var body = await JsonSerializer.DeserializeAsync<BadgeRequest>(ctx.Request.Body, Json);
+            if (body is null || body.SteamAppId <= 0)
+                return Problem(StatusCodes.Status400BadRequest, "Missing steamAppId",
+                    "Body erwartet: { \"steamAppId\": 730, \"count\": 3, \"summary\": \"…\"? }");
+            var svc = hostServices.GetRequiredService<PluginActivator>();
+            _ = svc; // via DI resolve, kein direkter Zugriff — die Service-Lookup passiert eine Zeile tiefer
+            var badgeSvc = hostServices.GetRequiredService<Services.Plugins.GameUpdateBadgeService>();
+            badgeSvc.PublishForTesting(body.SteamAppId, body.Count, body.Summary);
+            return Results.NoContent();
+        });
+
+        app.MapPost("/events/toast", async (HttpContext ctx) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<ToastRequest>(ctx.Request.Body, Json);
+            if (body is null || string.IsNullOrWhiteSpace(body.Message))
+                return Problem(StatusCodes.Status400BadRequest, "Missing message",
+                    "Body erwartet: { \"message\": \"…\", \"level\": \"info|warning|error\"? }");
+            var level = body.Level?.ToLowerInvariant() switch
+            {
+                "warning" => KroModIx.Plugin.Contracts.NotificationLevel.Warning,
+                "error"   => KroModIx.Plugin.Contracts.NotificationLevel.Error,
+                _         => KroModIx.Plugin.Contracts.NotificationLevel.Info,
+            };
+            var mainVm = await ui.GetMainVmAsync();
+            if (mainVm is null)
+                return Problem(StatusCodes.Status503ServiceUnavailable, "Main window not ready", "MainWindow-VM ist noch nicht initialisiert.");
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                mainVm.EnqueueToast(body.Message, level));
+            return Results.NoContent();
+        });
+
         app.MapPost("/screenshot", async (HttpContext ctx, string? format, string? target) =>
         {
             var png = await ui.ScreenshotAsync(target ?? "main");
@@ -388,4 +425,6 @@ internal static class ApiEndpoints
     private sealed record OpenWindowRequest(string? Window);
     private sealed record ClickRequest(string? ElementId, string? MouseButton, int? ClickCount);
     private sealed record TextRequest(string? ElementId, string? Text, bool? SelectAll);
+    private sealed record ToastRequest(string? Message, string? Level);
+    private sealed record BadgeRequest(int SteamAppId, int Count, string? Summary);
 }

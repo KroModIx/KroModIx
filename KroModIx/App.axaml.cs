@@ -103,6 +103,7 @@ public partial class App : Application
         services.AddSingleton<PluginInstaller>();
         services.AddSingleton<PluginUninstaller>();
         services.AddSingleton<PluginUpdateService>();
+        services.AddSingleton<GameUpdateBadgeService>();
 
         // KI — Kroste-Baukasten. AiSettingsService persistiert Provider/
         // Endpoint/Modell/verschlüsselte API-Keys. HostAiServiceImpl wrappt

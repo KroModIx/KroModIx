@@ -42,10 +42,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly PluginIndexService _pluginIndex;
     private readonly PluginInstaller _pluginInstaller;
     private readonly PluginUpdateService _pluginUpdates;
+    private readonly PluginUninstaller _pluginUninstaller;
+    private readonly GameUpdateBadgeService _updateBadges;
+    private readonly NotificationSinkImpl _notifications;
     private readonly AppSettingsService _settings;
     private readonly HostUpdateService _hostUpdate;
     private readonly StatusProgressCoordinator _statusProgress;
     private readonly Services.Ai.AiSettingsService _aiSettings;
+
+    private int _nextToastId;
 
     private PluginIndex? _indexCache;
 
@@ -65,6 +70,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginIndex = services.GetRequiredService<PluginIndexService>();
         _pluginInstaller = services.GetRequiredService<PluginInstaller>();
         _pluginUpdates = services.GetRequiredService<PluginUpdateService>();
+        _pluginUninstaller = services.GetRequiredService<PluginUninstaller>();
+        _updateBadges = services.GetRequiredService<GameUpdateBadgeService>();
+        _notifications = services.GetRequiredService<NotificationSinkImpl>();
         _settings = services.GetRequiredService<AppSettingsService>();
         _hostUpdate = services.GetRequiredService<HostUpdateService>();
         _statusProgress = services.GetRequiredService<StatusProgressCoordinator>();
@@ -73,7 +81,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _aiSettings.SettingsChanged += (_, _) => Dispatcher.UIThread.Post(RefreshAiChip);
         RefreshAiChip();
 
+        // Plugin-Notifications direkt als Toast anzeigen (bislang gingen sie
+        // nur in den Log). Marshallen auf UI-Thread, weil Plugins vom Worker-
+        // Thread notifizieren dürfen.
+        _notifications.Notified += (_, e) => Dispatcher.UIThread.Post(() =>
+            EnqueueToast(e.Message, e.Level));
+
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
+
+        _updateBadges.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshUpdateBadges);
         _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             AvailableUpdateCount = _pluginUpdates.AvailableUpdates.Count;
@@ -92,6 +108,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     public ObservableCollection<GameEntry> VisibleGames { get; } = new();
+
+    /// <summary>Toast-Overlay unten rechts im MainWindow. Neue Einträge landen
+    /// über <see cref="EnqueueToast"/>; nach 6 Sekunden werden sie via Timer
+    /// wieder entfernt (kein Fade-Out — für die UX reicht ein instant remove).</summary>
+    public ObservableCollection<ToastItem> Toasts { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGame))]
@@ -277,6 +298,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             try { await _pluginUpdates.CheckAllAsync(ct); }
             catch (Exception ex) { Log.Debug(ex, "Initial Plugin-Update-Check fehlgeschlagen"); }
         }, ct);
+
+        // Mod-Update-Badges-Loop starten (Plugins mit IUpdateNotifier).
+        // Refresh alle 30min, mit initialem 10s-Delay damit der Discovery-
+        // Rush erst durchläuft.
+        _updateBadges.Start();
     }
 
     /// <summary>Fresh Steam-Discovery im Hintergrund. Vergleicht das Ergebnis
@@ -315,6 +341,25 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     if (added.Count > 0)
                         _ = LoadCoversAsync(added.Select(g => _allGames.First(e => e.Key == g.Key)).ToArray(), ct);
                     StatusText = $"{_allGames.Count} Spiele (aktualisiert: +{added.Count}/-{removed.Count}).";
+
+                    // 4.2: Discovery-Diff als Toasts. Kompakt formatiert
+                    // (bis zu 3 Namen, sonst „+N weitere") damit die Karten
+                    // nicht überquellen wenn Steam viele Spiele gleichzeitig
+                    // meldet (z.B. nach einer neu gemounteten Library-Platte).
+                    if (added.Count > 0)
+                        EnqueueToast($"🎮 +{added.Count} Spiel(e): {FormatGameList(added.Select(g => g.DisplayName))}",
+                            NotificationLevel.Info);
+                    if (removed.Count > 0)
+                        EnqueueToast($"🗑 -{removed.Count} Spiel(e): {FormatGameList(removed.Select(g => g.DisplayName))}",
+                            NotificationLevel.Warning);
+
+                    // 4.3: Auto-Cleanup — wenn Setting aktiv UND für ein
+                    // geladenes Plugin kein Zielspiel mehr da ist, Plugin-
+                    // Ordner löschen. Zur Runtime bleibt das Plugin geladen
+                    // (kein AssemblyLoadContext-Unload — Checkmk-Erfahrung),
+                    // beim nächsten Start ist es weg.
+                    if (_settings.Current.PluginAutoCleanupOnGameUninstall)
+                        _ = RunAutoCleanupAsync(fresh, removed, ct);
                 }
                 else
                 {
@@ -407,6 +452,94 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ApplyFilterAndSort();
         RefreshDimmingFlags();
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+    }
+
+    /// <summary>Fügt einen Toast ins Overlay ein und plant sein Auto-Remove
+    /// nach der angegebenen Dauer. Muss auf dem UI-Thread aufgerufen werden
+    /// (die Kollektion ist an Avalonia-Bindings gekoppelt).</summary>
+    public void EnqueueToast(string message, NotificationLevel level = NotificationLevel.Info,
+        TimeSpan? duration = null)
+    {
+        var d = duration ?? TimeSpan.FromSeconds(6);
+        var id = System.Threading.Interlocked.Increment(ref _nextToastId);
+        var toast = new ToastItem(id, message, level);
+        Toasts.Add(toast);
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(d);
+            await Dispatcher.UIThread.InvokeAsync(() => Toasts.Remove(toast));
+        });
+    }
+
+    [RelayCommand]
+    private void DismissToast(ToastItem? toast)
+    {
+        if (toast is not null) Toasts.Remove(toast);
+    }
+
+    private static string FormatGameList(IEnumerable<string> names)
+    {
+        var list = names.ToList();
+        if (list.Count <= 3) return string.Join(", ", list);
+        return string.Join(", ", list.Take(3)) + $", +{list.Count - 3} weitere";
+    }
+
+    /// <summary>Prüft für jedes geladene Plugin, ob unter den <paramref name="fresh"/>-
+    /// Games noch ein Zielspiel existiert. Wenn nicht → <see cref="PluginUninstaller.Uninstall"/>
+    /// löscht den Plugin-Ordner unter <c>~/.config/KroModIx/plugins/</c>. Toast
+    /// informiert den User über die Aktion. Läuft im Hintergrund, keine
+    /// Blockierung des Discovery-Refreshes.</summary>
+    private async Task RunAutoCleanupAsync(IReadOnlyList<DiscoveredGame> fresh,
+        List<GameEntry> removed, CancellationToken ct)
+    {
+        if (removed.Count == 0) return;
+        var freshAppIds = new HashSet<int>(fresh.Select(g => g.SteamAppId).OfType<int>());
+        var candidates = _pluginActivator.Loaded
+            .Where(l => l.Manifest.Targets.All(t => t.SteamAppId is not int id || !freshAppIds.Contains(id)))
+            .ToList();
+
+        foreach (var loaded in candidates)
+        {
+            try
+            {
+                // Auto-Cleanup: nur Plugin-Assembly weg, User-Data + Cache
+                // behalten — die will man beim eventuellen Re-Install nicht
+                // verlieren (Nexus-Key, Katalog-Snapshot etc.).
+                _pluginUninstaller.Uninstall(loaded.Manifest.Id, deleteData: false, deleteCache: false);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                    EnqueueToast(
+                        $"🧹 Auto-Cleanup: Plugin '{loaded.Manifest.DisplayName}' entfernt (keine Zielspiele mehr installiert). Beim nächsten Start weg.",
+                        NotificationLevel.Warning,
+                        TimeSpan.FromSeconds(10)));
+                Log.Info("Auto-Cleanup: Plugin {Id} deinstalliert", loaded.Manifest.Id);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Auto-Cleanup für Plugin {Id} fehlgeschlagen", loaded.Manifest.Id);
+            }
+            if (ct.IsCancellationRequested) break;
+        }
+    }
+
+    /// <summary>Setzt <see cref="GameEntry.PendingUpdateCount"/> + Tooltip aus
+    /// <see cref="GameUpdateBadgeService.Pending"/>. Läuft auf dem UI-Thread —
+    /// die Bindings triggern das Neuzeichnen des grünen ↑-Badges pro Kachel.</summary>
+    private void RefreshUpdateBadges()
+    {
+        var pending = _updateBadges.Pending;
+        foreach (var g in _allGames)
+        {
+            if (g.Source.SteamAppId is int appId && pending.TryGetValue(appId, out var info))
+            {
+                g.PendingUpdateCount = info.PendingCount;
+                g.UpdateBadgeTooltip = info.Summary ?? $"{info.PendingCount} Update(s) verfügbar";
+            }
+            else
+            {
+                g.PendingUpdateCount = 0;
+                g.UpdateBadgeTooltip = null;
+            }
+        }
     }
 
     /// <summary>Setzt <see cref="GameEntry.IsDimmed"/> für alle Spiele.
