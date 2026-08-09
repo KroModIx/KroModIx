@@ -151,6 +151,49 @@ public sealed record OllamaCuratedModel(
     double MinVramGb,
     double MaxVramGb);
 
+/// <summary>Kuratierte Modell-Presets pro Cloud-Provider — deckt die aktuellen
+/// Best-Practice-Wahlmöglichkeiten ab (Stand Q3 2026). Zwei Kategorien pro
+/// Anbieter: „Schnell + günstig" für kurze Zusammenfassungen/Übersetzungen und
+/// „Stark" für längere Reasoning-Aufgaben. Der User kann jederzeit im TextBox-
+/// Feld daneben einen Modellnamen eintippen der nicht in dieser Liste ist.
+///
+/// <para>Wartung: bei jedem neuen Provider-Release (Anthropic Claude 5, GPT-5,
+/// Gemini 3.x, …) hier nachziehen. Kein hartes Coding an anderer Stelle —
+/// alle Aufrufer lesen aus dieser Liste.</para></summary>
+public sealed record CuratedCloudModel(string Name, string Label);
+
+public static class CuratedCloudModels
+{
+    public static IReadOnlyList<CuratedCloudModel> For(AiProviderType provider) => provider switch
+    {
+        AiProviderType.Anthropic => new[]
+        {
+            new CuratedCloudModel("claude-haiku-4-5",  "Claude Haiku 4.5 — schnell, günstig (Übersetzung, Klassifikation)"),
+            new CuratedCloudModel("claude-sonnet-4-6", "Claude Sonnet 4.6 — ausgewogen (Standard-Aufgaben)"),
+            new CuratedCloudModel("claude-opus-4-7",   "Claude Opus 4.7 — stark (lange Zusammenfassung, Reasoning)"),
+        },
+        AiProviderType.OpenAi => new[]
+        {
+            new CuratedCloudModel("gpt-4o-mini",     "GPT-4o mini — schnell, günstig"),
+            new CuratedCloudModel("gpt-4o",          "GPT-4o — ausgewogen"),
+            new CuratedCloudModel("o4-mini",         "o4-mini — Reasoning (Coding, komplexe Zusammenfassung)"),
+        },
+        AiProviderType.Gemini => new[]
+        {
+            new CuratedCloudModel("gemini-2.0-flash",      "Gemini 2.0 Flash — sehr schnell (Free-Tier)"),
+            new CuratedCloudModel("gemini-2.5-flash",      "Gemini 2.5 Flash — ausgewogen"),
+            new CuratedCloudModel("gemini-2.5-pro",        "Gemini 2.5 Pro — stark (Long-Context)"),
+        },
+        AiProviderType.Mistral => new[]
+        {
+            new CuratedCloudModel("mistral-small-latest",  "Mistral Small — schnell, günstig"),
+            new CuratedCloudModel("mistral-medium-latest", "Mistral Medium — ausgewogen"),
+            new CuratedCloudModel("mistral-large-latest",  "Mistral Large — stark"),
+        },
+        _ => Array.Empty<CuratedCloudModel>(),
+    };
+}
+
 public static class OllamaCuratedModels
 {
     /// <summary>Kuratiert 2026-Q3. Bei Update: Ollama-Model-Registry checken,

@@ -178,8 +178,15 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowAnthropicSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding AnthropicEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                        <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}" />
+                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
+                                        <ComboBox ItemsSource="{Binding AnthropicPresets}"
+                                                  SelectedItem="{Binding SelectedAnthropicPreset, Mode=TwoWay}"
+                                                  DisplayMemberBinding="{Binding Label}"
+                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}"
+                                                 PlaceholderText="z.B. claude-haiku-4-5" />
                                         <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" />
                                     </StackPanel>
@@ -188,8 +195,15 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding OpenAiEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                        <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}" />
+                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
+                                        <ComboBox ItemsSource="{Binding OpenAiPresets}"
+                                                  SelectedItem="{Binding SelectedOpenAiPreset, Mode=TwoWay}"
+                                                  DisplayMemberBinding="{Binding Label}"
+                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}"
+                                                 PlaceholderText="z.B. gpt-4o-mini" />
                                         <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding OpenAiApiKey, Mode=TwoWay}" PasswordChar="•" />
                                     </StackPanel>
@@ -198,8 +212,15 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowGeminiSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding GeminiEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                        <TextBox Text="{Binding GeminiModel, Mode=TwoWay}" />
+                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
+                                        <ComboBox ItemsSource="{Binding GeminiPresets}"
+                                                  SelectedItem="{Binding SelectedGeminiPreset, Mode=TwoWay}"
+                                                  DisplayMemberBinding="{Binding Label}"
+                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding GeminiModel, Mode=TwoWay}"
+                                                 PlaceholderText="z.B. gemini-2.5-flash" />
                                         <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding GeminiApiKey, Mode=TwoWay}" PasswordChar="•" />
                                     </StackPanel>
@@ -208,8 +229,15 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowMistralSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding MistralEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                        <TextBox Text="{Binding MistralModel, Mode=TwoWay}" />
+                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
+                                        <ComboBox ItemsSource="{Binding MistralPresets}"
+                                                  SelectedItem="{Binding SelectedMistralPreset, Mode=TwoWay}"
+                                                  DisplayMemberBinding="{Binding Label}"
+                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding MistralModel, Mode=TwoWay}"
+                                                 PlaceholderText="z.B. mistral-medium-latest" />
                                         <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding MistralApiKey, Mode=TwoWay}" PasswordChar="•" />
                                     </StackPanel>

@@ -72,17 +72,51 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     /// gespeicherte Modell wegräumt (bekanntes Avalonia-ComboBox-Verhalten:
     /// SelectedItem-Bind auf einen Wert der nicht in ItemsSource ist → null).
     /// Der Handler <see cref="OnSelectedInstalledModelChanged"/> kopiert die
-    /// User-Auswahl nach <see cref="OllamaModel"/>.</summary>
+    /// User-Auswahl nach <see cref="OllamaModel"/>.
+    /// Selbes Muster für alle Cloud-Provider (siehe Pitfalls-Doku).</summary>
     [ObservableProperty] private string? _selectedInstalledModel;
 
-    /// <summary>Guard: unterdrückt den OllamaModel-Copy-Handler beim programmatischen
-    /// Sync (siehe <see cref="FetchOllamaModelsAsync"/>).</summary>
+    // Cloud-Provider-Presets: Selected-Preset pro Provider bindet an die
+    // ComboBox, Handler kopiert die Auswahl in die eigentliche Model-TextBox.
+    [ObservableProperty] private CuratedCloudModel? _selectedAnthropicPreset;
+    [ObservableProperty] private CuratedCloudModel? _selectedOpenAiPreset;
+    [ObservableProperty] private CuratedCloudModel? _selectedGeminiPreset;
+    [ObservableProperty] private CuratedCloudModel? _selectedMistralPreset;
+
+    public IReadOnlyList<CuratedCloudModel> AnthropicPresets { get; } = CuratedCloudModels.For(AiProviderType.Anthropic);
+    public IReadOnlyList<CuratedCloudModel> OpenAiPresets { get; } = CuratedCloudModels.For(AiProviderType.OpenAi);
+    public IReadOnlyList<CuratedCloudModel> GeminiPresets { get; } = CuratedCloudModels.For(AiProviderType.Gemini);
+    public IReadOnlyList<CuratedCloudModel> MistralPresets { get; } = CuratedCloudModels.For(AiProviderType.Mistral);
+
+    /// <summary>Guard: unterdrückt die Copy-Handler beim programmatischen Sync
+    /// (bei Load und wenn der User in der Model-TextBox tippt sollen die
+    /// ComboBox-Selections nicht redundant den TextBox-Wert überschreiben).</summary>
     private bool _suppressSelectedModelSync;
 
     partial void OnSelectedInstalledModelChanged(string? value)
     {
         if (_suppressSelectedModelSync) return;
         if (!string.IsNullOrWhiteSpace(value)) OllamaModel = value;
+    }
+    partial void OnSelectedAnthropicPresetChanged(CuratedCloudModel? value)
+    {
+        if (_suppressSelectedModelSync || value is null) return;
+        AnthropicModel = value.Name;
+    }
+    partial void OnSelectedOpenAiPresetChanged(CuratedCloudModel? value)
+    {
+        if (_suppressSelectedModelSync || value is null) return;
+        OpenAiModel = value.Name;
+    }
+    partial void OnSelectedGeminiPresetChanged(CuratedCloudModel? value)
+    {
+        if (_suppressSelectedModelSync || value is null) return;
+        GeminiModel = value.Name;
+    }
+    partial void OnSelectedMistralPresetChanged(CuratedCloudModel? value)
+    {
+        if (_suppressSelectedModelSync || value is null) return;
+        MistralModel = value.Name;
     }
 
     // Hardware + Modell-Empfehlungen
@@ -214,6 +248,18 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         SelectedOpenAiCompatiblePreset = OpenAiCompatiblePresets
             .FirstOrDefault(p => string.Equals(p.Endpoint, s.OpenAiCompatible.Endpoint, StringComparison.OrdinalIgnoreCase))
             ?? OpenAiCompatiblePresets[0];
+
+        // ComboBox-Selections initial synchronisieren ohne die Copy-Handler
+        // zu triggern (die würden AnthropicModel etc. redundant überschreiben).
+        _suppressSelectedModelSync = true;
+        try
+        {
+            SelectedAnthropicPreset = AnthropicPresets.FirstOrDefault(p => p.Name == s.Anthropic.Model);
+            SelectedOpenAiPreset    = OpenAiPresets.FirstOrDefault(p => p.Name == s.OpenAi.Model);
+            SelectedGeminiPreset    = GeminiPresets.FirstOrDefault(p => p.Name == s.Gemini.Model);
+            SelectedMistralPreset   = MistralPresets.FirstOrDefault(p => p.Name == s.Mistral.Model);
+        }
+        finally { _suppressSelectedModelSync = false; }
     }
 
     private AiSettings BuildAiFromUi() => _ai.Current with
