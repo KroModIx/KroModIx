@@ -42,7 +42,11 @@ public sealed record AiSettings(
     AiProviderConfig OpenAi,
     AiProviderConfig Gemini,
     AiProviderConfig Mistral,
-    AiProviderConfig OpenAiCompatible)
+    AiProviderConfig OpenAiCompatible,
+    /// <summary>Manueller VRAM-Override in GB, wenn die Auto-Detection nichts
+    /// Sinnvolles liefert (kein nvidia-smi, keine Lookup-Entsprechung).
+    /// <c>null</c> = Auto-Detect. <c>0</c> = ausdrücklich „nur CPU".</summary>
+    double? OllamaVramGbOverride = null)
 {
     /// <summary>Hol die Config des aktuell ausgewählten Anbieters.</summary>
     public AiProviderConfig Active => Provider switch
@@ -66,7 +70,8 @@ public sealed record AiSettings(
         OpenAi:            AiDefaults.Config(AiProviderType.OpenAi),
         Gemini:            AiDefaults.Config(AiProviderType.Gemini),
         Mistral:           AiDefaults.Config(AiProviderType.Mistral),
-        OpenAiCompatible:  AiDefaults.Config(AiProviderType.OpenAiCompatible));
+        OpenAiCompatible:  AiDefaults.Config(AiProviderType.OpenAiCompatible),
+        OllamaVramGbOverride: null);
 
     private static string DetectSystemLanguageName()
     {
@@ -135,19 +140,55 @@ public sealed record OllamaPullEvent(
     bool IsError = false,
     string? ErrorMessage = null);
 
-/// <summary>Kuratierte Modellvorschläge für Ollama, abgestimmt auf die
-/// Variablennamen-Übersetzung (kein Coding, keine Multi-Turn-Chats — kleine
-/// Modelle reichen völlig).</summary>
-public sealed record OllamaCuratedModel(string Name, string ApproxSize, string Description);
+/// <summary>Kuratierte Modellvorschläge für Ollama. <see cref="MinVramGb"/>/<see cref="MaxVramGb"/>
+/// beschreiben in welchem VRAM-Fenster das Modell komfortabel läuft — <see cref="SystemHardwareService"/>
+/// liefert die aktuelle GPU-Größe, die Settings-UI sortiert/highlightet danach.
+/// Kein VRAM (Integrated / CPU-only) → nur Modelle mit <c>MinVramGb ≤ 0</c> anzeigen.</summary>
+public sealed record OllamaCuratedModel(
+    string Name,
+    string ApproxSize,
+    string Description,
+    double MinVramGb,
+    double MaxVramGb);
 
 public static class OllamaCuratedModels
 {
+    /// <summary>Kuratiert 2026-Q3. Bei Update: Ollama-Model-Registry checken,
+    /// nur Modelle die für Modmanager-Use-Cases (Übersetzung, kurze Zusammenfassung,
+    /// Mod-Beschreibung) taugen — kein Coding, kein Reasoning-heavy.</summary>
     public static IReadOnlyList<OllamaCuratedModel> All { get; } = new[]
     {
-        new OllamaCuratedModel("gemma3:1b",       "~815 MB",  "Sehr klein, sehr schnell — Default"),
-        new OllamaCuratedModel("qwen2.5:3b",      "~1.9 GB",  "Etwas größer, bessere Übersetzungsqualität"),
-        new OllamaCuratedModel("llama3.2:3b",     "~2.0 GB",  "Meta Llama 3.2, ausgewogen"),
-        new OllamaCuratedModel("phi3:mini",       "~2.3 GB",  "Microsoft Phi-3 Mini, mehrsprachig"),
-        new OllamaCuratedModel("mistral:7b",      "~4.1 GB",  "Mistral 7B, breiter Sprachschatz"),
+        // CPU-only / tiny GPUs
+        new OllamaCuratedModel("gemma3:1b",         "~815 MB",  "Sehr klein, sehr schnell — läuft auf CPU. Default für alte Rechner.",   0,   3),
+        new OllamaCuratedModel("qwen2.5:3b",        "~1.9 GB",  "3B, gute Übersetzungsqualität für die Größe.",                          0,   4),
+        new OllamaCuratedModel("llama3.2:3b",       "~2.0 GB",  "Meta Llama 3.2, ausgewogen.",                                          0,   4),
+        new OllamaCuratedModel("phi3.5:3.8b",       "~2.3 GB",  "Microsoft Phi-3.5, stark bei mehrsprachigem Text.",                     0,   4),
+        // 4-8 GB
+        new OllamaCuratedModel("llama3.1:8b",       "~4.7 GB",  "Meta Llama 3.1 8B — solide All-Round.",                                 6,  10),
+        new OllamaCuratedModel("qwen2.5:7b",        "~4.4 GB",  "Qwen 2.5 7B, spitze bei Übersetzung DE/EN.",                            6,  10),
+        new OllamaCuratedModel("mistral:7b",        "~4.1 GB",  "Mistral 7B, breiter Sprachschatz.",                                     6,  10),
+        // 8-16 GB
+        new OllamaCuratedModel("qwen2.5:14b",       "~9.0 GB",  "Qwen 2.5 14B — deutlich bessere Qualität als 7B.",                     10,  16),
+        new OllamaCuratedModel("gemma3:12b",        "~7.5 GB",  "Google Gemma3 12B, mehrsprachig stark.",                                8,  16),
+        // 16-24 GB
+        new OllamaCuratedModel("qwen2.5:32b",       "~20 GB",   "Qwen 2.5 32B — für längere Zusammenfassungen.",                        18,  32),
+        new OllamaCuratedModel("gemma3:27b",        "~17 GB",   "Google Gemma3 27B, Balance zwischen Qualität und Speed.",              16,  32),
+        // 24+ GB (Enthusiast / Workstation)
+        new OllamaCuratedModel("llama3.3:70b",      "~43 GB",   "Meta Llama 3.3 70B — Quantized Q4. Für Multi-GPU / 48+ GB VRAM.",      40, 999),
+        new OllamaCuratedModel("qwen2.5:72b",       "~47 GB",   "Qwen 2.5 72B, spitze Qualität.",                                       40, 999),
     };
+
+    /// <summary>Filtert die Liste nach der verfügbaren GPU-VRAM. Bei
+    /// <c>vramGb ≤ 0</c> (kein dediziertes VRAM) → nur die CPU-tauglichen Kleinstmodelle.</summary>
+    public static IReadOnlyList<OllamaCuratedModel> RecommendedFor(double vramGb)
+    {
+        if (vramGb <= 0)
+            return All.Where(m => m.MinVramGb <= 0).ToList();
+
+        // 20% Toleranz nach oben — Q4-Quants können auf leicht kleinerer VRAM laufen.
+        var maxComfortable = vramGb * 1.2;
+        return All
+            .Where(m => m.MinVramGb <= maxComfortable && m.MaxVramGb >= vramGb * 0.7)
+            .ToList();
+    }
 }

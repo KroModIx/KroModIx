@@ -111,6 +111,7 @@ public partial class App : Application
         services.AddSingleton<AiSettingsService>();
         services.AddSingleton<AiProviderFactory>();
         services.AddSingleton<IAiService, HostAiServiceImpl>();
+        services.AddSingleton<SystemHardwareService>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();

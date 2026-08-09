@@ -45,6 +45,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly AppSettingsService _settings;
     private readonly HostUpdateService _hostUpdate;
     private readonly StatusProgressCoordinator _statusProgress;
+    private readonly Services.Ai.AiSettingsService _aiSettings;
 
     private PluginIndex? _indexCache;
 
@@ -67,6 +68,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _settings = services.GetRequiredService<AppSettingsService>();
         _hostUpdate = services.GetRequiredService<HostUpdateService>();
         _statusProgress = services.GetRequiredService<StatusProgressCoordinator>();
+        _aiSettings = services.GetRequiredService<Services.Ai.AiSettingsService>();
+
+        _aiSettings.SettingsChanged += (_, _) => Dispatcher.UIThread.Post(RefreshAiChip);
+        RefreshAiChip();
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
         _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -139,6 +144,41 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public bool HasAvailableUpdates => AvailableUpdateCount > 0;
     public string UpdateBadgeText => AvailableUpdateCount > 0 ? $"↑ {AvailableUpdateCount}" : "";
+
+    /// <summary>Kurz-Bezeichner des aktiven KI-Modells fürs Header-Chip
+    /// (z.B. „Ollama · llama3.1:8b"). Leer wenn kein Provider konfiguriert.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAiChip))]
+    private string _aiChipLabel = "";
+
+    [ObservableProperty] private string _aiChipTooltip = "";
+
+    public bool HasAiChip => !string.IsNullOrEmpty(AiChipLabel);
+
+    private void RefreshAiChip()
+    {
+        var s = _aiSettings.Current;
+        if (s.Provider == Services.Ai.AiProviderType.None)
+        {
+            AiChipLabel = "";
+            AiChipTooltip = "";
+            return;
+        }
+        var cfg = s.Active;
+        var providerName = s.Provider switch
+        {
+            Services.Ai.AiProviderType.Ollama => "Ollama",
+            Services.Ai.AiProviderType.Anthropic => "Anthropic",
+            Services.Ai.AiProviderType.OpenAi => "OpenAI",
+            Services.Ai.AiProviderType.Gemini => "Gemini",
+            Services.Ai.AiProviderType.Mistral => "Mistral",
+            Services.Ai.AiProviderType.OpenAiCompatible => "API",
+            _ => s.Provider.ToString(),
+        };
+        var model = string.IsNullOrWhiteSpace(cfg.Model) ? "?" : cfg.Model;
+        AiChipLabel = $"🤖 {providerName} · {model}";
+        AiChipTooltip = $"KI-Provider: {providerName}\nModell: {model}\nEndpoint: {cfg.Endpoint}\n\nKlick öffnet Einstellungen.";
+    }
 
     partial void OnSearchTextChanged(string value) => ApplyFilterAndSort();
     partial void OnOnlyWithPluginChanged(bool value) => ApplyFilterAndSort();

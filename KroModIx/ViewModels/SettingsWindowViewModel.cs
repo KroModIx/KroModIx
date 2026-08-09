@@ -10,6 +10,7 @@ using KroModIx.Localization;
 using KroModIx.Plugin.Contracts;
 using KroModIx.Services;
 using KroModIx.Services.Ai;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace KroModIx.ViewModels;
 
@@ -18,15 +19,19 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     private readonly AppSettingsService _settings;
     private readonly AiSettingsService _ai;
     private readonly AiProviderFactory _aiFactory;
+    private readonly SystemHardwareService _hw;
+    private readonly IServiceProvider _services;
 
     public IReadOnlyList<LanguageOption> Languages { get; }
     public IReadOnlyList<AiProviderOption> AiProviders { get; }
+    public IReadOnlyList<AiProviderPreset> OpenAiCompatiblePresets { get; }
+    public IReadOnlyList<VramOption> VramOptions { get; }
+
     public ObservableCollection<string> InstalledOllamaModels { get; } = new();
-    public IReadOnlyList<OllamaCuratedModel> RecommendedOllamaModels { get; } = OllamaCuratedModels.All;
+    public ObservableCollection<OllamaModelRowViewModel> RecommendedOllamaModels { get; } = new();
 
     [ObservableProperty] private LanguageOption? _selectedLanguage;
 
-    // KI-Provider-Auswahl
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowOllamaSection))]
     [NotifyPropertyChangedFor(nameof(ShowAnthropicSection))]
@@ -36,7 +41,6 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowOpenAiCompatibleSection))]
     private AiProviderOption? _selectedAiProvider;
 
-    // Per-Provider-Felder (nur eines gleichzeitig sichtbar)
     [ObservableProperty] private string _ollamaEndpoint = "";
     [ObservableProperty] private string _ollamaModel = "";
     [ObservableProperty] private string _anthropicEndpoint = "";
@@ -55,7 +59,13 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [ObservableProperty] private string _openAiCompatibleModel = "";
     [ObservableProperty] private string _openAiCompatibleApiKey = "";
 
+    [ObservableProperty] private AiProviderPreset? _selectedOpenAiCompatiblePreset;
     [ObservableProperty] private string _aiStatus = "";
+
+    // Hardware + Modell-Empfehlungen
+    [ObservableProperty] private string _detectedHardwareLabel = "wird erkannt …";
+    [ObservableProperty] private VramOption? _selectedVramOption;
+    [ObservableProperty] private bool _isVramOverride;
 
     // REST-API-Sektion
     [ObservableProperty] private bool _apiEnabled;
@@ -70,11 +80,18 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     public bool ShowMistralSection => SelectedAiProvider?.Type == AiProviderType.Mistral;
     public bool ShowOpenAiCompatibleSection => SelectedAiProvider?.Type == AiProviderType.OpenAiCompatible;
 
-    public SettingsWindowViewModel(AppSettingsService settings, AiSettingsService ai, AiProviderFactory aiFactory)
+    public SettingsWindowViewModel(
+        AppSettingsService settings,
+        AiSettingsService ai,
+        AiProviderFactory aiFactory,
+        SystemHardwareService hw,
+        IServiceProvider services)
     {
         _settings = settings;
         _ai = ai;
         _aiFactory = aiFactory;
+        _hw = hw;
+        _services = services;
 
         Languages = new List<LanguageOption>
         {
@@ -93,13 +110,34 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
             new(AiProviderType.OpenAi, "OpenAI ChatGPT"),
             new(AiProviderType.Gemini, "Google Gemini"),
             new(AiProviderType.Mistral, "Mistral"),
-            new(AiProviderType.OpenAiCompatible, "OpenAI-kompatibel (frei)"),
+            new(AiProviderType.OpenAiCompatible, "OpenAI-kompatibel (Preset/frei)"),
         };
+        OpenAiCompatiblePresets = AiProviderPresets.All;
+        VramOptions = new List<VramOption>
+        {
+            new(null,  "🔍  Auto-Detect"),
+            new(0,     "💻  Nur CPU"),
+            new(4,     "🎮  4 GB VRAM"),
+            new(6,     "🎮  6 GB VRAM"),
+            new(8,     "🎮  8 GB VRAM"),
+            new(10,    "🎮  10 GB VRAM"),
+            new(12,    "🎮  12 GB VRAM"),
+            new(16,    "🎮  16 GB VRAM"),
+            new(24,    "🎮  24 GB VRAM"),
+            new(48,    "🚀  48+ GB VRAM"),
+        };
+
         LoadAiIntoUi(_ai.Current);
+        SelectedVramOption = VramOptions.FirstOrDefault(v => v.VramGb == _ai.Current.OllamaVramGbOverride) ?? VramOptions[0];
+        IsVramOverride = _ai.Current.OllamaVramGbOverride is not null;
 
         ApiEnabled = settings.Current.ApiEnabled;
         ApiPort = settings.Current.ApiPort <= 0 ? 5100 : settings.Current.ApiPort;
         ApiBearerToken = settings.Current.ApiBearerToken ?? "";
+
+        // Hardware asynchron im Hintergrund erkennen — blockiert das
+        // Öffnen der Settings nicht (nvidia-smi kann bis zu 2s dauern).
+        _ = DetectHardwareAndPopulateAsync();
     }
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)
@@ -108,6 +146,21 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         var iso = string.IsNullOrEmpty(value.Iso) ? null : value.Iso;
         _settings.Update(s => s.UiCulture = iso);
         LocalizationService.Instance.SetCulture(iso ?? CultureInfo.InvariantCulture.TwoLetterISOLanguageName);
+    }
+
+    partial void OnSelectedOpenAiCompatiblePresetChanged(AiProviderPreset? value)
+    {
+        if (value is null || value.Key == "custom") return;
+        OpenAiCompatibleEndpoint = value.Endpoint;
+        OpenAiCompatibleModel = value.DefaultModel;
+        AiStatus = $"Preset '{value.DisplayName}' übernommen. API-Key ergänzen und speichern.";
+    }
+
+    partial void OnSelectedVramOptionChanged(VramOption? value)
+    {
+        if (value is null) return;
+        IsVramOverride = value.VramGb is not null;
+        _ = PopulateRecommendationsAsync();
     }
 
     private void LoadAiIntoUi(AiSettings s)
@@ -121,6 +174,9 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         OpenAiCompatibleEndpoint = s.OpenAiCompatible.Endpoint;
         OpenAiCompatibleModel = s.OpenAiCompatible.Model;
         OpenAiCompatibleApiKey = s.OpenAiCompatible.ApiKey ?? "";
+        SelectedOpenAiCompatiblePreset = OpenAiCompatiblePresets
+            .FirstOrDefault(p => string.Equals(p.Endpoint, s.OpenAiCompatible.Endpoint, StringComparison.OrdinalIgnoreCase))
+            ?? OpenAiCompatiblePresets[0];
     }
 
     private AiSettings BuildAiFromUi() => _ai.Current with
@@ -133,6 +189,7 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         Mistral   = new AiProviderConfig(MistralEndpoint.Trim(), MistralModel.Trim(), NullIfEmpty(MistralApiKey)),
         OpenAiCompatible = new AiProviderConfig(
             OpenAiCompatibleEndpoint.Trim(), OpenAiCompatibleModel.Trim(), NullIfEmpty(OpenAiCompatibleApiKey)),
+        OllamaVramGbOverride = SelectedVramOption?.VramGb,
     };
 
     private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
@@ -175,8 +232,6 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [RelayCommand]
     private void GenerateApiToken()
     {
-        // 32 Bytes = 256 Bit Entropie, Base64Url ohne Padding = 43 Zeichen.
-        // Reicht bequem für einen statischen Bearer-Token — kein JWT nötig.
         var bytes = new byte[32];
         System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
         ApiBearerToken = Convert.ToBase64String(bytes)
@@ -196,13 +251,56 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
             InstalledOllamaModels.Clear();
             foreach (var m in models.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                 InstalledOllamaModels.Add(m);
+            // Empfehlungs-Liste refreshen — IsInstalled-Flags neu setzen.
+            foreach (var row in RecommendedOllamaModels)
+                row.IsInstalled = models.Any(im => string.Equals(im, row.ModelName, StringComparison.OrdinalIgnoreCase));
             AiStatus = models.Count == 0
-                ? "Keine Modelle installiert. Mit `ollama pull <name>` im Terminal laden."
-                : $"{models.Count} Ollama-Modelle gefunden.";
+                ? "Keine Modelle installiert. Aus der Liste unten eines herunterladen."
+                : $"{models.Count} Ollama-Modelle installiert.";
         }
         catch (Exception ex) { AiStatus = $"✗ Fehler: {ex.Message}"; }
+    }
+
+    private async Task DetectHardwareAndPopulateAsync()
+    {
+        var gpu = await _hw.GetGpuAsync().ConfigureAwait(true);
+        DetectedHardwareLabel = gpu.VramGb > 0
+            ? $"🖥  {gpu.Name} · {gpu.VramGb:0.#} GB VRAM"
+            : $"🖥  {gpu.Name} · VRAM unbekannt (bitte manuell wählen)";
+        await PopulateRecommendationsAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Baut <see cref="RecommendedOllamaModels"/> anhand der aktuell
+    /// wirksamen VRAM-Größe (Override wenn gesetzt, sonst Auto-Detect).</summary>
+    private async Task PopulateRecommendationsAsync()
+    {
+        double vramGb;
+        if (SelectedVramOption?.VramGb is double explicitVram)
+            vramGb = explicitVram;
+        else
+        {
+            var gpu = await _hw.GetGpuAsync().ConfigureAwait(true);
+            vramGb = gpu.VramGb;
+        }
+
+        var models = OllamaCuratedModels.RecommendedFor(vramGb);
+        RecommendedOllamaModels.Clear();
+        foreach (var m in models)
+        {
+            var row = new OllamaModelRowViewModel(m,
+                providerFactory: () => _aiFactory.Create(BuildAiFromUi()) as OllamaProvider,
+                onInstalled: name =>
+                {
+                    if (!InstalledOllamaModels.Contains(name)) InstalledOllamaModels.Add(name);
+                });
+            row.IsInstalled = InstalledOllamaModels.Any(im => string.Equals(im, m.Name, StringComparison.OrdinalIgnoreCase));
+            RecommendedOllamaModels.Add(row);
+        }
     }
 }
 
 public sealed record LanguageOption(string Iso, string DisplayLabel, string ShortIso);
 public sealed record AiProviderOption(AiProviderType Type, string DisplayLabel);
+
+/// <summary>Item im VRAM-Dropdown. <see cref="VramGb"/> = null = Auto-Detect.</summary>
+public sealed record VramOption(double? VramGb, string DisplayLabel);

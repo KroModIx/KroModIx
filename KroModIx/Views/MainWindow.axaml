@@ -29,6 +29,14 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
                             VerticalAlignment="Center">
+                    <!-- KI-Chip: zeigt Provider + aktives Modell, Klick öffnet Settings.
+                         Unsichtbar wenn Provider = None (initialer Zustand). -->
+                    <Button Name="AiChipButton"
+                            Classes="ghost"
+                            Content="{Binding AiChipLabel}"
+                            IsVisible="{Binding HasAiChip}"
+                            Command="{Binding OpenSettingsCommand}"
+                            ToolTip.Tip="{Binding AiChipTooltip}" />
                     <!-- Update-Badge: accent-Style wenn Plugin-Updates verfügbar,
                          sonst ghost mit „Plugins verwalten" — gleicher Command,
                          öffnet den Plugin-Manager (Updates + installierte Plugins). -->
