@@ -38,11 +38,11 @@ jobs:
           fi
 
       - name: Test
-        run: dotnet test ModManager.Tests/ModManager.Tests.csproj -c Release
+        run: dotnet test KroModIx.Tests/KroModIx.Tests.csproj -c Release
 
       - name: Publish (win-x64)
         run: >
-          dotnet publish ModManager/ModManager.csproj
+          dotnet publish KroModIx/KroModIx.csproj
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true
           -p:Version=${{ steps.ver.outputs.v }}
@@ -50,12 +50,12 @@ jobs:
 
       - name: ZIP packen
         shell: pwsh
-        run: Compress-Archive -Path publish/win-x64/* -DestinationPath "ModManager-${{ steps.ver.outputs.v }}-win-x64.zip"
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath "KroModIx-${{ steps.ver.outputs.v }}-win-x64.zip"
 
       - uses: actions/upload-artifact@v7
         with:
           name: windows
-          path: ModManager-*-win-x64.zip
+          path: KroModIx-*-win-x64.zip
           retention-days: 7
 
   build-linux:
@@ -81,18 +81,18 @@ jobs:
           fi
 
       - name: Test
-        run: dotnet test ModManager.Tests/ModManager.Tests.csproj -c Release
+        run: dotnet test KroModIx.Tests/KroModIx.Tests.csproj -c Release
 
       - name: Publish (linux-x64)
         run: >
-          dotnet publish ModManager/ModManager.csproj
+          dotnet publish KroModIx/KroModIx.csproj
           -c Release -r linux-x64 --self-contained true
           -p:PublishSingleFile=true
           -p:Version=${{ steps.ver.outputs.v }}
           -o publish/linux-x64
 
       - name: Tarball packen
-        run: tar -czf "ModManager-${{ steps.ver.outputs.v }}-linux-x64.tar.gz" -C publish/linux-x64 .
+        run: tar -czf "KroModIx-${{ steps.ver.outputs.v }}-linux-x64.tar.gz" -C publish/linux-x64 .
 
       - name: AppImage bauen
         run: bash packaging/linux/build-appimage.sh "${{ steps.ver.outputs.v }}" publish/linux-x64
@@ -101,8 +101,8 @@ jobs:
         with:
           name: linux
           path: |
-            ModManager-*-linux-x64.tar.gz
-            ModManager-*-x86_64.AppImage
+            KroModIx-*-linux-x64.tar.gz
+            KroModIx-*-x86_64.AppImage
           retention-days: 7
 
   publish-contracts:

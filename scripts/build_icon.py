@@ -1,18 +1,18 @@
 """
-Kroste ModManager App-Icon-Generator.
+KroModIx App-Icon-Generator.
 
 Design: Ein stilisiertes Puzzleteil (Plugin-Metapher) in Kroste-Gold (#E0B14C)
 auf abgerundetem dunklem Grund (#161C23). Puzzle = zentrale Plugin-Idee des
-ModManagers. Funktioniert auch als 16x16-Favicon.
+KroModIx-Apps. Funktioniert auch als 16x16-Favicon.
 
 Erzeugt:
-- /home/OsteL/Entwicklung/Mod-Manager/ModManager/Assets/mod-manager.png (256x256, master)
-- /home/OsteL/Entwicklung/Mod-Manager/ModManager/Assets/mod-manager.ico (Multi-Res 16..256)
+- /home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets/kromodix.png (256x256, master)
+- /home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets/kromodix.ico (Multi-Res 16..256)
 """
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = "/home/OsteL/Entwicklung/Mod-Manager/ModManager/Assets"
+OUT_DIR = "/home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets"
 
 GOLD    = (224, 177, 76, 255)   # #E0B14C  Kroste-Gold (App-Akzent)
 GOLD_D  = (176, 138, 55, 255)   # #B08A37  dunkler Rand
@@ -119,19 +119,19 @@ def main():
 
     # 1) Master-PNG 256x256
     master = make_icon(256)
-    master.save(f"{OUT_DIR}/mod-manager.png", "PNG")
-    print(f"Wrote mod-manager.png (256x256) to {OUT_DIR}")
+    master.save(f"{OUT_DIR}/kromodix.png", "PNG")
+    print(f"Wrote kromodix.png (256x256) to {OUT_DIR}")
 
     # 2) Multi-Res ICO fuer Windows-Exe
     sizes = [16, 24, 32, 48, 64, 128, 256]
     icons = [make_icon(s) for s in sizes]
     icons[0].save(
-        f"{OUT_DIR}/mod-manager.ico",
+        f"{OUT_DIR}/kromodix.ico",
         format="ICO",
         sizes=[(s, s) for s in sizes],
         append_images=icons[1:],
     )
-    print(f"Wrote mod-manager.ico (multi-res: {sizes})")
+    print(f"Wrote kromodix.ico (multi-res: {sizes})")
 
 
 if __name__ == "__main__":

@@ -12,12 +12,12 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 cp -r "$PUBLISH_DIR"/* "$APPDIR/usr/bin/"
 cp packaging/linux/kromodix.desktop "$APPDIR/"
-cp ModManager/Assets/kromodix.png "$APPDIR/"
+cp KroModIx/Assets/kromodix.png "$APPDIR/"
 cp packaging/linux/AppRun "$APPDIR/AppRun"
-chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/ModManager"
+chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/KroModIx"
 
 curl -sSL -o appimagetool \
   https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
 chmod +x appimagetool
-./appimagetool --appimage-extract-and-run "$APPDIR" "ModManager-${VERSION}-x86_64.AppImage"
-echo "AppImage gebaut: ModManager-${VERSION}-x86_64.AppImage"
+./appimagetool --appimage-extract-and-run "$APPDIR" "KroModIx-${VERSION}-x86_64.AppImage"
+echo "AppImage gebaut: KroModIx-${VERSION}-x86_64.AppImage"

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=KroModIx
 Comment=Cross-platform mod manager for Steam games (extensible via plugins)
-Exec=ModManager
+Exec=KroModIx
 Icon=mod-manager
 Type=Application
 Categories=Game;Utility;
