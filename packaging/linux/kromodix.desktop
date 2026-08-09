@@ -2,7 +2,7 @@
 Name=KroModIx
 Comment=Cross-platform mod manager for Steam games (extensible via plugins)
 Exec=KroModIx
-Icon=mod-manager
+Icon=kromodix
 Type=Application
 Categories=Game;Utility;
 Terminal=false
