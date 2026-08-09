@@ -60,26 +60,31 @@
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding OllamaEndpoint, Mode=TwoWay}" />
 
-                                        <TextBlock Text="Aktives Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBlock Text="Installierte Modelle" Classes="section-label" Margin="0,6,0,0" />
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                            <!-- AutoCompleteBox: Dropdown mit installierten Modellen +
-                                                 freie Texteingabe (für Modelle die noch nicht via /api/tags
-                                                 zurückkamen, z.B. gerade gepullte). -->
-                                            <AutoCompleteBox Name="OllamaModelBox"
-                                                             Grid.Column="0"
-                                                             ItemsSource="{Binding InstalledOllamaModels}"
-                                                             Text="{Binding OllamaModel, Mode=TwoWay}"
-                                                             FilterMode="ContainsOrdinal"
-                                                             MinimumPrefixLength="0"
-                                                             PlaceholderText="z.B. llama3.1:8b — oder aus Liste wählen"
-                                                             HorizontalAlignment="Stretch" />
-                                            <Button Grid.Column="1"
+                                            <!-- Echte ComboBox mit sichtbarem ▾-Pfeil. SelectedItem
+                                                 bindet TwoWay auf OllamaModel — Klick auf einen Eintrag
+                                                 setzt sofort das aktive Modell. Freie Eingabe passiert
+                                                 unten in der TextBox („Aktives Modell"). -->
+                                            <ComboBox Name="OllamaInstalledCombo"
+                                                      Grid.Column="0"
+                                                      ItemsSource="{Binding InstalledOllamaModels}"
+                                                      SelectedItem="{Binding SelectedInstalledModel, Mode=TwoWay}"
+                                                      PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                      HorizontalAlignment="Stretch" />
+                                            <Button Name="LoadOllamaModelsButton"
+                                                    Grid.Column="1"
                                                     Content="🔄"
                                                     Command="{Binding LoadOllamaModelsCommand}"
                                                     ToolTip.Tip="Installierte Modelle neu abfragen (Ollama /api/tags)" />
                                         </Grid>
                                         <TextBlock Text="{Binding InstalledModelsHint}"
                                                    Classes="muted" FontSize="10" />
+
+                                        <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Name="OllamaModelBox"
+                                                 Text="{Binding OllamaModel, Mode=TwoWay}"
+                                                 PlaceholderText="z.B. llama3.1:8b — manuell tippen oder oben auswählen" />
 
                                         <!-- Hardware-Detection + Empfehlungen -->
                                         <Border BorderBrush="{DynamicResource KrosteBorderBrush}"

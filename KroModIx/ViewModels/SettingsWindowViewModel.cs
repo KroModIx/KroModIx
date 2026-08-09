@@ -67,6 +67,24 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     /// generischen AiStatus-Text für diese Zeile.</summary>
     [ObservableProperty] private string _installedModelsHint = "Noch nicht geprüft — klick 🔄 oder wähle Ollama, dann wird beim Öffnen automatisch geladen.";
 
+    /// <summary>Getrennt von <see cref="OllamaModel"/>, damit die ComboBox beim
+    /// initial-Render mit leerer <see cref="InstalledOllamaModels"/> nicht das
+    /// gespeicherte Modell wegräumt (bekanntes Avalonia-ComboBox-Verhalten:
+    /// SelectedItem-Bind auf einen Wert der nicht in ItemsSource ist → null).
+    /// Der Handler <see cref="OnSelectedInstalledModelChanged"/> kopiert die
+    /// User-Auswahl nach <see cref="OllamaModel"/>.</summary>
+    [ObservableProperty] private string? _selectedInstalledModel;
+
+    /// <summary>Guard: unterdrückt den OllamaModel-Copy-Handler beim programmatischen
+    /// Sync (siehe <see cref="FetchOllamaModelsAsync"/>).</summary>
+    private bool _suppressSelectedModelSync;
+
+    partial void OnSelectedInstalledModelChanged(string? value)
+    {
+        if (_suppressSelectedModelSync) return;
+        if (!string.IsNullOrWhiteSpace(value)) OllamaModel = value;
+    }
+
     // Hardware + Modell-Empfehlungen
     [ObservableProperty] private string _detectedHardwareLabel = "wird erkannt …";
     [ObservableProperty] private VramOption? _selectedVramOption;
@@ -306,6 +324,15 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
                 InstalledOllamaModels.Add(m);
             foreach (var row in RecommendedOllamaModels)
                 row.IsInstalled = models.Any(im => string.Equals(im, row.ModelName, StringComparison.OrdinalIgnoreCase));
+            // ComboBox mit dem aktuellen Wert synchronisieren (nur wenn er in
+            // der Liste ist) — damit der User sieht welches Modell aktiv ist.
+            // Guard verhindert dass unser OnSelectedInstalledModelChanged-Handler
+            // OllamaModel redundant überschreibt.
+            var match = InstalledOllamaModels.FirstOrDefault(m =>
+                string.Equals(m, OllamaModel, StringComparison.OrdinalIgnoreCase));
+            _suppressSelectedModelSync = true;
+            try { SelectedInstalledModel = match; }
+            finally { _suppressSelectedModelSync = false; }
             return models.Count;
         }
         catch
