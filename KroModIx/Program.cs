@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using KroModIx.Logging;
+using KroModIx.Services;
 using KroModIx.Views;
 using NLog;
 
@@ -17,6 +18,12 @@ internal static class Program
 
         var log = LogManager.GetCurrentClassLogger();
         log.Info("KroModIx start (args: {Args})", string.Join(" ", args));
+
+        // Einmalige Migration von ModManager-Config (falls User bereits
+        // installiert hatte) nach KroModIx-Config-Verzeichnis. VOR allen
+        // AppPaths-Zugriffen, sonst wird ~/.config/KroModIx/ leer angelegt
+        // bevor die alte Config kopiert werden kann.
+        ConfigMigrationService.MigrateIfNeeded();
 
         GlobalExceptionHandler.Install();
 
