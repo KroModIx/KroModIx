@@ -6,9 +6,9 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
   <!-- App / Windows -->
-  <data name="App_Title" xml:space="preserve"><value>Kroste ModManager</value></data>
-  <data name="Window_Settings" xml:space="preserve"><value>ModManager — Settings</value></data>
-  <data name="Window_About" xml:space="preserve"><value>About ModManager</value></data>
+  <data name="App_Title" xml:space="preserve"><value>KroModIx</value></data>
+  <data name="Window_Settings" xml:space="preserve"><value>KroModIx — Settings</value></data>
+  <data name="Window_About" xml:space="preserve"><value>About KroModIx</value></data>
 
   <!-- MainWindow -->
   <data name="Main_Header_Subtitle" xml:space="preserve"><value>Cross-platform mod manager for your Steam games</value></data>

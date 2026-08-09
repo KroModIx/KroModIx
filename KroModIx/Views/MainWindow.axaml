@@ -32,20 +32,24 @@
                     <!-- Update-Badge: accent-Style wenn Plugin-Updates verfügbar,
                          sonst ghost mit „Plugins verwalten" — gleicher Command,
                          öffnet den Plugin-Manager (Updates + installierte Plugins). -->
-                    <Button Classes="accent"
+                    <Button Name="UpdateBadgeButton"
+                            Classes="accent"
                             Content="{Binding UpdateBadgeText}"
                             IsVisible="{Binding HasAvailableUpdates}"
                             Command="{Binding OpenPluginUpdatesCommand}"
                             ToolTip.Tip="Plugin-Updates verfügbar" />
-                    <Button Classes="ghost"
+                    <Button Name="OpenPluginManagerButton"
+                            Classes="ghost"
                             Content="🧩 Plugins"
                             IsVisible="{Binding !HasAvailableUpdates}"
                             Command="{Binding OpenPluginUpdatesCommand}"
                             ToolTip.Tip="Installierte Plugins verwalten (installieren, updaten, deinstallieren)" />
-                    <Button Classes="ghost"
+                    <Button Name="OpenSettingsButton"
+                            Classes="ghost"
                             Content="{loc:Tr Common_Settings}"
                             Command="{Binding OpenSettingsCommand}" />
-                    <Button Classes="ghost"
+                    <Button Name="OpenAboutButton"
+                            Classes="ghost"
                             Content="{loc:Tr Common_About}"
                             Command="{Binding OpenAboutCommand}" />
                 </StackPanel>
@@ -97,15 +101,18 @@
                     <!-- Sidebar-Header: Suche + Filter + Add-Button -->
                     <StackPanel DockPanel.Dock="Top" Margin="10,10,10,6" Spacing="8">
                         <TextBlock Text="GAMES" Classes="section-label" Margin="0" />
-                        <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                        <TextBox Name="SidebarSearchBox"
+                                 Text="{Binding SearchText, Mode=TwoWay}"
                                  PlaceholderText="{loc:Tr Main_Sidebar_Search_Placeholder}" />
                         <Grid ColumnDefinitions="*,Auto">
-                            <CheckBox Grid.Column="0"
+                            <CheckBox Name="OnlyWithPluginCheckBox"
+                                      Grid.Column="0"
                                       Content="{loc:Tr Main_Sidebar_FilterOnlyWithPlugin}"
                                       IsChecked="{Binding OnlyWithPlugin, Mode=TwoWay}"
                                       Foreground="{DynamicResource KrosteSecondaryTextBrush}"
                                       FontSize="12" />
-                            <Button Grid.Column="1" Classes="ghost" FontSize="12"
+                            <Button Name="AddGameButton"
+                                    Grid.Column="1" Classes="ghost" FontSize="12"
                                     Content="{loc:Tr Main_Sidebar_AddGame}"
                                     Command="{Binding AddGameCommand}" />
                         </Grid>
@@ -115,7 +122,8 @@
                          das gerade angeklickte Spiel — Steam-Library-Verhalten.
                          Einfach-Klick selektiert nur (Content-Bereich rendert
                          die Plugin-Tabs bzw. Install-Karte). -->
-                    <ListBox ItemsSource="{Binding VisibleGames}"
+                    <ListBox Name="SidebarGamesListBox"
+                             ItemsSource="{Binding VisibleGames}"
                              SelectedItem="{Binding SelectedGame, Mode=TwoWay}"
                              DoubleTapped="OnGameDoubleTapped"
                              Background="Transparent" BorderThickness="0"
@@ -209,7 +217,8 @@
                                    Text="{Binding SelectedGame.DisplayName}"
                                    Classes="h1" FontSize="18"
                                    VerticalAlignment="Center" />
-                        <Button Grid.Column="1"
+                        <Button Name="LaunchSelectedGameButton"
+                                Grid.Column="1"
                                 Classes="accent"
                                 Content="▶  Spiel starten"
                                 Command="{Binding LaunchSelectedGameCommand}"

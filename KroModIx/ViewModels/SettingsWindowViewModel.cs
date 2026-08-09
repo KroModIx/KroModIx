@@ -57,6 +57,12 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
 
     [ObservableProperty] private string _aiStatus = "";
 
+    // REST-API-Sektion
+    [ObservableProperty] private bool _apiEnabled;
+    [ObservableProperty] private int _apiPort = 5100;
+    [ObservableProperty] private string _apiBearerToken = "";
+    [ObservableProperty] private string _apiStatus = "";
+
     public bool ShowOllamaSection => SelectedAiProvider?.Type == AiProviderType.Ollama;
     public bool ShowAnthropicSection => SelectedAiProvider?.Type == AiProviderType.Anthropic;
     public bool ShowOpenAiSection => SelectedAiProvider?.Type == AiProviderType.OpenAi;
@@ -90,6 +96,10 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
             new(AiProviderType.OpenAiCompatible, "OpenAI-kompatibel (frei)"),
         };
         LoadAiIntoUi(_ai.Current);
+
+        ApiEnabled = settings.Current.ApiEnabled;
+        ApiPort = settings.Current.ApiPort <= 0 ? 5100 : settings.Current.ApiPort;
+        ApiBearerToken = settings.Current.ApiBearerToken ?? "";
     }
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)
@@ -146,6 +156,32 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
             AiStatus = ok ? $"✓ {provider.Name} erreichbar." : $"✗ {provider.Name} antwortet nicht.";
         }
         catch (Exception ex) { AiStatus = $"✗ Fehler: {ex.Message}"; }
+    }
+
+    [RelayCommand]
+    private void SaveApi()
+    {
+        _settings.Update(s =>
+        {
+            s.ApiEnabled = ApiEnabled;
+            s.ApiPort = ApiPort <= 0 ? 5100 : ApiPort;
+            s.ApiBearerToken = NullIfEmpty(ApiBearerToken);
+        });
+        ApiStatus = ApiEnabled
+            ? "API-Einstellungen gespeichert. Neustart nötig damit Kestrel neu gebunden wird."
+            : "API-Einstellungen gespeichert. API bleibt beim nächsten Start deaktiviert.";
+    }
+
+    [RelayCommand]
+    private void GenerateApiToken()
+    {
+        // 32 Bytes = 256 Bit Entropie, Base64Url ohne Padding = 43 Zeichen.
+        // Reicht bequem für einen statischen Bearer-Token — kein JWT nötig.
+        var bytes = new byte[32];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        ApiBearerToken = Convert.ToBase64String(bytes)
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        ApiStatus = "Token generiert — nicht vergessen zu speichern.";
     }
 
     [RelayCommand]

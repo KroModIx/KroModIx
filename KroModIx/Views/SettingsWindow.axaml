@@ -126,6 +126,53 @@
                                        Classes="secondary" Margin="0,4,0,0" />
                         </StackPanel>
                     </Border>
+
+                    <!-- REST-API. Localhost-only, Bearer-Token in settings.json.
+                         CLI-Args api-port/api-token überschreiben diese
+                         Einstellungen zur Laufzeit (nützlich für Screenshot-driven
+                         Iteration). -->
+                    <TextBlock Text="REST-API" Classes="section-label" Margin="0,8,0,0" />
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Steuer-API (Localhost)" Classes="h2" FontSize="13" />
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                       Text="Für Automatisierung und Selbst-Iteration. Bindung nur an 127.0.0.1, per Bearer-Token geschützt. Ohne Token = jede Anfrage 403. Änderungen greifen erst nach App-Neustart." />
+
+                            <CheckBox Name="ApiEnabledCheckBox"
+                                      Content="REST-API beim Start aktivieren"
+                                      IsChecked="{Binding ApiEnabled, Mode=TwoWay}" />
+
+                            <TextBlock Text="Port (127.0.0.1)" Classes="section-label" Margin="0,4,0,0" />
+                            <NumericUpDown Name="ApiPortInput"
+                                           Value="{Binding ApiPort, Mode=TwoWay}"
+                                           Minimum="1024" Maximum="65535"
+                                           Increment="1"
+                                           FormatString="0"
+                                           HorizontalAlignment="Left"
+                                           MinWidth="140" />
+
+                            <TextBlock Text="Bearer-Token" Classes="section-label" Margin="0,6,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBox Name="ApiTokenInput"
+                                         Grid.Column="0"
+                                         Text="{Binding ApiBearerToken, Mode=TwoWay}"
+                                         PasswordChar="•" />
+                                <Button Name="GenerateApiTokenButton"
+                                        Grid.Column="1"
+                                        Content="🎲 Generieren"
+                                        Command="{Binding GenerateApiTokenCommand}"
+                                        ToolTip.Tip="Zufälliges 256-Bit-Token erzeugen (Base64Url, 43 Zeichen)" />
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                                <Button Name="SaveApiButton"
+                                        Classes="accent" Content="💾  API-Einstellungen speichern"
+                                        Command="{Binding SaveApiCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding ApiStatus}" TextWrapping="Wrap"
+                                       Classes="secondary" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
         </ScrollViewer>

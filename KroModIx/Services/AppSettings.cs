@@ -17,6 +17,18 @@ public sealed class AppSettings
 
     /// <summary>Fenster-State für das Hauptfenster (Position/Größe).</summary>
     public WindowStateDto? MainWindow { get; set; }
+
+    /// <summary>REST-API aktivieren. Default aus. Kann per CLI (<c>--api-port</c>)
+    /// zur Laufzeit überschrieben werden — dann startet die API auch bei
+    /// <c>ApiEnabled=false</c>.</summary>
+    public bool ApiEnabled { get; set; }
+
+    /// <summary>Bind-Port für Kestrel (immer 127.0.0.1). Default 5100.</summary>
+    public int ApiPort { get; set; } = 5100;
+
+    /// <summary>Bearer-Token für die REST-API. Leer = alles 403. Muss vom User
+    /// gesetzt werden, es gibt bewusst keinen Default — kein „aus Versehen offen".</summary>
+    public string? ApiBearerToken { get; set; }
 }
 
 public sealed class WindowStateDto

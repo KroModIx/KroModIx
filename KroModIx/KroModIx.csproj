@@ -14,7 +14,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="KroModIx.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../KroModIx.Plugin.Contracts/KroModIx.Plugin.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- ASP.NET Core (Kestrel + Minimal-API) für die eingebaute REST-API.
+       FrameworkReference statt PackageReference — kein NuGet nötig, das
+       Runtime-Bundle ist im .NET-10-SDK enthalten. Publish zieht das Bundle
+       via UseAppHost bei self-contained. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,8 +35,9 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
+    <!-- Microsoft.Extensions.DependencyInjection + Microsoft.Extensions.Http
+         kommen via FrameworkReference Microsoft.AspNetCore.App (siehe unten)
+         mit — separate PackageReferences würden NU1510-Fehler auslösen. -->
     <PackageReference Include="NLog" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -8,6 +9,7 @@ using KroModIx.Localization;
 using KroModIx.Plugin.Contracts;
 using KroModIx.Services;
 using KroModIx.Services.Ai;
+using KroModIx.Services.Api;
 using KroModIx.Services.Games;
 using KroModIx.Services.Plugins;
 using KroModIx.Services.Steam;
@@ -26,6 +28,8 @@ public partial class App : Application
     // GC-Referenz halten, sonst wird der TrayController eingesammelt und das
     // Tray-Icon verschwindet nach dem ersten Minimieren.
     private TrayController? _tray;
+
+    private ApiHost? _api;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -48,12 +52,19 @@ public partial class App : Application
 
             // Discovery + Plugin-Activation asynchron im Hintergrund starten;
             // MainWindow steht schon während der Discovery.
-            mainWindow.Opened += (_, _) => _ = mainVm.InitializeAsync();
+            mainWindow.Opened += (_, _) =>
+            {
+                _ = mainVm.InitializeAsync();
+                _ = StartApiAsync(settings.Current);
+                ScheduleAutoShutdownIfRequested(desktop);
+            };
 
             desktop.Exit += (_, _) =>
             {
                 try { settings.Save(); }
                 catch (Exception ex) { Log.Warn(ex, "Konnte Settings beim Exit nicht speichern."); }
+                try { _api?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(3)); }
+                catch (Exception ex) { Log.Warn(ex, "Konnte REST-API nicht sauber stoppen."); }
             };
         }
 
@@ -107,5 +118,38 @@ public partial class App : Application
         services.AddTransient<PluginUpdatesViewModel>();
 
         return services.BuildServiceProvider();
+    }
+
+    private async Task StartApiAsync(AppSettings settings)
+    {
+        try
+        {
+            var opts = ApiOptionsResolver.Resolve(settings, Program.LaunchOptions);
+            _api = new ApiHost(Services);
+            await _api.StartAsync(opts);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "REST-API-Start fehlgeschlagen.");
+        }
+    }
+
+    /// <summary>Automatischer Shutdown der App nach <c>--auto-shutdown-after</c>.
+    /// Gedacht für die Screenshot-driven Iteration — App startet, macht ihre
+    /// Requests, geht wieder. Fires auf UI-Thread damit Avalonia sauber schließt.</summary>
+    private void ScheduleAutoShutdownIfRequested(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var delay = Program.LaunchOptions.AutoShutdownAfter;
+        if (delay is null || delay.Value <= TimeSpan.Zero) return;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(delay.Value);
+            Log.Info("Auto-Shutdown nach {Seconds}s ausgelöst.", delay.Value.TotalSeconds);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                try { desktop.Shutdown(0); }
+                catch (Exception ex) { Log.Warn(ex, "Auto-Shutdown scheiterte."); }
+            });
+        });
     }
 }

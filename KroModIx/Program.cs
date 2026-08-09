@@ -9,6 +9,14 @@ namespace KroModIx;
 
 internal static class Program
 {
+    /// <summary>Vom <see cref="App"/> beim Startup abgeholt. Statisch, weil der
+    /// Avalonia-Lifecycle keinen sauberen Punkt hat, um Args in die App-Instanz
+    /// zu injecten — der übliche Weg ist ein IPublicClientApplication-artiger
+    /// Wrapper, den wir uns hier sparen. Die Alternative wäre CommandLine erst
+    /// im App.OnFrameworkInitializationCompleted zu parsen, aber dann würden
+    /// Warnungen des Parsers erst nach dem NLog-Setup landen.</summary>
+    public static AppLaunchOptions LaunchOptions { get; private set; } = new();
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -18,6 +26,12 @@ internal static class Program
 
         var log = LogManager.GetCurrentClassLogger();
         log.Info("KroModIx start (args: {Args})", string.Join(" ", args));
+
+        LaunchOptions = AppLaunchOptions.Parse(args);
+        if (LaunchOptions.ApiPortOverride is not null)
+            log.Info("CLI: API auf Port {Port} aktiviert{Auto}",
+                LaunchOptions.ApiPortOverride,
+                LaunchOptions.AutoShutdownAfter is { } d ? $" — Auto-Shutdown nach {d.TotalSeconds:0}s" : "");
 
         // Einmalige Migration von ModManager-Config (falls User bereits
         // installiert hatte) nach KroModIx-Config-Verzeichnis. VOR allen
@@ -29,7 +43,7 @@ internal static class Program
 
         try
         {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(LaunchOptions.RemainingArgs);
         }
         catch (Exception ex)
         {
