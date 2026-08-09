@@ -10,7 +10,7 @@ permissions:
   packages: write # für NuGet-Publish der PluginContracts auf GitHub Packages
 
 # Native Builds pro OS mit Tests, Linux zusätzlich als AppImage.
-# Zusätzlicher Publish-Job packt ModManager.PluginContracts als NuGet-Package
+# Zusätzlicher Publish-Job packt KroModIx.Plugin.Contracts als NuGet-Package
 # und pusht es auf GitHub Packages — Plugin-Repos referenzieren es via
 # PackageReference (siehe references/plugins.md).
 jobs:
@@ -121,13 +121,13 @@ jobs:
 
       - name: PluginContracts packen
         run: >
-          dotnet pack ModManager.PluginContracts/ModManager.PluginContracts.csproj
+          dotnet pack KroModIx.Plugin.Contracts/KroModIx.Plugin.Contracts.csproj
           -c Release -o dist-nuget
 
       - name: Auf GitHub Packages pushen
         run: >
           dotnet nuget push "dist-nuget/*.nupkg"
-          --source "https://nuget.pkg.github.com/Kroste/index.json"
+          --source "https://nuget.pkg.github.com/KroModIx/index.json"
           --api-key ${{ secrets.GITHUB_TOKEN }}
           --skip-duplicate
 

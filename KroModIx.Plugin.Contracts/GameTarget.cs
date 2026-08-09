@@ -1,0 +1,34 @@
+using System;
+
+namespace KroModIx.Plugin.Contracts;
+
+/// <summary>
+/// Statische Deklaration eines Spiels, das ein Plugin bedienen kann. Wird
+/// primär aus dem <see cref="PluginManifest"/> gelesen (der Host sieht das
+/// Target dadurch ohne Assembly-Load) und ist zur Laufzeit als
+/// <see cref="DetectedGame.Target"/> verfügbar.
+/// </summary>
+/// <param name="GameId">Stabiler Slug, z.B. <c>farming-simulator-25</c>. Wird
+/// für Persistenz, Deep-Links und Konflikt-Auflösung benutzt.</param>
+/// <param name="DisplayName">Anzeigename in der Sidebar.</param>
+/// <param name="SteamAppId">Steam-App-ID, wenn das Spiel via Steam vertrieben
+/// wird. Ist die primäre Auto-Discovery-Quelle.</param>
+/// <param name="AlternativeExecutableNames">Dateinamen (mit Extension), die
+/// bei Non-Steam-Discovery matchen. Beispiel: <c>FactoryGame.exe</c>.</param>
+/// <param name="Platforms">Auf welchen OS das Plugin dieses Spiel bedient.
+/// <see cref="Platforms.Both"/> ist der Regelfall.</param>
+public sealed record GameTarget(
+    string GameId,
+    string DisplayName,
+    int? SteamAppId,
+    string[] AlternativeExecutableNames,
+    Platforms Platforms);
+
+[Flags]
+public enum Platforms
+{
+    None = 0,
+    Windows = 1,
+    Linux = 2,
+    Both = Windows | Linux,
+}

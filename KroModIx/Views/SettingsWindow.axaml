@@ -1,0 +1,133 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:KroModIx.Views"
+        xmlns:controls="using:KroModIx.Controls"
+        xmlns:loc="using:KroModIx.Localization"
+        xmlns:vm="using:KroModIx.ViewModels"
+        x:Class="KroModIx.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Width="620" Height="720" MinWidth="560" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Title="{loc:Tr Window_Settings}"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{loc:Tr Window_Settings}" />
+
+        <ScrollViewer>
+            <Border Padding="24">
+                <StackPanel Spacing="18">
+
+                    <!-- UI-Sprache -->
+                    <TextBlock Text="{loc:Tr Settings_Section_UiLanguage}" Classes="section-label" />
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="{loc:Tr Settings_UiLanguage}" Classes="h2" FontSize="13" />
+                            <ComboBox ItemsSource="{Binding Languages}"
+                                      SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                      DisplayMemberBinding="{Binding DisplayLabel}"
+                                      HorizontalAlignment="Stretch" />
+                            <TextBlock Text="{loc:Tr Settings_UiLanguage_Hint}"
+                                       Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- KI-Provider (zentral für alle Plugins) -->
+                    <TextBlock Text="KI-INTEGRATION" Classes="section-label" Margin="0,8,0,0" />
+                    <Border Classes="card">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="KI-Anbieter" Classes="h2" FontSize="13" />
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                       Text="Zentral konfiguriert für alle Plugins. Ollama ist der lokale, datenschutzfreundliche Default. Cloud-Provider brauchen einen API-Key." />
+
+                            <TextBlock Text="Anbieter" Classes="section-label" Margin="0,4,0,0" />
+                            <ComboBox ItemsSource="{Binding AiProviders}"
+                                      SelectedItem="{Binding SelectedAiProvider, Mode=TwoWay}"
+                                      DisplayMemberBinding="{Binding DisplayLabel}"
+                                      HorizontalAlignment="Stretch" />
+
+                            <!-- Ollama-Sektion -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowOllamaSection}"
+                                        Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding OllamaEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding OllamaModel, Mode=TwoWay}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                    <Button Content="⬇  Installierte Modelle laden"
+                                            Command="{Binding LoadOllamaModelsCommand}" />
+                                </StackPanel>
+                                <ListBox ItemsSource="{Binding InstalledOllamaModels}"
+                                         MaxHeight="120" HorizontalAlignment="Stretch">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <!-- Anthropic -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowAnthropicSection}" Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding AnthropicEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}" />
+                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" />
+                            </StackPanel>
+
+                            <!-- OpenAI -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiSection}" Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding OpenAiEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}" />
+                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding OpenAiApiKey, Mode=TwoWay}" PasswordChar="•" />
+                            </StackPanel>
+
+                            <!-- Gemini -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowGeminiSection}" Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding GeminiEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding GeminiModel, Mode=TwoWay}" />
+                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding GeminiApiKey, Mode=TwoWay}" PasswordChar="•" />
+                            </StackPanel>
+
+                            <!-- Mistral -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowMistralSection}" Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding MistralEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding MistralModel, Mode=TwoWay}" />
+                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding MistralApiKey, Mode=TwoWay}" PasswordChar="•" />
+                            </StackPanel>
+
+                            <!-- OpenAI-kompatibel -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiCompatibleSection}" Margin="0,8,0,0">
+                                <TextBlock Text="Endpoint" Classes="section-label" />
+                                <TextBox Text="{Binding OpenAiCompatibleEndpoint, Mode=TwoWay}" />
+                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding OpenAiCompatibleModel, Mode=TwoWay}" />
+                                <TextBlock Text="API-Key (optional)" Classes="section-label" Margin="0,6,0,0" />
+                                <TextBox Text="{Binding OpenAiCompatibleApiKey, Mode=TwoWay}" PasswordChar="•" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                                <Button Classes="accent" Content="💾  Speichern"
+                                        Command="{Binding SaveAiCommand}" />
+                                <Button Content="🔌  Verbindung testen"
+                                        Command="{Binding TestAiConnectionCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding AiStatus}" TextWrapping="Wrap"
+                                       Classes="secondary" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+    </DockPanel>
+</views:ChromeWindow>

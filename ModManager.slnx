@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="ModManager/ModManager.csproj" />
-  <Project Path="ModManager.PluginContracts/ModManager.PluginContracts.csproj" />
-  <Project Path="ModManager.Tests/ModManager.Tests.csproj" />
-</Solution>

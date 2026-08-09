@@ -1,7 +1,7 @@
-# Kroste ModManager
+# KroModIx
 
-[![CI](https://github.com/Kroste/Mod-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/Kroste/Mod-Manager/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Kroste/Mod-Manager)](https://github.com/Kroste/Mod-Manager/releases)
+[![CI](https://github.com/KroModIx/KroModIx/actions/workflows/ci.yml/badge.svg)](https://github.com/KroModIx/KroModIx/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/KroModIx/KroModIx)](https://github.com/KroModIx/KroModIx/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 One mod manager for all your Steam games. Cross-platform (Windows + Linux native — no Wine wrappers), Steam-aware, extensible via plugins.
@@ -10,7 +10,7 @@ One mod manager for all your Steam games. Cross-platform (Windows + Linux native
 
 ## Motivation
 
-Most game mod managers are Windows-only, closed-source, or need Wine acrobatics to run on Linux. Every game demands its own tool. Kroste ModManager is one desktop app that:
+Most game mod managers are Windows-only, closed-source, or need Wine acrobatics to run on Linux. Every game demands its own tool. KroModIx is one desktop app that:
 
 - Auto-discovers your Steam library (Windows + Linux/Bazzite, including external drives via `libraryfolders.vdf`)
 - Lets you add non-Steam games manually
@@ -20,7 +20,7 @@ Most game mod managers are Windows-only, closed-source, or need Wine acrobatics 
 
 ## Installation
 
-Grab the latest release from the [Releases page](https://github.com/Kroste/Mod-Manager/releases):
+Grab the latest release from the [Releases page](https://github.com/KroModIx/KroModIx/releases):
 
 **Windows:** `ModManager-X.Y.Z-win-x64.zip` — unzip, run `ModManager.exe`. Self-contained, no install needed.
 
@@ -35,19 +35,19 @@ chmod +x ModManager-*-x86_64.AppImage
 ## Bedienung
 
 - **Sidebar (left)** lists all installed Steam games (auto-discovered from all Steam library roots including external drives). Search box filters by title, the „only games with plugin"-toggle hides everything without a loaded plugin. Sort order: games with a plugin first, then alphabetical.
-- **Add non-Steam game** with the ➕ button: name + directory (mandatory) + executable + cover + optional Steam-AppId (auto-loads the cover from Steam CDN when set). Entries persist in `~/.config/ModManager/manual-games.json`.
-- **Star overlay** on each tile: **filled gold ★** = plugin loaded and active · **outlined gold ☆** = plugin available in the [PluginIndex](https://github.com/Kroste/ModManager.PluginIndex), not yet installed · **no star** = no plugin known.
+- **Add non-Steam game** with the ➕ button: name + directory (mandatory) + executable + cover + optional Steam-AppId (auto-loads the cover from Steam CDN when set). Entries persist in `~/.config/KroModIx/manual-games.json`.
+- **Star overlay** on each tile: **filled gold ★** = plugin loaded and active · **outlined gold ☆** = plugin available in the [PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex), not yet installed · **no star** = no plugin known.
 - **Click a game with an outlined star** → the content area shows an install card: "Plugin available (Kroste). ⬇ Install". One click downloads the plugin from its GitHub release, extracts it, and activates it live — no app restart. The star immediately turns filled and the plugin's tabs appear.
 - **Click a game with a filled star** → the plugin's tabs render in the content area.
-- **Plugin deployment (manual)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/ModManager/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. Live install (as above) is preferred.
+- **Plugin deployment (manual)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/KroModIx/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. Live install (as above) is preferred.
 
 ## Available plugins
 
-- [`Kroste/ModManager.Plugins.LS25`](https://github.com/Kroste/ModManager.Plugins.LS25) — Landwirtschafts-Simulator 25
-- [`Kroste/ModManager.Plugins.Icarus`](https://github.com/Kroste/ModManager.Plugins.Icarus) — Icarus (RocketWerkz)
-- [`Kroste/ModManager.Plugins.Dummy`](https://github.com/Kroste/ModManager.Plugins.Dummy) — Demo plugin (end-to-end proof)
+- [`KroModIx/KroModIx.Plugin.LS25`](https://github.com/KroModIx/KroModIx.Plugin.LS25) — Landwirtschafts-Simulator 25
+- [`KroModIx/KroModIx.Plugin.Icarus`](https://github.com/KroModIx/KroModIx.Plugin.Icarus) — Icarus (RocketWerkz)
+- [`KroModIx/KroModIx.Plugin.Dummy`](https://github.com/KroModIx/KroModIx.Plugin.Dummy) — Demo plugin (end-to-end proof)
 
-The catalog is served from [`Kroste/ModManager.PluginIndex`](https://github.com/Kroste/ModManager.PluginIndex). Send a PR to add your own.
+The catalog is served from [`KroModIx/KroModIx.PluginIndex`](https://github.com/KroModIx/KroModIx.PluginIndex). Send a PR to add your own.
 
 ## Roadmap
 
