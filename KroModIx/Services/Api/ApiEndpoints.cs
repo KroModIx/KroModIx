@@ -205,6 +205,22 @@ internal static class ApiEndpoints
             return Results.NoContent();
         });
 
+        app.MapGet("/badges", () =>
+        {
+            // Read-only Snapshot der aktuellen Update-Badges pro SteamAppId.
+            // Feed kommt aus GameUpdateBadgeService (Aggregat aller IUpdateNotifier-
+            // Plugins). Praktisch für Automatisierung: „gibt es ein Update
+            // für Farming Simulator 25?".
+            var svc = hostServices.GetRequiredService<Services.Plugins.GameUpdateBadgeService>();
+            var payload = svc.Pending.Select(kv => new
+            {
+                steamAppId = kv.Key,
+                pendingCount = kv.Value.PendingCount,
+                summary = kv.Value.Summary,
+            }).ToArray();
+            return Results.Text(JsonSerializer.Serialize(payload, Json), "application/json");
+        });
+
         app.MapPost("/events/badge", async (HttpContext ctx) =>
         {
             // Debug/Iteration: setzt einen Update-Badge auf einer Sidebar-Kachel.
