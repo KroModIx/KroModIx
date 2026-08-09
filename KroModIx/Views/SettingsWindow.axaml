@@ -178,12 +178,22 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowAnthropicSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding AnthropicEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
-                                        <ComboBox ItemsSource="{Binding AnthropicPresets}"
-                                                  SelectedItem="{Binding SelectedAnthropicPreset, Mode=TwoWay}"
-                                                  DisplayMemberBinding="{Binding Label}"
-                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
-                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Verfügbare Modelle (Presets + Live vom Anbieter)" Classes="section-label" Margin="0,6,0,0" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <ComboBox Grid.Column="0"
+                                                      ItemsSource="{Binding AnthropicModelOptions}"
+                                                      SelectedItem="{Binding SelectedAnthropicPreset, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                      HorizontalAlignment="Stretch" />
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
+                                                    Command="{Binding RefreshAnthropicModelsCommand}"
+                                                    ToolTip.Tip="Live-Modellliste vom Anbieter neu abfragen (GET /v1/models)" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding AnthropicModelsHint}"
+                                                   Classes="muted" FontSize="10"
+                                                   IsVisible="{Binding AnthropicModelsHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}"
                                                  PlaceholderText="z.B. claude-haiku-4-5" />
@@ -195,12 +205,22 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding OpenAiEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
-                                        <ComboBox ItemsSource="{Binding OpenAiPresets}"
-                                                  SelectedItem="{Binding SelectedOpenAiPreset, Mode=TwoWay}"
-                                                  DisplayMemberBinding="{Binding Label}"
-                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
-                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Verfügbare Modelle (Presets + Live vom Anbieter)" Classes="section-label" Margin="0,6,0,0" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <ComboBox Grid.Column="0"
+                                                      ItemsSource="{Binding OpenAiModelOptions}"
+                                                      SelectedItem="{Binding SelectedOpenAiPreset, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                      HorizontalAlignment="Stretch" />
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
+                                                    Command="{Binding RefreshOpenAiModelsCommand}"
+                                                    ToolTip.Tip="Live-Modellliste vom Anbieter neu abfragen (GET /v1/models)" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding OpenAiModelsHint}"
+                                                   Classes="muted" FontSize="10"
+                                                   IsVisible="{Binding OpenAiModelsHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}"
                                                  PlaceholderText="z.B. gpt-4o-mini" />
@@ -212,12 +232,22 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowGeminiSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding GeminiEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
-                                        <ComboBox ItemsSource="{Binding GeminiPresets}"
-                                                  SelectedItem="{Binding SelectedGeminiPreset, Mode=TwoWay}"
-                                                  DisplayMemberBinding="{Binding Label}"
-                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
-                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Verfügbare Modelle (Presets + Live vom Anbieter)" Classes="section-label" Margin="0,6,0,0" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <ComboBox Grid.Column="0"
+                                                      ItemsSource="{Binding GeminiModelOptions}"
+                                                      SelectedItem="{Binding SelectedGeminiPreset, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                      HorizontalAlignment="Stretch" />
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
+                                                    Command="{Binding RefreshGeminiModelsCommand}"
+                                                    ToolTip.Tip="Live-Modellliste vom Anbieter neu abfragen (GET /v1beta/models?key=…)" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding GeminiModelsHint}"
+                                                   Classes="muted" FontSize="10"
+                                                   IsVisible="{Binding GeminiModelsHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding GeminiModel, Mode=TwoWay}"
                                                  PlaceholderText="z.B. gemini-2.5-flash" />
@@ -229,12 +259,22 @@
                                     <StackPanel Spacing="8" IsVisible="{Binding ShowMistralSection}" Margin="0,8,0,0">
                                         <TextBlock Text="Endpoint" Classes="section-label" />
                                         <TextBox Text="{Binding MistralEndpoint, Mode=TwoWay}" />
-                                        <TextBlock Text="Empfohlene Modelle" Classes="section-label" Margin="0,6,0,0" />
-                                        <ComboBox ItemsSource="{Binding MistralPresets}"
-                                                  SelectedItem="{Binding SelectedMistralPreset, Mode=TwoWay}"
-                                                  DisplayMemberBinding="{Binding Label}"
-                                                  PlaceholderText="🔽  Modell aus der Liste wählen"
-                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="Verfügbare Modelle (Presets + Live vom Anbieter)" Classes="section-label" Margin="0,6,0,0" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <ComboBox Grid.Column="0"
+                                                      ItemsSource="{Binding MistralModelOptions}"
+                                                      SelectedItem="{Binding SelectedMistralPreset, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Label}"
+                                                      PlaceholderText="🔽  Modell aus der Liste wählen"
+                                                      HorizontalAlignment="Stretch" />
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
+                                                    Command="{Binding RefreshMistralModelsCommand}"
+                                                    ToolTip.Tip="Live-Modellliste vom Anbieter neu abfragen (GET /v1/models)" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding MistralModelsHint}"
+                                                   Classes="muted" FontSize="10"
+                                                   IsVisible="{Binding MistralModelsHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         <TextBlock Text="Aktives Modell (Freieingabe / Änderung)" Classes="section-label" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding MistralModel, Mode=TwoWay}"
                                                  PlaceholderText="z.B. mistral-medium-latest" />

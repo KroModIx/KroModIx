@@ -38,17 +38,38 @@ public sealed class AnthropicProvider : IAiProvider
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(!string.IsNullOrWhiteSpace(_apiKey));
 
-    /// <summary>Anthropic hat aktuell keinen öffentlichen "list models"-Endpoint,
-    /// daher liefern wir eine kuratierte Liste (Stand 2026-07 — bei Bedarf
-    /// aktualisieren).</summary>
-    public Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<string>>(
-        [
-            "claude-opus-4-7",
-            "claude-sonnet-4-6",
-            "claude-haiku-4-5",
-            "claude-3-7-sonnet-latest",
-        ]);
+    /// <summary>Fragt <c>GET /v1/models</c> ab (Anthropic hat diesen Endpoint
+    /// seit 2024). Bei Fehler (kein Key, Netz weg, 401) → leere Liste; die
+    /// UI kombiniert das mit den kuratierten Presets in
+    /// <see cref="CuratedCloudModels"/>.</summary>
+    public async Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return Array.Empty<string>();
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"{_endpoint}/models");
+            req.Headers.Add("x-api-key", _apiKey);
+            req.Headers.Add("anthropic-version", "2023-06-01");
+            using var res = await _http.SendAsync(req, cancellationToken);
+            if (!res.IsSuccessStatusCode) return Array.Empty<string>();
+            var body = await res.Content.ReadFromJsonAsync<AnthropicModelsResponse>(cancellationToken);
+            return body?.Data?.Select(m => m.Id).Where(id => !string.IsNullOrEmpty(id)).ToList()
+                ?? (IReadOnlyList<string>)Array.Empty<string>();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Anthropic-Modellliste ({ep}/models) nicht abrufbar", _endpoint);
+            return Array.Empty<string>();
+        }
+    }
+
+    private sealed record AnthropicModelsResponse(
+        [property: JsonPropertyName("data")] AnthropicModelEntry[]? Data);
+
+    private sealed record AnthropicModelEntry(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("display_name")] string? DisplayName);
 
     public async Task<IReadOnlyDictionary<string, string>> TranslateBatchAsync(
         IReadOnlyList<string> variableNames, string targetLanguage,

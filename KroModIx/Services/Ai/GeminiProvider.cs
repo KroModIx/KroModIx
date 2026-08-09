@@ -36,14 +36,48 @@ public sealed class GeminiProvider : IAiProvider
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(!string.IsNullOrWhiteSpace(_apiKey));
 
-    public Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<string>>(
-        [
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-2.5-pro",
-            "gemini-2.5-flash",
-        ]);
+    /// <summary>Fragt <c>GET /v1beta/models?key=&lt;apiKey&gt;</c> ab. Die Antwort
+    /// enthält Namen als <c>models/gemini-…</c> — wir strippen das
+    /// <c>models/</c>-Präfix damit die Namen zu unseren Presets passen.
+    /// Filtert Modelle die <c>generateContent</c> unterstützen (die anderen
+    /// z.B. Embeddings sind für uns irrelevant). Bei Fehler leere Liste →
+    /// UI kombiniert mit kuratierten Presets.</summary>
+    public async Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return Array.Empty<string>();
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"{_endpoint}/models?key={_apiKey}");
+            using var res = await _http.SendAsync(req, cancellationToken);
+            if (!res.IsSuccessStatusCode) return Array.Empty<string>();
+            var body = await res.Content.ReadFromJsonAsync<GeminiModelsResponse>(cancellationToken);
+            return body?.Models?
+                .Where(m => m.SupportedGenerationMethods?.Contains("generateContent") == true)
+                .Select(m => StripModelsPrefix(m.Name))
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList()
+                ?? (IReadOnlyList<string>)Array.Empty<string>();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Gemini-Modellliste ({ep}/models) nicht abrufbar", _endpoint);
+            return Array.Empty<string>();
+        }
+    }
+
+    private static string StripModelsPrefix(string? raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        return raw.StartsWith("models/", StringComparison.Ordinal) ? raw[7..] : raw;
+    }
+
+    private sealed record GeminiModelsResponse(
+        [property: JsonPropertyName("models")] GeminiModelEntry[]? Models);
+
+    private sealed record GeminiModelEntry(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("supportedGenerationMethods")] string[]? SupportedGenerationMethods);
 
     public async Task<IReadOnlyDictionary<string, string>> TranslateBatchAsync(
         IReadOnlyList<string> variableNames, string targetLanguage,

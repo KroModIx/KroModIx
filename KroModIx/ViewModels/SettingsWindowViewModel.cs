@@ -83,10 +83,21 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [ObservableProperty] private CuratedCloudModel? _selectedGeminiPreset;
     [ObservableProperty] private CuratedCloudModel? _selectedMistralPreset;
 
-    public IReadOnlyList<CuratedCloudModel> AnthropicPresets { get; } = CuratedCloudModels.For(AiProviderType.Anthropic);
-    public IReadOnlyList<CuratedCloudModel> OpenAiPresets { get; } = CuratedCloudModels.For(AiProviderType.OpenAi);
-    public IReadOnlyList<CuratedCloudModel> GeminiPresets { get; } = CuratedCloudModels.For(AiProviderType.Gemini);
-    public IReadOnlyList<CuratedCloudModel> MistralPresets { get; } = CuratedCloudModels.For(AiProviderType.Mistral);
+    /// <summary>Für die ComboBox: Union aus kuratierten Presets + live vom Provider
+    /// abgefragten Modellen (via <see cref="IAiProvider.ListModelsAsync"/>).
+    /// Beim Öffnen der Settings mit gesetztem API-Key wird die Live-Liste
+    /// automatisch nachgeladen und mit den Presets verschmolzen — Presets zeigen
+    /// ihr reiches Label („Claude Sonnet 4.6 — ausgewogen …"), Live-Modelle die
+    /// nicht in den Presets sind zeigen nur die ID (z.B. „claude-3-5-sonnet-20241022").</summary>
+    public ObservableCollection<CuratedCloudModel> AnthropicModelOptions { get; } = new();
+    public ObservableCollection<CuratedCloudModel> OpenAiModelOptions { get; } = new();
+    public ObservableCollection<CuratedCloudModel> GeminiModelOptions { get; } = new();
+    public ObservableCollection<CuratedCloudModel> MistralModelOptions { get; } = new();
+
+    [ObservableProperty] private string _anthropicModelsHint = "";
+    [ObservableProperty] private string _openAiModelsHint = "";
+    [ObservableProperty] private string _geminiModelsHint = "";
+    [ObservableProperty] private string _mistralModelsHint = "";
 
     /// <summary>Guard: unterdrückt die Copy-Handler beim programmatischen Sync
     /// (bei Load und wenn der User in der Model-TextBox tippt sollen die
@@ -192,16 +203,40 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         ApiPort = settings.Current.ApiPort <= 0 ? 5100 : settings.Current.ApiPort;
         ApiBearerToken = settings.Current.ApiBearerToken ?? "";
 
+        // Cloud-Model-Options mit kuratierten Presets initial füllen —
+        // Live-Modelle werden asynchron beim Öffnen bzw. Provider-Wechsel dazu-
+        // gemischt (siehe RefreshCloudModelsAsync).
+        PopulateInitial(AnthropicModelOptions, CuratedCloudModels.For(AiProviderType.Anthropic));
+        PopulateInitial(OpenAiModelOptions,    CuratedCloudModels.For(AiProviderType.OpenAi));
+        PopulateInitial(GeminiModelOptions,    CuratedCloudModels.For(AiProviderType.Gemini));
+        PopulateInitial(MistralModelOptions,   CuratedCloudModels.For(AiProviderType.Mistral));
+
         // Hardware asynchron im Hintergrund erkennen — blockiert das
         // Öffnen der Settings nicht (nvidia-smi kann bis zu 2s dauern).
         _ = DetectHardwareAndPopulateAsync();
 
-        // Wenn Ollama-Provider aktiv ist, gleich beim Öffnen die installierten
-        // Modelle abfragen. Silent bei Fehler (Ollama läuft nicht) — die
-        // AutoCompleteBox bleibt dann leer, User kann trotzdem tippen.
-        if (_ai.Current.Provider == AiProviderType.Ollama)
-            _ = LoadOllamaModelsSilentlyAsync();
+        // Provider-spezifisches Preload:
+        // - Ollama: /api/tags (still bei Fehler — kein API-Key nötig)
+        // - Cloud: /v1/models mit API-Key (still bei fehlendem Key)
+        _ = PreloadForActiveProviderAsync();
     }
+
+    private static void PopulateInitial(ObservableCollection<CuratedCloudModel> target,
+        IReadOnlyList<CuratedCloudModel> curated)
+    {
+        target.Clear();
+        foreach (var p in curated) target.Add(p);
+    }
+
+    private Task PreloadForActiveProviderAsync() => _ai.Current.Provider switch
+    {
+        AiProviderType.Ollama => LoadOllamaModelsSilentlyAsync(),
+        AiProviderType.Anthropic => RefreshCloudModelsAsync(AiProviderType.Anthropic),
+        AiProviderType.OpenAi => RefreshCloudModelsAsync(AiProviderType.OpenAi),
+        AiProviderType.Gemini => RefreshCloudModelsAsync(AiProviderType.Gemini),
+        AiProviderType.Mistral => RefreshCloudModelsAsync(AiProviderType.Mistral),
+        _ => Task.CompletedTask,
+    };
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)
     {
@@ -228,10 +263,129 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
 
     partial void OnSelectedAiProviderChanged(AiProviderOption? value)
     {
-        // Wenn User auf Ollama wechselt: gleich Modelle laden, damit die
-        // AutoCompleteBox nicht erst nach Manual-Klick auf 🔄 gefüllt wird.
-        if (value?.Type == AiProviderType.Ollama)
-            _ = LoadOllamaModelsSilentlyAsync();
+        if (value is null) return;
+        _ = value.Type switch
+        {
+            AiProviderType.Ollama => LoadOllamaModelsSilentlyAsync(),
+            AiProviderType.Anthropic => RefreshCloudModelsAsync(AiProviderType.Anthropic),
+            AiProviderType.OpenAi => RefreshCloudModelsAsync(AiProviderType.OpenAi),
+            AiProviderType.Gemini => RefreshCloudModelsAsync(AiProviderType.Gemini),
+            AiProviderType.Mistral => RefreshCloudModelsAsync(AiProviderType.Mistral),
+            _ => Task.CompletedTask,
+        };
+    }
+
+    [RelayCommand]
+    private Task RefreshAnthropicModels() => RefreshCloudModelsAsync(AiProviderType.Anthropic, userTriggered: true);
+    [RelayCommand]
+    private Task RefreshOpenAiModels() => RefreshCloudModelsAsync(AiProviderType.OpenAi, userTriggered: true);
+    [RelayCommand]
+    private Task RefreshGeminiModels() => RefreshCloudModelsAsync(AiProviderType.Gemini, userTriggered: true);
+    [RelayCommand]
+    private Task RefreshMistralModels() => RefreshCloudModelsAsync(AiProviderType.Mistral, userTriggered: true);
+
+    /// <summary>Fragt die Live-Modellliste per <see cref="IAiProvider.ListModelsAsync"/>
+    /// ab und mischt sie mit den kuratierten Presets in die richtige
+    /// <c>XxxModelOptions</c>-Collection. Kuratierte behalten ihr reiches Label;
+    /// Live-Modelle die nicht in den Presets sind kriegen nur die ID als Label.
+    /// Setzt den Hint-Text unter der ComboBox („5 Modelle vom Anbieter geladen"
+    /// oder „API-Key fehlt" bei stille Fehler).</summary>
+    private async Task RefreshCloudModelsAsync(AiProviderType provider, bool userTriggered = false)
+    {
+        var (options, hintSetter) = provider switch
+        {
+            AiProviderType.Anthropic => (AnthropicModelOptions, (Action<string>)(v => AnthropicModelsHint = v)),
+            AiProviderType.OpenAi    => (OpenAiModelOptions,    v => OpenAiModelsHint    = v),
+            AiProviderType.Gemini    => (GeminiModelOptions,    v => GeminiModelsHint    = v),
+            AiProviderType.Mistral   => (MistralModelOptions,   v => MistralModelsHint   = v),
+            _ => throw new ArgumentOutOfRangeException(nameof(provider)),
+        };
+        var curated = CuratedCloudModels.For(provider);
+
+        if (userTriggered) hintSetter("Modelle werden geladen …");
+
+        // Kein API-Key im aktuellen Buildable-Setting? Nur kuratierte Presets
+        // zeigen (die sind ja schon in options), kein Netzwerkaufruf.
+        var settings = BuildAiFromUi() with { Provider = provider };
+        var cfg = settings.Active;
+        if (string.IsNullOrWhiteSpace(cfg.ApiKey))
+        {
+            MergeInto(options, curated, liveModels: Array.Empty<string>());
+            hintSetter(userTriggered
+                ? "API-Key fehlt — Modell-Discovery vom Anbieter überspringen. Nur kuratierte Presets."
+                : "");
+            return;
+        }
+
+        try
+        {
+            var provInst = _aiFactory.Create(settings);
+            if (provInst is null)
+            {
+                hintSetter("Provider konnte nicht instanziert werden.");
+                return;
+            }
+            var live = await provInst.ListModelsAsync();
+            MergeInto(options, curated, live);
+            hintSetter(live.Count == 0
+                ? "Anbieter lieferte keine Modelle (Key ungültig oder Endpoint blockiert). Nur kuratierte Presets."
+                : $"{live.Count} Modelle vom Anbieter geladen + {curated.Count} kuratierte Presets.");
+        }
+        catch (Exception ex)
+        {
+            hintSetter($"✗ Fehler beim Abrufen: {ex.Message}. Nur kuratierte Presets.");
+        }
+        finally
+        {
+            // Nach Refresh die ComboBox-Selection nochmal auf das aktuell
+            // aktive Modell sync-en. Sonst zeigt sie Placeholder weil das
+            // Item durch den Clear/Refill neu instanziert wurde und die
+            // SelectedItem-Referenz nicht mehr identisch ist.
+            SyncCloudSelection(provider);
+        }
+    }
+
+    private void SyncCloudSelection(AiProviderType provider)
+    {
+        _suppressSelectedModelSync = true;
+        try
+        {
+            switch (provider)
+            {
+                case AiProviderType.Anthropic:
+                    SelectedAnthropicPreset = AnthropicModelOptions.FirstOrDefault(p => p.Name == AnthropicModel);
+                    break;
+                case AiProviderType.OpenAi:
+                    SelectedOpenAiPreset = OpenAiModelOptions.FirstOrDefault(p => p.Name == OpenAiModel);
+                    break;
+                case AiProviderType.Gemini:
+                    SelectedGeminiPreset = GeminiModelOptions.FirstOrDefault(p => p.Name == GeminiModel);
+                    break;
+                case AiProviderType.Mistral:
+                    SelectedMistralPreset = MistralModelOptions.FirstOrDefault(p => p.Name == MistralModel);
+                    break;
+            }
+        }
+        finally { _suppressSelectedModelSync = false; }
+    }
+
+    private static void MergeInto(
+        ObservableCollection<CuratedCloudModel> target,
+        IReadOnlyList<CuratedCloudModel> curated,
+        IReadOnlyList<string> liveModels)
+    {
+        target.Clear();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Kuratierte zuerst (mit reichem Label)
+        foreach (var c in curated)
+        {
+            if (seen.Add(c.Name)) target.Add(c);
+        }
+        // Live-Modelle die noch nicht drin sind — Label = ID
+        foreach (var id in liveModels.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            if (seen.Add(id)) target.Add(new CuratedCloudModel(id, id));
+        }
     }
 
     private void LoadAiIntoUi(AiSettings s)
@@ -254,10 +408,10 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         _suppressSelectedModelSync = true;
         try
         {
-            SelectedAnthropicPreset = AnthropicPresets.FirstOrDefault(p => p.Name == s.Anthropic.Model);
-            SelectedOpenAiPreset    = OpenAiPresets.FirstOrDefault(p => p.Name == s.OpenAi.Model);
-            SelectedGeminiPreset    = GeminiPresets.FirstOrDefault(p => p.Name == s.Gemini.Model);
-            SelectedMistralPreset   = MistralPresets.FirstOrDefault(p => p.Name == s.Mistral.Model);
+            SelectedAnthropicPreset = AnthropicModelOptions.FirstOrDefault(p => p.Name == s.Anthropic.Model);
+            SelectedOpenAiPreset    = OpenAiModelOptions.FirstOrDefault(p => p.Name == s.OpenAi.Model);
+            SelectedGeminiPreset    = GeminiModelOptions.FirstOrDefault(p => p.Name == s.Gemini.Model);
+            SelectedMistralPreset   = MistralModelOptions.FirstOrDefault(p => p.Name == s.Mistral.Model);
         }
         finally { _suppressSelectedModelSync = false; }
     }
