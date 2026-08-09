@@ -92,6 +92,13 @@ internal sealed class HostUiActions
             // markiert (die Base-Klasse „schluckt" sie).
             switch (control)
             {
+                case TabItem tab:
+                    // Tab aktivieren = SelectedItem des umgebenden TabControl setzen.
+                    // Bindung an IsSelected zieht nicht immer sauber, wenn andere Items
+                    // dynamisch geändert werden — direkter Weg ist der TabControl-Parent.
+                    if (tab.Parent is TabControl tc) tc.SelectedItem = tab;
+                    else tab.IsSelected = true;
+                    return ClickResult.Ok;
                 case CheckBox cb:
                     cb.IsChecked = !(cb.IsChecked ?? false);
                     return ClickResult.Ok;

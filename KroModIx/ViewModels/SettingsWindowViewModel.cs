@@ -62,6 +62,11 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [ObservableProperty] private AiProviderPreset? _selectedOpenAiCompatiblePreset;
     [ObservableProperty] private string _aiStatus = "";
 
+    /// <summary>Kurze Zusatzinfo unter der Modell-Combobox („X installiert" /
+    /// „Ollama nicht erreichbar" / „Noch nicht geprüft"). Ersetzt den früheren
+    /// generischen AiStatus-Text für diese Zeile.</summary>
+    [ObservableProperty] private string _installedModelsHint = "Noch nicht geprüft — klick 🔄 oder wähle Ollama, dann wird beim Öffnen automatisch geladen.";
+
     // Hardware + Modell-Empfehlungen
     [ObservableProperty] private string _detectedHardwareLabel = "wird erkannt …";
     [ObservableProperty] private VramOption? _selectedVramOption;
@@ -138,6 +143,12 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         // Hardware asynchron im Hintergrund erkennen — blockiert das
         // Öffnen der Settings nicht (nvidia-smi kann bis zu 2s dauern).
         _ = DetectHardwareAndPopulateAsync();
+
+        // Wenn Ollama-Provider aktiv ist, gleich beim Öffnen die installierten
+        // Modelle abfragen. Silent bei Fehler (Ollama läuft nicht) — die
+        // AutoCompleteBox bleibt dann leer, User kann trotzdem tippen.
+        if (_ai.Current.Provider == AiProviderType.Ollama)
+            _ = LoadOllamaModelsSilentlyAsync();
     }
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)
@@ -161,6 +172,14 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         if (value is null) return;
         IsVramOverride = value.VramGb is not null;
         _ = PopulateRecommendationsAsync();
+    }
+
+    partial void OnSelectedAiProviderChanged(AiProviderOption? value)
+    {
+        // Wenn User auf Ollama wechselt: gleich Modelle laden, damit die
+        // AutoCompleteBox nicht erst nach Manual-Klick auf 🔄 gefüllt wird.
+        if (value?.Type == AiProviderType.Ollama)
+            _ = LoadOllamaModelsSilentlyAsync();
     }
 
     private void LoadAiIntoUi(AiSettings s)
@@ -242,23 +261,67 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task LoadOllamaModelsAsync()
     {
+        InstalledModelsHint = "Lade installierte Modelle …";
         AiStatus = "Ollama-Modelle werden geladen …";
+        var ok = await FetchOllamaModelsAsync().ConfigureAwait(true);
+        if (ok is null)
+        {
+            InstalledModelsHint = "✗ Ollama nicht erreichbar (Endpoint prüfen — läuft `ollama serve`?)";
+            AiStatus = InstalledModelsHint;
+            return;
+        }
+        InstalledModelsHint = ok.Value == 0
+            ? "Keine Modelle installiert — unten aus den Empfehlungen eines herunterladen."
+            : $"{ok.Value} installierte Modelle in der Liste — direkt aus dem Dropdown wählen.";
+        AiStatus = "";
+    }
+
+    /// <summary>Auto-Preload beim Öffnen bzw. Provider-Wechsel. Setzt nur den
+    /// Hint-Text und schluckt Fehler still (Ollama nicht gestartet → leere
+    /// Liste, aber kein rotes „Fehler"). Der User kann trotzdem via 🔄 manuell
+    /// nachladen und sieht dort die klare Fehlermeldung.</summary>
+    private async Task LoadOllamaModelsSilentlyAsync()
+    {
+        var ok = await FetchOllamaModelsAsync().ConfigureAwait(true);
+        InstalledModelsHint = ok switch
+        {
+            null => "Ollama nicht erreichbar — Endpoint prüfen oder 🔄 klicken für Details.",
+            0 => "Keine installierten Modelle gefunden — unten aus den Empfehlungen eines herunterladen.",
+            _ => $"{ok.Value} installierte Modelle im Dropdown verfügbar.",
+        };
+    }
+
+    /// <summary>Ruft <c>/api/tags</c> ab, aktualisiert
+    /// <see cref="InstalledOllamaModels"/> + `IsInstalled`-Flags in der
+    /// Empfehlungs-Liste. Liefert Anzahl gefundener Modelle oder null bei Fehler.</summary>
+    private async Task<int?> FetchOllamaModelsAsync()
+    {
         try
         {
             var provider = _aiFactory.Create(BuildAiFromUi());
-            if (provider is null) { AiStatus = "✗ Kein Provider."; return; }
+            if (provider is null) return null;
             var models = await provider.ListModelsAsync();
             InstalledOllamaModels.Clear();
             foreach (var m in models.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                 InstalledOllamaModels.Add(m);
-            // Empfehlungs-Liste refreshen — IsInstalled-Flags neu setzen.
             foreach (var row in RecommendedOllamaModels)
                 row.IsInstalled = models.Any(im => string.Equals(im, row.ModelName, StringComparison.OrdinalIgnoreCase));
-            AiStatus = models.Count == 0
-                ? "Keine Modelle installiert. Aus der Liste unten eines herunterladen."
-                : $"{models.Count} Ollama-Modelle installiert.";
+            return models.Count;
         }
-        catch (Exception ex) { AiStatus = $"✗ Fehler: {ex.Message}"; }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Setzt das gegebene Modell als aktives — genutzt vom
+    /// „🔘 Aktivieren"-Button in den Empfehlungs-Karten (nur für installierte).</summary>
+    [RelayCommand]
+    private void ActivateOllamaModel(string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName)) return;
+        OllamaModel = modelName;
+        AiStatus = $"'{modelName}' als aktives Modell gesetzt — nicht vergessen zu speichern.";
     }
 
     private async Task DetectHardwareAndPopulateAsync()

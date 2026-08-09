@@ -6,254 +6,292 @@
         xmlns:vm="using:KroModIx.ViewModels"
         x:Class="KroModIx.Views.SettingsWindow"
         x:DataType="vm:SettingsWindowViewModel"
-        Width="620" Height="720" MinWidth="560" MinHeight="520"
+        Width="680" Height="760" MinWidth="600" MinHeight="560"
         WindowStartupLocation="CenterOwner"
         Title="{loc:Tr Window_Settings}"
         Background="{DynamicResource KrosteBackgroundBrush}">
     <DockPanel>
         <controls:TitleBar DockPanel.Dock="Top" Title="{loc:Tr Window_Settings}" />
 
-        <ScrollViewer>
-            <Border Padding="24">
-                <StackPanel Spacing="18">
+        <TabControl Name="SettingsTabs" TabStripPlacement="Top" Padding="0" Background="Transparent">
 
-                    <!-- UI-Sprache -->
-                    <TextBlock Text="{loc:Tr Settings_Section_UiLanguage}" Classes="section-label" />
-                    <Border Classes="card">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="{loc:Tr Settings_UiLanguage}" Classes="h2" FontSize="13" />
-                            <ComboBox ItemsSource="{Binding Languages}"
-                                      SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
-                                      DisplayMemberBinding="{Binding DisplayLabel}"
-                                      HorizontalAlignment="Stretch" />
-                            <TextBlock Text="{loc:Tr Settings_UiLanguage_Hint}"
-                                       Classes="muted" FontSize="11" TextWrapping="Wrap" />
+            <!-- Tab 1: Allgemein (Sprache) -->
+            <TabItem Name="SettingsTabGeneral" Header="🌐  Allgemein">
+                <ScrollViewer>
+                    <Border Padding="24">
+                        <StackPanel Spacing="18">
+                            <TextBlock Text="{loc:Tr Settings_Section_UiLanguage}" Classes="section-label" />
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="{loc:Tr Settings_UiLanguage}" Classes="h2" FontSize="13" />
+                                    <ComboBox ItemsSource="{Binding Languages}"
+                                              SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding DisplayLabel}"
+                                              HorizontalAlignment="Stretch" />
+                                    <TextBlock Text="{loc:Tr Settings_UiLanguage_Hint}"
+                                               Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
+                </ScrollViewer>
+            </TabItem>
 
-                    <!-- KI-Provider (zentral für alle Plugins) -->
-                    <TextBlock Text="KI-INTEGRATION" Classes="section-label" Margin="0,8,0,0" />
-                    <Border Classes="card">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="KI-Anbieter" Classes="h2" FontSize="13" />
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
-                                       Text="Zentral konfiguriert für alle Plugins. Ollama ist der lokale, datenschutzfreundliche Default. Cloud-Provider brauchen einen API-Key." />
+            <!-- Tab 2: KI -->
+            <TabItem Name="SettingsTabAi" Header="🤖  KI">
+                <ScrollViewer>
+                    <Border Padding="24">
+                        <StackPanel Spacing="14">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="KI-Anbieter" Classes="h2" FontSize="13" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Zentral konfiguriert für alle Plugins. Ollama ist der lokale, datenschutzfreundliche Default. Cloud-Provider brauchen einen API-Key." />
 
-                            <TextBlock Text="Anbieter" Classes="section-label" Margin="0,4,0,0" />
-                            <ComboBox ItemsSource="{Binding AiProviders}"
-                                      SelectedItem="{Binding SelectedAiProvider, Mode=TwoWay}"
-                                      DisplayMemberBinding="{Binding DisplayLabel}"
-                                      HorizontalAlignment="Stretch" />
+                                    <TextBlock Text="Anbieter" Classes="section-label" Margin="0,4,0,0" />
+                                    <ComboBox ItemsSource="{Binding AiProviders}"
+                                              SelectedItem="{Binding SelectedAiProvider, Mode=TwoWay}"
+                                              DisplayMemberBinding="{Binding DisplayLabel}"
+                                              HorizontalAlignment="Stretch" />
 
-                            <!-- Ollama-Sektion -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowOllamaSection}"
-                                        Margin="0,8,0,0">
-                                <TextBlock Text="Endpoint" Classes="section-label" />
-                                <TextBox Text="{Binding OllamaEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Aktives Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OllamaModel, Mode=TwoWay}"
-                                         ToolTip.Tip="Der Name eines installierten Modells, z.B. llama3.1:8b" />
+                                    <!-- Ollama-Sektion -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowOllamaSection}"
+                                                Margin="0,8,0,0">
+                                        <TextBlock Text="Endpoint" Classes="section-label" />
+                                        <TextBox Text="{Binding OllamaEndpoint, Mode=TwoWay}" />
 
-                                <!-- Hardware-Detection + Empfehlungen -->
-                                <Border BorderBrush="{DynamicResource KrosteBorderBrush}"
-                                        BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="MODELL-EMPFEHLUNGEN" Classes="section-label" />
-                                        <TextBlock Text="{Binding DetectedHardwareLabel}"
-                                                   Classes="muted" FontSize="12" />
-
-                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="VRAM:" VerticalAlignment="Center"
-                                                       Classes="muted" FontSize="12" />
-                                            <ComboBox Grid.Column="1"
-                                                      ItemsSource="{Binding VramOptions}"
-                                                      SelectedItem="{Binding SelectedVramOption, Mode=TwoWay}"
-                                                      DisplayMemberBinding="{Binding DisplayLabel}"
-                                                      HorizontalAlignment="Stretch" />
-                                        </Grid>
-
-                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                            <Button Name="LoadOllamaModelsButton"
-                                                    Content="🔄  Installierte Modelle prüfen"
+                                        <TextBlock Text="Aktives Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <!-- AutoCompleteBox: Dropdown mit installierten Modellen +
+                                                 freie Texteingabe (für Modelle die noch nicht via /api/tags
+                                                 zurückkamen, z.B. gerade gepullte). -->
+                                            <AutoCompleteBox Name="OllamaModelBox"
+                                                             Grid.Column="0"
+                                                             ItemsSource="{Binding InstalledOllamaModels}"
+                                                             Text="{Binding OllamaModel, Mode=TwoWay}"
+                                                             FilterMode="ContainsOrdinal"
+                                                             MinimumPrefixLength="0"
+                                                             PlaceholderText="z.B. llama3.1:8b — oder aus Liste wählen"
+                                                             HorizontalAlignment="Stretch" />
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
                                                     Command="{Binding LoadOllamaModelsCommand}"
-                                                    ToolTip.Tip="Fragt /api/tags ab und markiert bereits installierte Modelle in der Liste." />
-                                        </StackPanel>
+                                                    ToolTip.Tip="Installierte Modelle neu abfragen (Ollama /api/tags)" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding InstalledModelsHint}"
+                                                   Classes="muted" FontSize="10" />
 
-                                        <ItemsControl ItemsSource="{Binding RecommendedOllamaModels}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:OllamaModelRowViewModel">
-                                                    <Border Classes="card-flat" Padding="12,10"
-                                                            Margin="0,4,0,0">
-                                                        <StackPanel Spacing="4">
-                                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
-                                                                <StackPanel Grid.Column="0" Spacing="2">
-                                                                    <TextBlock Text="{Binding ModelName}"
-                                                                               FontWeight="SemiBold" />
-                                                                    <TextBlock Text="{Binding Description}"
-                                                                               Classes="muted" FontSize="11"
-                                                                               TextWrapping="Wrap" />
-                                                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                                                        <TextBlock Text="{Binding ApproxSize}"
-                                                                                   Classes="muted" FontSize="10" />
-                                                                        <TextBlock Text="·" Classes="muted" FontSize="10" />
-                                                                        <TextBlock Text="{Binding VramRangeLabel}"
+                                        <!-- Hardware-Detection + Empfehlungen -->
+                                        <Border BorderBrush="{DynamicResource KrosteBorderBrush}"
+                                                BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="MODELL-EMPFEHLUNGEN" Classes="section-label" />
+                                                <TextBlock Text="{Binding DetectedHardwareLabel}"
+                                                           Classes="muted" FontSize="12" />
+
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                    <TextBlock Grid.Column="0" Text="VRAM:" VerticalAlignment="Center"
+                                                               Classes="muted" FontSize="12" />
+                                                    <ComboBox Grid.Column="1"
+                                                              ItemsSource="{Binding VramOptions}"
+                                                              SelectedItem="{Binding SelectedVramOption, Mode=TwoWay}"
+                                                              DisplayMemberBinding="{Binding DisplayLabel}"
+                                                              HorizontalAlignment="Stretch" />
+                                                </Grid>
+
+                                                <ItemsControl ItemsSource="{Binding RecommendedOllamaModels}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:OllamaModelRowViewModel">
+                                                            <Border Classes="card-flat" Padding="12,10"
+                                                                    Margin="0,4,0,0">
+                                                                <StackPanel Spacing="4">
+                                                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                                                        <StackPanel Grid.Column="0" Spacing="2">
+                                                                            <TextBlock Text="{Binding ModelName}"
+                                                                                       FontWeight="SemiBold" />
+                                                                            <TextBlock Text="{Binding Description}"
+                                                                                       Classes="muted" FontSize="11"
+                                                                                       TextWrapping="Wrap" />
+                                                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                                                <TextBlock Text="{Binding ApproxSize}"
+                                                                                           Classes="muted" FontSize="10" />
+                                                                                <TextBlock Text="·" Classes="muted" FontSize="10" />
+                                                                                <TextBlock Text="{Binding VramRangeLabel}"
+                                                                                           Classes="muted" FontSize="10" />
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                        <!-- Installiert-Badge -->
+                                                                        <TextBlock Grid.Column="1"
+                                                                                   Text="✓"
+                                                                                   FontSize="20"
+                                                                                   Foreground="{DynamicResource KrosteAccentBrush}"
+                                                                                   VerticalAlignment="Center"
+                                                                                   IsVisible="{Binding IsInstalled}"
+                                                                                   ToolTip.Tip="Bereits installiert" />
+                                                                        <!-- Aktivieren: setzt OllamaModel auf diese Zeile.
+                                                                             Nur bei installierten Modellen sinnvoll. -->
+                                                                        <Button Grid.Column="2"
+                                                                                Content="🔘  Aktivieren"
+                                                                                Command="{Binding $parent[views:ChromeWindow].((vm:SettingsWindowViewModel)DataContext).ActivateOllamaModelCommand}"
+                                                                                CommandParameter="{Binding ModelName}"
+                                                                                IsVisible="{Binding IsInstalled}"
+                                                                                VerticalAlignment="Center"
+                                                                                ToolTip.Tip="Dieses Modell im 'Aktives Modell'-Feld setzen (dann speichern)" />
+                                                                        <Button Grid.Column="3"
+                                                                                Content="⬇  Download"
+                                                                                Command="{Binding DownloadCommand}"
+                                                                                IsVisible="{Binding CanDownload}"
+                                                                                VerticalAlignment="Center" />
+                                                                        <Button Grid.Column="3"
+                                                                                Content="✕  Abbrechen"
+                                                                                Command="{Binding CancelCommand}"
+                                                                                IsVisible="{Binding IsDownloading}"
+                                                                                VerticalAlignment="Center" />
+                                                                    </Grid>
+                                                                    <StackPanel IsVisible="{Binding HasProgress}"
+                                                                                Spacing="2" Margin="0,4,0,0">
+                                                                        <ProgressBar Minimum="0" Maximum="1"
+                                                                                     Value="{Binding Fraction, FallbackValue=0}"
+                                                                                     IsIndeterminate="{Binding !HasFraction}"
+                                                                                     Height="6" />
+                                                                        <TextBlock Text="{Binding StatusText}"
                                                                                    Classes="muted" FontSize="10" />
                                                                     </StackPanel>
+                                                                    <TextBlock Text="{Binding StatusText}"
+                                                                               Classes="muted" FontSize="10"
+                                                                               IsVisible="{Binding !IsDownloading}" />
                                                                 </StackPanel>
-                                                                <TextBlock Grid.Column="1"
-                                                                           Text="✓"
-                                                                           FontSize="20"
-                                                                           Foreground="{DynamicResource KrosteAccentBrush}"
-                                                                           VerticalAlignment="Center"
-                                                                           IsVisible="{Binding IsInstalled}" />
-                                                                <Button Grid.Column="2"
-                                                                        Content="⬇  Download"
-                                                                        Command="{Binding DownloadCommand}"
-                                                                        IsVisible="{Binding CanDownload}"
-                                                                        VerticalAlignment="Center" />
-                                                                <Button Grid.Column="2"
-                                                                        Content="✕  Abbrechen"
-                                                                        Command="{Binding CancelCommand}"
-                                                                        IsVisible="{Binding IsDownloading}"
-                                                                        VerticalAlignment="Center" />
-                                                            </Grid>
-                                                            <StackPanel IsVisible="{Binding HasProgress}"
-                                                                        Spacing="2" Margin="0,4,0,0">
-                                                                <ProgressBar Minimum="0" Maximum="1"
-                                                                             Value="{Binding Fraction, FallbackValue=0}"
-                                                                             IsIndeterminate="{Binding !HasFraction}"
-                                                                             Height="6" />
-                                                                <TextBlock Text="{Binding StatusText}"
-                                                                           Classes="muted" FontSize="10" />
-                                                            </StackPanel>
-                                                            <TextBlock Text="{Binding StatusText}"
-                                                                       Classes="muted" FontSize="10"
-                                                                       IsVisible="{Binding !IsDownloading}" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
-                                </Border>
-                            </StackPanel>
 
-                            <!-- Anthropic -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowAnthropicSection}" Margin="0,8,0,0">
-                                <TextBlock Text="Endpoint" Classes="section-label" />
-                                <TextBox Text="{Binding AnthropicEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}" />
-                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" />
-                            </StackPanel>
+                                    <!-- Anthropic -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowAnthropicSection}" Margin="0,8,0,0">
+                                        <TextBlock Text="Endpoint" Classes="section-label" />
+                                        <TextBox Text="{Binding AnthropicEndpoint, Mode=TwoWay}" />
+                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding AnthropicModel, Mode=TwoWay}" />
+                                        <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding AnthropicApiKey, Mode=TwoWay}" PasswordChar="•" />
+                                    </StackPanel>
 
-                            <!-- OpenAI -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiSection}" Margin="0,8,0,0">
-                                <TextBlock Text="Endpoint" Classes="section-label" />
-                                <TextBox Text="{Binding OpenAiEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}" />
-                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OpenAiApiKey, Mode=TwoWay}" PasswordChar="•" />
-                            </StackPanel>
+                                    <!-- OpenAI -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiSection}" Margin="0,8,0,0">
+                                        <TextBlock Text="Endpoint" Classes="section-label" />
+                                        <TextBox Text="{Binding OpenAiEndpoint, Mode=TwoWay}" />
+                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiModel, Mode=TwoWay}" />
+                                        <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiApiKey, Mode=TwoWay}" PasswordChar="•" />
+                                    </StackPanel>
 
-                            <!-- Gemini -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowGeminiSection}" Margin="0,8,0,0">
-                                <TextBlock Text="Endpoint" Classes="section-label" />
-                                <TextBox Text="{Binding GeminiEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding GeminiModel, Mode=TwoWay}" />
-                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding GeminiApiKey, Mode=TwoWay}" PasswordChar="•" />
-                            </StackPanel>
+                                    <!-- Gemini -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowGeminiSection}" Margin="0,8,0,0">
+                                        <TextBlock Text="Endpoint" Classes="section-label" />
+                                        <TextBox Text="{Binding GeminiEndpoint, Mode=TwoWay}" />
+                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding GeminiModel, Mode=TwoWay}" />
+                                        <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding GeminiApiKey, Mode=TwoWay}" PasswordChar="•" />
+                                    </StackPanel>
 
-                            <!-- Mistral -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowMistralSection}" Margin="0,8,0,0">
-                                <TextBlock Text="Endpoint" Classes="section-label" />
-                                <TextBox Text="{Binding MistralEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding MistralModel, Mode=TwoWay}" />
-                                <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding MistralApiKey, Mode=TwoWay}" PasswordChar="•" />
-                            </StackPanel>
+                                    <!-- Mistral -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowMistralSection}" Margin="0,8,0,0">
+                                        <TextBlock Text="Endpoint" Classes="section-label" />
+                                        <TextBox Text="{Binding MistralEndpoint, Mode=TwoWay}" />
+                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding MistralModel, Mode=TwoWay}" />
+                                        <TextBlock Text="API-Key" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding MistralApiKey, Mode=TwoWay}" PasswordChar="•" />
+                                    </StackPanel>
 
-                            <!-- OpenAI-kompatibel -->
-                            <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiCompatibleSection}" Margin="0,8,0,0">
-                                <TextBlock Text="Preset" Classes="section-label" />
-                                <ComboBox ItemsSource="{Binding OpenAiCompatiblePresets}"
-                                          SelectedItem="{Binding SelectedOpenAiCompatiblePreset, Mode=TwoWay}"
-                                          DisplayMemberBinding="{Binding DisplayName}"
-                                          HorizontalAlignment="Stretch" />
-                                <TextBlock Text="{Binding SelectedOpenAiCompatiblePreset.HelpText}"
-                                           Classes="muted" FontSize="11" TextWrapping="Wrap" />
-                                <TextBlock Text="Endpoint" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OpenAiCompatibleEndpoint, Mode=TwoWay}" />
-                                <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OpenAiCompatibleModel, Mode=TwoWay}" />
-                                <TextBlock Text="API-Key (optional bei lokalen Servern)" Classes="section-label" Margin="0,6,0,0" />
-                                <TextBox Text="{Binding OpenAiCompatibleApiKey, Mode=TwoWay}" PasswordChar="•" />
-                            </StackPanel>
+                                    <!-- OpenAI-kompatibel -->
+                                    <StackPanel Spacing="8" IsVisible="{Binding ShowOpenAiCompatibleSection}" Margin="0,8,0,0">
+                                        <TextBlock Text="Preset" Classes="section-label" />
+                                        <ComboBox ItemsSource="{Binding OpenAiCompatiblePresets}"
+                                                  SelectedItem="{Binding SelectedOpenAiCompatiblePreset, Mode=TwoWay}"
+                                                  DisplayMemberBinding="{Binding DisplayName}"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="{Binding SelectedOpenAiCompatiblePreset.HelpText}"
+                                                   Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="Endpoint" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiCompatibleEndpoint, Mode=TwoWay}" />
+                                        <TextBlock Text="Modell" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiCompatibleModel, Mode=TwoWay}" />
+                                        <TextBlock Text="API-Key (optional bei lokalen Servern)" Classes="section-label" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding OpenAiCompatibleApiKey, Mode=TwoWay}" PasswordChar="•" />
+                                    </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                                <Button Classes="accent" Content="💾  Speichern"
-                                        Command="{Binding SaveAiCommand}" />
-                                <Button Content="🔌  Verbindung testen"
-                                        Command="{Binding TestAiConnectionCommand}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding AiStatus}" TextWrapping="Wrap"
-                                       Classes="secondary" Margin="0,4,0,0" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                                        <Button Classes="accent" Content="💾  Speichern"
+                                                Command="{Binding SaveAiCommand}" />
+                                        <Button Content="🔌  Verbindung testen"
+                                                Command="{Binding TestAiConnectionCommand}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding AiStatus}" TextWrapping="Wrap"
+                                               Classes="secondary" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
+                </ScrollViewer>
+            </TabItem>
 
-                    <!-- REST-API. Localhost-only, Bearer-Token in settings.json.
-                         CLI-Args api-port/api-token überschreiben diese
-                         Einstellungen zur Laufzeit (nützlich für Screenshot-driven
-                         Iteration). -->
-                    <TextBlock Text="REST-API" Classes="section-label" Margin="0,8,0,0" />
-                    <Border Classes="card">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="Steuer-API (Localhost)" Classes="h2" FontSize="13" />
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
-                                       Text="Für Automatisierung und Selbst-Iteration. Bindung nur an 127.0.0.1, per Bearer-Token geschützt. Ohne Token = jede Anfrage 403. Änderungen greifen erst nach App-Neustart." />
+            <!-- Tab 3: API -->
+            <TabItem Name="SettingsTabApi" Header="🔌  REST-API">
+                <ScrollViewer>
+                    <Border Padding="24">
+                        <StackPanel Spacing="14">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Steuer-API (Localhost)" Classes="h2" FontSize="13" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Für Automatisierung und Selbst-Iteration. Bindung nur an 127.0.0.1, per Bearer-Token geschützt. Ohne Token = jede Anfrage 403. Änderungen greifen erst nach App-Neustart." />
 
-                            <CheckBox Name="ApiEnabledCheckBox"
-                                      Content="REST-API beim Start aktivieren"
-                                      IsChecked="{Binding ApiEnabled, Mode=TwoWay}" />
+                                    <CheckBox Name="ApiEnabledCheckBox"
+                                              Content="REST-API beim Start aktivieren"
+                                              IsChecked="{Binding ApiEnabled, Mode=TwoWay}" />
 
-                            <TextBlock Text="Port (127.0.0.1)" Classes="section-label" Margin="0,4,0,0" />
-                            <NumericUpDown Name="ApiPortInput"
-                                           Value="{Binding ApiPort, Mode=TwoWay}"
-                                           Minimum="1024" Maximum="65535"
-                                           Increment="1"
-                                           FormatString="0"
-                                           HorizontalAlignment="Left"
-                                           MinWidth="140" />
+                                    <TextBlock Text="Port (127.0.0.1)" Classes="section-label" Margin="0,4,0,0" />
+                                    <NumericUpDown Name="ApiPortInput"
+                                                   Value="{Binding ApiPort, Mode=TwoWay}"
+                                                   Minimum="1024" Maximum="65535"
+                                                   Increment="1"
+                                                   FormatString="0"
+                                                   HorizontalAlignment="Left"
+                                                   MinWidth="140" />
 
-                            <TextBlock Text="Bearer-Token" Classes="section-label" Margin="0,6,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                <TextBox Name="ApiTokenInput"
-                                         Grid.Column="0"
-                                         Text="{Binding ApiBearerToken, Mode=TwoWay}"
-                                         PasswordChar="•" />
-                                <Button Name="GenerateApiTokenButton"
-                                        Grid.Column="1"
-                                        Content="🎲 Generieren"
-                                        Command="{Binding GenerateApiTokenCommand}"
-                                        ToolTip.Tip="Zufälliges 256-Bit-Token erzeugen (Base64Url, 43 Zeichen)" />
-                            </Grid>
+                                    <TextBlock Text="Bearer-Token" Classes="section-label" Margin="0,6,0,0" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBox Name="ApiTokenInput"
+                                                 Grid.Column="0"
+                                                 Text="{Binding ApiBearerToken, Mode=TwoWay}"
+                                                 PasswordChar="•" />
+                                        <Button Name="GenerateApiTokenButton"
+                                                Grid.Column="1"
+                                                Content="🎲 Generieren"
+                                                Command="{Binding GenerateApiTokenCommand}"
+                                                ToolTip.Tip="Zufälliges 256-Bit-Token erzeugen (Base64Url, 43 Zeichen)" />
+                                    </Grid>
 
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                                <Button Name="SaveApiButton"
-                                        Classes="accent" Content="💾  API-Einstellungen speichern"
-                                        Command="{Binding SaveApiCommand}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding ApiStatus}" TextWrapping="Wrap"
-                                       Classes="secondary" Margin="0,4,0,0" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                                        <Button Name="SaveApiButton"
+                                                Classes="accent" Content="💾  API-Einstellungen speichern"
+                                                Command="{Binding SaveApiCommand}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ApiStatus}" TextWrapping="Wrap"
+                                               Classes="secondary" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
-                </StackPanel>
-            </Border>
-        </ScrollViewer>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
     </DockPanel>
 </views:ChromeWindow>
