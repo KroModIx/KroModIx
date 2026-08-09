@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
+using KroModIx.Plugin.Contracts;
 using KroModIx.Services.Games;
 using KroModIx.Services.Plugins;
 using KroModIx.ViewModels;
@@ -54,7 +55,7 @@ internal static class ApiEndpoints
                     id = l.Manifest.Id,
                     version = l.Manifest.Version,
                     displayName = l.Manifest.DisplayName,
-                    supportsHostApiExtender = false,
+                    supportsHostApiExtender = l.Plugin is IHostApiExtender,
                 }).ToArray(),
                 mainWindow = win is null ? null : new
                 {
@@ -224,18 +225,145 @@ internal static class ApiEndpoints
 
         app.MapGet("/plugins", () =>
         {
-            // Bis IHostApiExtender (Contracts v1.1.0) existiert bleibt das leer.
-            // Der Endpoint existiert jetzt schon, damit Clients nicht zwischen
-            // „Plugin-Extension noch nicht deployed" und „Endpoint fehlt" raten müssen.
-            return Results.Json(Array.Empty<object>(), contentType: "application/json");
+            // Discovery: aggregiert alle Endpoints aus IHostApiExtender-Plugins.
+            // Wird bei jedem Request neu abgefragt — damit Live-Aktivierung
+            // (M4 Install-Karte) neue Plugin-Routen sofort sichtbar sind.
+            var activator = hostServices.GetRequiredService<PluginActivator>();
+            var list = new List<object>();
+            foreach (var (pluginId, ep) in EnumerateExtenderEndpoints(activator))
+            {
+                list.Add(new
+                {
+                    pluginId,
+                    method = ep.HttpMethod.ToUpperInvariant(),
+                    path = $"/plugins/{pluginId}/{ep.RelativePath.TrimStart('/')}",
+                    summary = ep.Summary,
+                });
+            }
+            return Results.Text(JsonSerializer.Serialize(list, Json), "application/json");
         });
 
-        // Fallback für /plugins/{...}-Requests solange IHostApiExtender fehlt.
-        app.MapMethods("/plugins/{**catchall}",
+        // Catch-all Dispatch. Statisch registrierte Route auf WebApplication —
+        // die eigentliche Plugin-Auswahl passiert zur Laufzeit gegen die
+        // aktuell im Aktivator geladenen Plugins. Damit funktioniert auch
+        // Live-Aktivierung (frisch installiertes Plugin) ohne API-Restart.
+        app.MapMethods("/plugins/{pluginId}/{**relative}",
             new[] { "GET", "POST", "PUT", "DELETE", "PATCH" },
-            (string catchall) => Problem(StatusCodes.Status404NotFound,
-                "Plugin route not registered",
-                $"Keine Plugin-Route '/plugins/{catchall}' registriert. Plugin-Extension-API kommt mit KroModIx.Plugin.Contracts >= 1.1.0."));
+            async (HttpContext ctx, string pluginId, string? relative) =>
+            {
+                relative ??= string.Empty;
+                var activator = hostServices.GetRequiredService<PluginActivator>();
+                var loaded = activator.Loaded.FirstOrDefault(l => l.Manifest.Id == pluginId);
+                if (loaded is null)
+                    return Problem(StatusCodes.Status404NotFound,
+                        "Plugin not loaded",
+                        $"Kein Plugin mit id='{pluginId}' aktiviert.");
+                if (loaded.Plugin is not IHostApiExtender extender)
+                    return Problem(StatusCodes.Status404NotFound,
+                        "Plugin does not extend the API",
+                        $"Plugin '{pluginId}' implementiert IHostApiExtender nicht.");
+
+                var endpoints = SafeGetEndpoints(extender, pluginId);
+                var method = ctx.Request.Method;
+                var matched = PluginRouteMatcher.TryMatch(endpoints, method, relative);
+                if (matched is null)
+                    return Problem(StatusCodes.Status404NotFound,
+                        "Route not registered",
+                        $"Kein {method}-Handler für '{relative}' im Plugin '{pluginId}'. Verfügbar: {string.Join(", ", endpoints.Select(e => $"{e.HttpMethod.ToUpperInvariant()} {e.RelativePath}"))}");
+
+                var request = await BuildPluginApiRequestAsync(ctx, ctx.Request.Path.Value ?? "", (Dictionary<string, string?>)matched.Value.RouteValues);
+                try
+                {
+                    var response = await matched.Value.Endpoint.Handler(request, ctx.RequestAborted);
+                    return ToResult(response);
+                }
+                catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+                {
+                    return Results.StatusCode(499); // 499 Client Closed Request (nginx-Konvention)
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn(ex, "Plugin-Handler {Plugin} {Method} {Rel} warf",
+                        pluginId, method, relative);
+                    return Problem(StatusCodes.Status500InternalServerError,
+                        "Plugin handler failed",
+                        ex.Message);
+                }
+            });
+    }
+
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    private static IEnumerable<(string PluginId, PluginApiEndpoint Endpoint)> EnumerateExtenderEndpoints(PluginActivator activator)
+    {
+        foreach (var loaded in activator.Loaded)
+        {
+            if (loaded.Plugin is not IHostApiExtender extender) continue;
+            foreach (var ep in SafeGetEndpoints(extender, loaded.Manifest.Id))
+                yield return (loaded.Manifest.Id, ep);
+        }
+    }
+
+    /// <summary>Ruft <see cref="IHostApiExtender.GetApiEndpoints"/> defensiv auf —
+    /// ein kaputtes Plugin darf die Discovery nicht abrauchen lassen.</summary>
+    private static IReadOnlyList<PluginApiEndpoint> SafeGetEndpoints(IHostApiExtender extender, string pluginId)
+    {
+        try { return extender.GetApiEndpoints() ?? Array.Empty<PluginApiEndpoint>(); }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Plugin '{Plugin}' warf in GetApiEndpoints()", pluginId);
+            return Array.Empty<PluginApiEndpoint>();
+        }
+    }
+
+    private static async Task<PluginApiRequest> BuildPluginApiRequestAsync(HttpContext ctx, string fullPath, Dictionary<string, string?> routeValues)
+    {
+        var query = ctx.Request.Query
+            .ToDictionary(kv => kv.Key, kv => kv.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+        var headers = ctx.Request.Headers
+            .ToDictionary(kv => kv.Key, kv => kv.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+
+        // Body in MemoryStream buffern, damit das Plugin ihn beliebig oft
+        // lesen kann und wir nach dem Handler zuverlässig schließen können.
+        Stream body;
+        if (ctx.Request.ContentLength is > 0 || ctx.Request.Headers.ContainsKey("Transfer-Encoding"))
+        {
+            var ms = new MemoryStream();
+            await ctx.Request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+            body = ms;
+        }
+        else
+        {
+            body = Stream.Null;
+        }
+
+        return new PluginApiRequest(
+            ctx.Request.Method,
+            fullPath,
+            routeValues,
+            query,
+            headers,
+            body);
+    }
+
+    private static IResult ToResult(PluginApiResponse response) => new PluginResponseResult(response);
+
+    /// <summary>Adapter: <see cref="PluginApiResponse"/> als IResult für Minimal-API.
+    /// Setzt Status + Content-Type und schreibt den Body — nichts anderes.</summary>
+    private sealed class PluginResponseResult : IResult
+    {
+        private readonly PluginApiResponse _response;
+        public PluginResponseResult(PluginApiResponse response) => _response = response;
+
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.StatusCode = _response.StatusCode;
+            if (_response.Body is null || _response.Body.Length == 0) return;
+            if (!string.IsNullOrEmpty(_response.ContentType))
+                httpContext.Response.ContentType = _response.ContentType;
+            await httpContext.Response.Body.WriteAsync(_response.Body, httpContext.RequestAborted);
+        }
     }
 
     private static IResult Problem(int status, string title, string detail) =>
