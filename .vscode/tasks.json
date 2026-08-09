@@ -7,7 +7,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/ModManager.slnx",
+        "${workspaceFolder}/KroModIx.slnx",
         "-c", "Debug",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary;ForceNoAlign"
@@ -21,7 +21,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/ModManager.slnx",
+        "${workspaceFolder}/KroModIx.slnx",
         "-c", "Release",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary;ForceNoAlign"
@@ -34,7 +34,7 @@
       "type": "process",
       "args": [
         "test",
-        "${workspaceFolder}/ModManager.Tests/ModManager.Tests.csproj",
+        "${workspaceFolder}/KroModIx.Tests/KroModIx.Tests.csproj",
         "-c", "Release"
       ],
       "problemMatcher": "$msCompile",
@@ -46,7 +46,7 @@
       "type": "process",
       "args": [
         "watch", "run",
-        "--project", "${workspaceFolder}/ModManager/ModManager.csproj"
+        "--project", "${workspaceFolder}/KroModIx/KroModIx.csproj"
       ],
       "isBackground": true,
       "problemMatcher": "$msCompile"
@@ -55,7 +55,7 @@
       "label": "clean",
       "command": "dotnet",
       "type": "process",
-      "args": ["clean", "${workspaceFolder}/ModManager.slnx"],
+      "args": ["clean", "${workspaceFolder}/KroModIx.slnx"],
       "problemMatcher": "$msCompile"
     },
     {
@@ -63,7 +63,7 @@
       "command": "dotnet",
       "type": "process",
       "args": [
-        "publish", "${workspaceFolder}/ModManager/ModManager.csproj",
+        "publish", "${workspaceFolder}/KroModIx/KroModIx.csproj",
         "-c", "Release", "-r", "win-x64",
         "--self-contained", "true",
         "-p:PublishSingleFile=true",
@@ -76,7 +76,7 @@
       "command": "dotnet",
       "type": "process",
       "args": [
-        "publish", "${workspaceFolder}/ModManager/ModManager.csproj",
+        "publish", "${workspaceFolder}/KroModIx/KroModIx.csproj",
         "-c", "Release", "-r", "linux-x64",
         "--self-contained", "true",
         "-p:PublishSingleFile=true",

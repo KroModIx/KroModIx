@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ModManager (Debug)",
+      "name": "KroModIx (Debug)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/ModManager/bin/Debug/net10.0/ModManager.dll",
+      "program": "${workspaceFolder}/KroModIx/bin/Debug/net10.0/KroModIx.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/ModManager",
+      "cwd": "${workspaceFolder}/KroModIx",
       "console": "internalConsole",
       "stopAtEntry": false,
       "env": {
@@ -16,7 +16,7 @@
       }
     },
     {
-      "name": "ModManager (Attach)",
+      "name": "KroModIx (Attach)",
       "type": "coreclr",
       "request": "attach"
     }
