@@ -718,6 +718,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 var view = contribution.CreateView(detected, loaded.Host);
                 tabs.Add(new TabItem
                 {
+                    // Name = "PluginTab_<id>" macht den Tab per REST-API
+                    // (/events/click mit elementId="PluginTab_catalog") ansprechbar.
+                    // Tag hält die reine tabId für den kommenden /select-tab-Endpoint.
+                    Name = $"PluginTab_{contribution.Id}",
+                    Tag = contribution.Id,
                     Header = string.IsNullOrEmpty(contribution.Icon)
                         ? contribution.Label
                         : $"{contribution.Icon}  {contribution.Label}",

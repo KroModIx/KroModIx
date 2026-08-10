@@ -132,6 +132,36 @@ internal sealed class HostUiActions
             }
         }).GetTask();
 
+    /// <summary>Selektiert einen Plugin-Tab im aktuellen TabControl per
+    /// <c>tabId</c> (die <c>IGameTabContribution.Id</c>, z. B. „installed",
+    /// „catalog", „downloads", „settings"). Sucht rekursiv nach dem TabItem
+    /// mit <c>Tag == tabId</c> im MainWindow-Visual-Tree.
+    ///
+    /// <para>Für die API-basierte UI-Steuerung: <c>POST /select-tab {"tabId":"catalog"}</c>
+    /// wechselt in den Katalog-Tab des aktuell gewählten Plugin-Spiels ohne
+    /// Element-Name-Klick.</para></summary>
+    public Task<SelectTabResult> SelectTabAsync(string tabId) =>
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var mainWin = (Application.Current?.ApplicationLifetime
+                as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (mainWin is null) return SelectTabResult.Failed("MainWindow nicht verfügbar");
+
+            var tabs = mainWin.GetVisualDescendants().OfType<TabItem>()
+                .Where(t => t.Tag is string).ToList();
+            if (tabs.Count == 0)
+                return SelectTabResult.Failed("Kein Plugin-Tab im aktuellen Visual Tree — evtl. Spiel ohne Plugin selektiert.");
+
+            var match = tabs.FirstOrDefault(t => string.Equals(
+                (string)t.Tag!, tabId, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+                return SelectTabResult.NotFound(tabs.Select(t => (string)t.Tag!).ToList());
+
+            if (match.Parent is TabControl tc) tc.SelectedItem = match;
+            else match.IsSelected = true;
+            return SelectTabResult.Ok(tabId);
+        }).GetTask();
+
     /// <summary>Text in ein Input-Element schreiben. Nur <see cref="TextBox"/>
     /// wird aktuell unterstützt (das ist alles was das MainWindow hat).</summary>
     public Task<TextResult> SetTextAsync(string elementId, string text, bool selectAll) =>
@@ -225,6 +255,14 @@ internal sealed class HostUiActions
         public static readonly TextResult Ok = new(true, null, Array.Empty<string>());
         public static TextResult NotFound(IReadOnlyList<string> avail) => new(false, "Element not found", avail);
         public static TextResult Unsupported(string typeName) => new(false, $"Element vom Typ {typeName} unterstützt keine Text-Eingabe.", Array.Empty<string>());
+    }
+
+    public sealed record SelectTabResult(bool Success, string? Error, string? SelectedTabId, IReadOnlyList<string> AvailableTabIds)
+    {
+        public static SelectTabResult Ok(string tabId) => new(true, null, tabId, Array.Empty<string>());
+        public static SelectTabResult NotFound(IReadOnlyList<string> avail) =>
+            new(false, "Tab not found", null, avail);
+        public static SelectTabResult Failed(string msg) => new(false, msg, null, Array.Empty<string>());
     }
 }
 

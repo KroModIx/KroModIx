@@ -164,6 +164,24 @@ internal static class ApiEndpoints
             }
         });
 
+        app.MapPost("/select-tab", async (HttpContext ctx) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<SelectTabRequest>(ctx.Request.Body, Json);
+            if (body is null || string.IsNullOrWhiteSpace(body.TabId))
+                return Problem(StatusCodes.Status400BadRequest, "Missing tabId", "Body erwartet: { \"tabId\": \"installed|catalog|downloads|settings|…\" }");
+            var res = await ui.SelectTabAsync(body.TabId);
+            if (!res.Success)
+                return Results.Json(new
+                {
+                    type = "about:blank",
+                    title = res.Error,
+                    status = 404,
+                    detail = $"Kein Tab mit Id='{body.TabId}' im aktuell selektierten Plugin.",
+                    availableTabIds = res.AvailableTabIds,
+                }, contentType: "application/problem+json", statusCode: 404);
+            return Results.Ok(new { selectedTabId = res.SelectedTabId });
+        });
+
         app.MapPost("/events/click", async (HttpContext ctx) =>
         {
             var body = await JsonSerializer.DeserializeAsync<ClickRequest>(ctx.Request.Body, Json);
@@ -441,6 +459,7 @@ internal static class ApiEndpoints
     private sealed record OpenWindowRequest(string? Window);
     private sealed record ClickRequest(string? ElementId, string? MouseButton, int? ClickCount);
     private sealed record TextRequest(string? ElementId, string? Text, bool? SelectAll);
+    private sealed record SelectTabRequest(string? TabId);
     private sealed record ToastRequest(string? Message, string? Level);
     private sealed record BadgeRequest(int SteamAppId, int Count, string? Summary);
 }
