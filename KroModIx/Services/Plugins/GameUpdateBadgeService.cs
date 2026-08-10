@@ -18,8 +18,13 @@ namespace KroModIx.Services.Plugins;
 ///
 /// <para>Refresh-Rhythmus: initial 10s nach Plugin-Activation (damit die
 /// erste Runde nicht mit den Discovery-Ladezeiten kollidiert), danach alle
-/// 30 Minuten. Plus manueller Trigger via <see cref="RefreshAsync"/> (z.B.
-/// nach Sidebar-Refresh-Klick oder Plugin-Install).</para>
+/// 60 s. Warum so oft? Weil GetPendingUpdatesAsync jetzt zwei Signale
+/// kombiniert (neue Katalog-Einträge + Updates für installierte Mods aus
+/// InstalledUpdatesTracker) und die Plugin-Auto-Checks im Hintergrund
+/// asynchron in den Tracker schreiben. 30 min wäre zu träge — der User
+/// würde nach einem Update-Check bis zu 30 min warten bis der Badge kommt.
+/// GetPendingUpdatesAsync liest lokal (kein HTTP), 60 s Polling kostet
+/// nichts. Plus manueller Trigger via <see cref="RefreshAsync"/>.</para>
 ///
 /// <para>Fehler einzelner Plugins blocken nichts — sie landen im Log,
 /// die anderen Plugins liefern weiter.</para>
@@ -60,7 +65,7 @@ public sealed class GameUpdateBadgeService : IDisposable
             {
                 try { await RefreshAsync(ct); }
                 catch (Exception ex) { Log.Debug(ex, "Update-Badge-Refresh-Loop warf"); }
-                try { await Task.Delay(TimeSpan.FromMinutes(30), ct); } catch { return; }
+                try { await Task.Delay(TimeSpan.FromSeconds(60), ct); } catch { return; }
             }
         }, ct);
     }
