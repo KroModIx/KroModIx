@@ -92,14 +92,25 @@ public sealed class PluginUpdateService
             }
         }
 
+        // Dedup per PluginId — falls _activator.Loaded aus irgendeinem Grund
+        // dieselbe pluginId doppelt liefert (z.B. nach unvollständigem
+        // Hot-Swap-Attempt), soll die Update-Liste im UI trotzdem sauber sein.
+        // Nehmen den ersten Treffer pro PluginId — bei mehreren gleichen
+        // Einträgen ist eh dieselbe LatestVersion.
+        var deduped = updates
+            .GroupBy(u => u.PluginId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
         lock (_lock)
         {
             _available.Clear();
-            _available.AddRange(updates);
+            _available.AddRange(deduped);
         }
         UpdatesChanged?.Invoke(this, EventArgs.Empty);
-        Log.Info("Plugin-Update-Check: {N} Update(s) verfügbar", updates.Count);
-        return updates.Count;
+        Log.Info("Plugin-Update-Check: {N} Update(s) verfügbar (aus {Raw} Rohtreffern)",
+            deduped.Count, updates.Count);
+        return deduped.Count;
     }
 
     /// <summary>Lädt das Update-ZIP und tauscht die alte DLL im Plugin-Ordner
