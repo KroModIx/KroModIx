@@ -751,9 +751,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         InstallCard = null;
         ShowInstallCard = false;
 
-        var target = loaded.Manifest.Targets.FirstOrDefault(t => t.SteamAppId == entry.Source.SteamAppId);
-        var detected = loaded.DetectedGames.FirstOrDefault(dg => dg.Target.SteamAppId == entry.Source.SteamAppId);
-        if (target is null || detected is null)
+        var detected = FindDetectedGameFor(loaded, entry);
+        if (detected is null)
         {
             ShowPluginTabs = false;
             ShowContentPlaceholder = true;
@@ -796,9 +795,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     private static bool MatchesGame(LoadedPlugin loaded, GameEntry entry)
+        => FindDetectedGameFor(loaded, entry) is not null;
+
+    /// <summary>Findet den DetectedGame eines geladenen Plugins, der zur
+    /// gegebenen Sidebar-Kachel passt. Match-Regeln (v1.9.1+):
+    /// (1) SteamAppId gleich, ODER (2) beide sind Manual und InstallDir
+    /// stimmt überein (case-insensitive) — deckt Engine-basierte Kacheln ab.</summary>
+    private static DetectedGame? FindDetectedGameFor(LoadedPlugin loaded, GameEntry entry)
     {
-        if (entry.Source.SteamAppId is not int appId) return false;
-        return loaded.DetectedGames.Any(dg => dg.Target.SteamAppId == appId);
+        if (entry.Source.SteamAppId is int appId)
+        {
+            var byApp = loaded.DetectedGames.FirstOrDefault(dg => dg.Target.SteamAppId == appId);
+            if (byApp is not null) return byApp;
+        }
+        if (entry.Source.Source == Services.Games.DiscoveredGameSource.Manual
+            && !string.IsNullOrEmpty(entry.Source.InstallDir))
+        {
+            return loaded.DetectedGames.FirstOrDefault(dg =>
+                string.Equals(dg.InstallDir, entry.Source.InstallDir, StringComparison.OrdinalIgnoreCase));
+        }
+        return null;
     }
 
     private PluginIndexEntry? FindIndexEntryFor(GameEntry entry)
