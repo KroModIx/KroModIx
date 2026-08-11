@@ -88,11 +88,45 @@ public sealed class HostServicesImpl : IHostServices
     /// betroffene Kachel neu.</summary>
     public static event EventHandler<string>? ManualCoverChanged;
 
+    /// <summary>Signalisiert, dass ein Manual-Game auf der Platte umbenannt
+    /// oder verschoben wurde. Payload: (manualGameId, newInstallDir). Die
+    /// MainWindow-Sidebar re-keyed daraufhin ihre in-memory Kachel-VM
+    /// damit ein Klick den neuen Pfad öffnet. Contracts v1.10.3.</summary>
+    public static event EventHandler<(string Id, string NewInstallDir)>? ManualGameRenamed;
+
     public async Task RequestUpdateBadgeRefreshAsync()
     {
         if (_updateBadges is null) return;
         try { await _updateBadges.RefreshAsync(); }
         catch (Exception ex) { Logger.Debug(ex, "RequestUpdateBadgeRefresh fehlgeschlagen"); }
+    }
+
+    public bool TryRenameManualGame(string oldInstallDir, string newInstallDir)
+    {
+        if (_manualGames is null) return false;
+        if (string.IsNullOrWhiteSpace(oldInstallDir) || string.IsNullOrWhiteSpace(newInstallDir))
+            return false;
+        var entry = _manualGames.All.FirstOrDefault(g =>
+            string.Equals(g.InstallDir, oldInstallDir, StringComparison.OrdinalIgnoreCase));
+        if (entry is null)
+        {
+            Logger.Debug("TryRenameManualGame: kein Manual-Eintrag für {Old} gefunden", oldInstallDir);
+            return false;
+        }
+        // Kollisionsschutz: existiert schon ein anderer Eintrag mit dem neuen
+        // Pfad, würden wir zwei Kacheln auf denselben Ordner zeigen lassen.
+        if (_manualGames.All.Any(g => g.Id != entry.Id
+            && string.Equals(g.InstallDir, newInstallDir, StringComparison.OrdinalIgnoreCase)))
+        {
+            Logger.Warn("TryRenameManualGame: {New} kollidiert mit bestehendem Manual-Eintrag — abgelehnt",
+                newInstallDir);
+            return false;
+        }
+        _manualGames.Update(entry.Id, e => e.InstallDir = newInstallDir);
+        Logger.Info("Manual-Game re-keyed: {Name} ({Old} → {New})",
+            entry.DisplayName, oldInstallDir, newInstallDir);
+        ManualGameRenamed?.Invoke(null, (entry.Id, newInstallDir));
+        return true;
     }
 
     public bool TrySetManualGameCover(string installDir, string coverPath)

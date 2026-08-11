@@ -104,6 +104,28 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 _ = LoadCoversAsync(new[] { entry }, default);
             });
 
+        // Plugin hat via IHostServices.TryRenameManualGame den Container-Ordner
+        // umbenannt → In-Memory Kachel-VM auf den neuen Pfad re-keyen und —
+        // wenn's die aktuell selected Kachel ist — Detail-View neu bauen
+        // (Tab-VMs cachen sonst den alten containerPath aus ihrem ctor).
+        Services.Plugins.HostServicesImpl.ManualGameRenamed += (_, args) =>
+            Dispatcher.UIThread.Post(() =>
+            {
+                var (id, newInstallDir) = args;
+                var entry = _allGames.FirstOrDefault(g => g.Source.ManualId == id);
+                if (entry is null) return;
+                entry.Source = entry.Source with { InstallDir = newInstallDir };
+                if (SelectedGame == entry)
+                {
+                    // Deselect + Reselect erzwingt RenderContentForSelected —
+                    // Plugin liefert frische Tab-Contributions mit neuem
+                    // DetectedGame.InstallDir.
+                    var pinned = entry;
+                    SelectedGame = null;
+                    Dispatcher.UIThread.Post(() => SelectedGame = pinned);
+                }
+            });
+
         _updateBadges.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshUpdateBadges);
         _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {

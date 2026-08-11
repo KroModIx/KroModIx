@@ -58,4 +58,16 @@ public interface IHostServices
     /// periodischen Poll (60 s) noch den alten Zustand. Contracts v1.10.1+
     /// (bei älteren Hosts default-implementiert = no-op).</summary>
     Task RequestUpdateBadgeRefreshAsync() => Task.CompletedTask;
+
+    /// <summary>Aktualisiert für ein Manual-Game den Installations-Pfad, wenn
+    /// der Plugin (oder User) den Container-Ordner auf der Platte umbenennt/
+    /// verschiebt. Der Host re-keyed den Manual-Game-Eintrag von
+    /// <paramref name="oldInstallDir"/> auf <paramref name="newInstallDir"/>
+    /// (case-insensitive), aktualisiert die Sidebar-Kachel und persistiert
+    /// die Änderung. Wichtig: das Plugin ruft dies NACHDEM
+    /// <c>Directory.Move</c> erfolgreich war. Rückgabe: true wenn ein
+    /// passender Manual-Eintrag re-keyed wurde. Für Steam-Games no-op.
+    /// Contracts v1.10.3+ (bei älteren Hosts default = no-op — Sidebar
+    /// verwaist bis zum nächsten Neustart).</summary>
+    bool TryRenameManualGame(string oldInstallDir, string newInstallDir) => false;
 }
