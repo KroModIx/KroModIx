@@ -92,9 +92,17 @@ public sealed class HostServicesImpl : IHostServices
         var entry = _manualGames.All.FirstOrDefault(g =>
             string.Equals(g.InstallDir, installDir, StringComparison.OrdinalIgnoreCase));
         if (entry is null) return false;
-        if (string.Equals(entry.CoverPath, coverPath, StringComparison.Ordinal)) return true; // no-op
-        _manualGames.Update(entry.Id, e => e.CoverPath = coverPath);
-        Logger.Debug("Manual-Cover gesetzt: {Name} -> {Path}", entry.DisplayName, coverPath);
+        // Kein no-op-Skip mehr: der Plugin schreibt oft den GLEICHEN Pfad
+        // (z. B. `.renpyassist/sidebar-cover.png`) aber mit anderem Bild-
+        // Inhalt (User hat den Ausschnitt neu gewählt). Ohne diesen Event
+        // bleibt die Sidebar-Kachel auf dem alten Bitmap-Cache hängen.
+        // Update immer + Event immer feuern; MainWindowViewModel lädt das
+        // Bild aus der Datei neu (Bitmap-Ctor).
+        bool pathChanged = !string.Equals(entry.CoverPath, coverPath, StringComparison.Ordinal);
+        if (pathChanged)
+            _manualGames.Update(entry.Id, e => e.CoverPath = coverPath);
+        Logger.Debug("Manual-Cover gesetzt: {Name} -> {Path} (pathChanged={Changed})",
+            entry.DisplayName, coverPath, pathChanged);
         ManualCoverChanged?.Invoke(null, entry.Id);
         return true;
     }
