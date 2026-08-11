@@ -17,17 +17,21 @@ namespace KroModIx.Plugin.Contracts;
 /// bei Non-Steam-Discovery matchen. Beispiel: <c>FactoryGame.exe</c>.</param>
 /// <param name="Platforms">Auf welchen OS das Plugin dieses Spiel bedient.
 /// <see cref="Platforms.Both"/> ist der Regelfall.</param>
-/// <param name="Engine">Engine-Slug für ordnerbasierte Discovery — z. B.
-/// <c>renpy</c>. Wenn gesetzt, matcht das Target JEDES Manual-Game mit
-/// derselben <c>Engine</c>-Property (der User kann pro Spiel eine eigene
-/// Kachel bekommen ohne dass jede eine Steam-AppId braucht). Contracts v1.9.0+.</param>
 public sealed record GameTarget(
     string GameId,
     string DisplayName,
     int? SteamAppId,
     string[] AlternativeExecutableNames,
-    Platforms Platforms,
-    string? Engine = null);
+    Platforms Platforms)
+{
+    /// <summary>Engine-Slug für ordnerbasierte Discovery — z. B.
+    /// <c>renpy</c>. Wenn gesetzt, matcht das Target JEDES Manual-Game mit
+    /// derselben <c>Engine</c>-Property (der User kann pro Spiel eine eigene
+    /// Kachel bekommen ohne dass jede eine Steam-AppId braucht). Contracts v1.9.0+.
+    /// Init-only Property statt Ctor-Parameter, damit die 5-Positional-Args-
+    /// Signatur binary-kompatibel zu Contracts &lt;=1.8.0 bleibt.</summary>
+    public string? Engine { get; init; }
+}
 
 [Flags]
 public enum Platforms

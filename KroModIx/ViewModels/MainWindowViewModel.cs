@@ -454,11 +454,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void RefreshPluginStates()
     {
         var loaded = _pluginActivator.Loaded;
-        var appIdsWithLoadedPlugin = loaded
-            .SelectMany(l => l.DetectedGames.Select(dg => dg.Target.SteamAppId))
-            .Where(id => id is not null)
-            .Select(id => id!.Value)
-            .ToHashSet();
+        // Alle Game-Keys die von einem geladenen Plugin bedient werden
+        // (durch SteamAppId ODER Engine-Match — v1.9.0+).
+        var keysWithLoadedPlugin = loaded
+            .SelectMany(l => l.DetectedGames)
+            .Select(BuildKeyForDetectedGame)
+            .Where(k => k is not null)
+            .Select(k => k!)
+            .ToHashSet(StringComparer.Ordinal);
 
         var appIdsWithAvailablePlugin = _indexCache?.Plugins
             .SelectMany(p => p.SteamAppIds)
@@ -467,14 +470,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         int installedCount = 0, availableCount = 0;
         foreach (var g in _allGames)
         {
-            if (g.Source.SteamAppId is not int appId)
+            if (keysWithLoadedPlugin.Contains(g.Key))
             {
-                g.PluginState = PluginState.None;
+                g.PluginState = PluginState.Installed;
+                installedCount++;
                 continue;
             }
-            if (appIdsWithLoadedPlugin.Contains(appId)) { g.PluginState = PluginState.Installed; installedCount++; }
-            else if (appIdsWithAvailablePlugin.Contains(appId)) { g.PluginState = PluginState.Available; availableCount++; }
-            else g.PluginState = PluginState.None;
+            if (g.Source.SteamAppId is int appId && appIdsWithAvailablePlugin.Contains(appId))
+            {
+                g.PluginState = PluginState.Available;
+                availableCount++;
+                continue;
+            }
+            g.PluginState = PluginState.None;
         }
         Log.Info("RefreshPluginStates: {Installed} installed, {Available} available (of {Total} games); selected={Sel}",
             installedCount, availableCount, _allGames.Count, SelectedGame?.Key ?? "<none>");
@@ -482,6 +490,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ApplyFilterAndSort();
         RefreshDimmingFlags();
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+    }
+
+    /// <summary>Baut den Sidebar-Key zu einem DetectedGame. Steam-Games via
+    /// SteamAppId, Manual-Games via ManualId (die trägt der Plugin-Activator
+    /// im HostServicesImpl nicht direkt — wir lookup'en über InstallDir).</summary>
+    private string? BuildKeyForDetectedGame(DetectedGame dg)
+    {
+        if (dg.Target.SteamAppId is int appId)
+            return $"steam:{appId}";
+        // Manual-Games: match über InstallDir (case-insensitive), da DetectedGame
+        // die ManualId nicht kennt.
+        var match = _allGames.FirstOrDefault(g =>
+            g.Source.Source == Services.Games.DiscoveredGameSource.Manual
+            && string.Equals(g.Source.InstallDir, dg.InstallDir, StringComparison.OrdinalIgnoreCase));
+        return match?.Key;
     }
 
     /// <summary>Fügt einen Toast ins Overlay ein und plant sein Auto-Remove
