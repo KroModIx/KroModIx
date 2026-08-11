@@ -42,15 +42,37 @@
 - Install-Flow: Download ZIP → Sibling-Staging-Ordner → File.Copy overwrite ins Plugin-Verzeichnis. Auf Windows: geladene DLL lockt sich; Fallback legt `.dll.new` daneben. Nach Install: Restart-Hint-Banner in gelb-rot im Fenster („⚠ Bitte die App neu starten…").
 - End-to-End verifiziert mit lokal auf 0.1.0 gepinnt Dummy-Plugin vs. GitHub v0.1.1 → Update-Check meldet 1 verfügbares Update.
 
+**M5–M6 (Icarus + Satisfactory) — abgeschlossen mit v1.5.x:**
+- **`KroModIx/KroModIx.Plugin.Icarus`**: Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download.
+- **`KroModIx/KroModIx.Plugin.Satisfactory`**: ficsit.app GraphQL-Katalog, `.smod`-Direct-Download, `.uplugin`-Manifest-Parsing.
+
+**M7 (Ren'Py-Plugin) — abgeschlossen mit v1.9.0 (Host) + v0.10.1 (Plugin):**
+- **`KroModIx/KroModIx.Plugin.RenPyAssist`**: f95zone-Anbindung mit Login, Sub-Path-Rotation für Updates, Save-Kopie beim Update, ZIP-Archivierung + Auto-Cleanup alter Sub-Ordner, RPA-Archive-Browser + Save-Editor + Media-Preview mit **Inline-Video-Playback** (ffmpeg-MJPEG-Stream, portiert aus RenPack — kein LibVLC), KrosteMod-Pipeline (Walkthrough/Cheat/Rename/Translate), KI-Übersetzung der Beschreibungen, Container-Ordner-Rename mit Host-Integration.
+- **Host-Erweiterungen für RenPyAssist:**
+  - v1.9.0: `GameTarget.Engine` als init-Property + engine-basiertes Matching für Manual-Games ohne SteamAppId
+  - v1.9.3: `IHostServices.TrySetManualGameCover` — Plugin propagiert Cover an Host-Sidebar
+  - v1.9.4: `PluginUpdateService`-Race-Guard (Semaphore) gegen Update-Row-Duplikate
+  - v1.9.5: `TrySetManualGameCover`-Event immer feuern (Cover-Refresh nach Re-Save mit gleichem Path)
+  - v1.10.0: `GameUpdateInfo.InstallDir` — engine-Multi-Tile-Match für Sidebar-Update-Badge
+  - v1.10.1: `IHostServices.RequestUpdateBadgeRefreshAsync` — Plugin triggert Sidebar-Refresh nach lokalen State-Changes
+  - v1.10.2: **Plugin-Update-Cache** — persistenter JSON-Cache in `~/.config/KroModIx/plugin-update-cache.json` mit Rate-Limit-Fallback (GitHub 60 req/h ohne Token). Bei 403 wird der Cache als Fallback genutzt statt `_available` zu leeren. Optionaler `GITHUB_TOKEN`-Env-Var-Support (5000 req/h).
+  - v1.10.3: `IHostServices.TryRenameManualGame` + `ManualGameRenamed`-Event — Plugin kann Container-Ordner umbenennen, Host re-keyed Sidebar-Kachel + Manual-Games-Store atomar und baut die Detail-View neu.
+
 ## Roadmap
 
-- **M3.2–M3.6 — LS25-Plugin ausbauen**: ModHub-Katalog (v0.2), Hof Hirschfeld (v0.3), modhoster (v0.4), Backup + KI-Zusammenfassung (v0.5), DDS-Preview (v0.6). Siehe Plugin-Repo CLAUDE.md.
+Der Kern-Manager + alle geplanten Game-Plugins sind fertig. Offene Punkte
+sind projektspezifische Ausbauten:
 
-- **M5.2 — Icarus-Katalog**: `GitHubReleaseCatalog`-Helper in Contracts, Icarus-Plugin v0.2 mit Katalog-Tab.
-
-- **M6 — Satisfactory-Plugin**: Bottles/Wine-Sonderweg (Custom-Locator statt Steam-Discovery), Anbindung an ficsit.app.
-
-- **M7 — Ren'Py-Plugin** (optional).
+- **LS25-Plugin-Feature-Polish**: DDS-Preview auf Linux stabilisieren
+  (SixLabors-Path), Bulk-Import aus Steam-Workshop.
+- **Ren'Py-Plugin v0.11+**: KrosteMod-Pipeline erweitern
+  (Choice-Auto-Expand, Konditional-Cheats), Screenshot-Timeline im
+  Save-Editor, animierte Cover mit `AvaloniaGif` in der Detail-View
+  (Sidebar-Kachel bleibt Standbild via ffmpeg-thumbnail).
+- **PluginIndex-Kuration**: eigene Kategorien pro Genre, Suchfilter im
+  PluginUpdates-Window.
+- **Multi-Host-Support**: gleiche Plugin-Installation auf mehreren
+  Rechnern synchron halten (rclone-Backend? git-Remote?). Niedrige Prio.
 
 ## Referenz
 

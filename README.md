@@ -84,6 +84,7 @@ nach Plugin).
 | Landwirtschafts-Simulator 25 | [KroModIx.Plugin.LS25](https://github.com/KroModIx/KroModIx.Plugin.LS25) | GIANTS ModHub + Hof Hirschfeld + modhoster, DDS-Preview, Backup/Restore, KI-Zusammenfassung |
 | Satisfactory | [KroModIx.Plugin.Satisfactory](https://github.com/KroModIx/KroModIx.Plugin.Satisfactory) | ficsit.app-Katalog via GraphQL, `.smod`-Direct-Download, `.uplugin`-Manifest |
 | Icarus | [KroModIx.Plugin.Icarus](https://github.com/KroModIx/KroModIx.Plugin.Icarus) | Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download |
+| Ren'Py Assist | [KroModIx.Plugin.RenPyAssist](https://github.com/KroModIx/KroModIx.Plugin.RenPyAssist) | f95zone-Anbindung mit Login, Sub-Path-Rotation für Updates, RPA-Browser + Save-Editor, KrosteMod-Pipeline (Walkthrough/Cheat/Rename), Inline-Video-Playback |
 | Dummy | [KroModIx.Plugin.Dummy](https://github.com/KroModIx/KroModIx.Plugin.Dummy) | Demo-Plugin für Entwicklungs-Tests |
 
 Der Katalog steht in [KroModIx.PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex).
@@ -127,7 +128,9 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | REST-API (Phase 2) | ✅ | External-Control, Screenshots, Clicks, Tab-Wechsel |
 | KI-Erweiterung (Phase 3) | ✅ | Ollama + Cloud-Provider mit Modell-Discovery |
 | Sidebar-Verhalten (Phase 4) | ✅ | Toasts, Auto-Cleanup, Kachel-Badges |
-| **M7 Ren'Py-Plugin** | ⏳ | RenPyAssist mit f95zone.to-Anbindung + Worker |
+| M7 Ren'Py-Plugin | ✅ | RenPyAssist mit f95zone-Anbindung, RPA-Browser, KrosteMod-Pipeline, Inline-Video-Playback |
+| Plugin-Update-Cache (v1.10.2) | ✅ | Rate-Limit-Fallback + persistenter Cache in `~/.config/KroModIx/plugin-update-cache.json` — Update-Info überlebt GitHub 403er + Restarts |
+| Container-Rename-API (v1.10.3) | ✅ | Plugins können via `IHostServices.TryRenameManualGame` Container-Ordner umbenennen, Host re-keyed Sidebar-Kachel + Manual-Games-Store atomar |
 
 ## Entwicklung
 
