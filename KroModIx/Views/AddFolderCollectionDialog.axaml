@@ -18,8 +18,8 @@
                 <TextBlock TextWrapping="Wrap" Classes="secondary">
                     Wähle einen Root-Ordner mit deinen Spielen (z. B. deine Ren'Py-Sammlung).
                     KroModIx scannt den Inhalt (bis 2 Ebenen tief), erkennt die Engine
-                    (aktuell nur Ren'Py) und legt eine Sammel-Kachel in der Sidebar an,
-                    die vom passenden Plugin übernommen wird.
+                    (aktuell nur Ren'Py) und legt pro gefundenem Spiel eine eigene
+                    Sidebar-Kachel an, die vom passenden Plugin übernommen wird.
                 </TextBlock>
 
                 <StackPanel Spacing="6">
@@ -50,12 +50,6 @@
                     </StackPanel>
                 </Border>
 
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Sidebar-Kachel Name" Classes="section-label" />
-                    <TextBox Text="{Binding DisplayName, Mode=TwoWay}"
-                             PlaceholderText="z. B. Ren'Py Games" />
-                </StackPanel>
-
                 <TextBlock Text="{Binding ErrorMessage}"
                            Foreground="{DynamicResource KrosteDangerBrush}"
                            IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -64,7 +58,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="10"
                             HorizontalAlignment="Right">
                     <Button Content="Abbrechen" Command="{Binding CancelCommand}" MinWidth="100" />
-                    <Button Classes="accent" Content="Sammlung importieren"
+                    <Button Classes="accent" Content="Spiele importieren"
                             Command="{Binding ConfirmCommand}" MinWidth="180" />
                 </StackPanel>
             </StackPanel>

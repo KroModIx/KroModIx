@@ -45,17 +45,40 @@ public sealed class PluginActivationPlanner
             return new PluginActivationDecision(plugin, false, ActivationSkipReason.HostTooOld,
                 Array.Empty<DiscoveredGame>());
 
+        var matched = MatchGames(plugin.Manifest.Targets, games);
+        return new PluginActivationDecision(plugin, true, ActivationSkipReason.None, matched);
+    }
+
+    /// <summary>Match-Logik (v1.9.0): pro Target zuerst SteamAppId prüfen,
+    /// dann Engine (für ordner-basierte Sammlungen). Doppel-Matches gegen
+    /// dasselbe Game werden entfernt.</summary>
+    private static List<DiscoveredGame> MatchGames(
+        IReadOnlyList<GameTarget> targets, IReadOnlyList<DiscoveredGame> games)
+    {
         var installedAppIds = games
             .Where(g => g.SteamAppId is not null)
             .Select(g => g.SteamAppId!.Value)
             .ToHashSet();
         var matched = new List<DiscoveredGame>();
-        foreach (var target in plugin.Manifest.Targets)
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var target in targets)
         {
             if (target.SteamAppId is int appId && installedAppIds.Contains(appId))
-                matched.AddRange(games.Where(g => g.SteamAppId == appId));
+            {
+                foreach (var g in games.Where(g => g.SteamAppId == appId))
+                    if (seenKeys.Add(g.Key)) matched.Add(g);
+            }
+            if (!string.IsNullOrWhiteSpace(target.Engine))
+            {
+                foreach (var g in games.Where(g =>
+                    !string.IsNullOrWhiteSpace(g.Engine)
+                    && string.Equals(g.Engine, target.Engine, StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (seenKeys.Add(g.Key)) matched.Add(g);
+                }
+            }
         }
-        return new PluginActivationDecision(plugin, true, ActivationSkipReason.None, matched);
+        return matched;
     }
 
     /// <summary>Löst discovered Plugins gegen die aktuell installierten Spiele auf.</summary>
@@ -64,10 +87,6 @@ public sealed class PluginActivationPlanner
         IReadOnlyList<DiscoveredGame> games,
         Version hostVersion)
     {
-        var installedAppIds = games
-            .Where(g => g.SteamAppId is not null)
-            .Select(g => g.SteamAppId!.Value)
-            .ToHashSet();
         var forceActive = _settings.Current.AlwaysActivePluginIds
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -88,12 +107,7 @@ public sealed class PluginActivationPlanner
                 continue;
             }
 
-            var matched = new List<DiscoveredGame>();
-            foreach (var target in plugin.Manifest.Targets)
-            {
-                if (target.SteamAppId is int appId && installedAppIds.Contains(appId))
-                    matched.AddRange(games.Where(g => g.SteamAppId == appId));
-            }
+            var matched = MatchGames(plugin.Manifest.Targets, games);
 
             bool forced = forceActive.Contains(plugin.Manifest.Id);
             bool activate = matched.Count > 0 || forced;

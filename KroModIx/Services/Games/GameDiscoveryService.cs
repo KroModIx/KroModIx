@@ -66,7 +66,8 @@ public sealed class GameDiscoveryService
                 ManualId: m.Id,
                 CustomCoverPath: m.CoverPath,
                 Source: DiscoveredGameSource.Manual,
-                ExecutablePath: m.ExecutablePath));
+                ExecutablePath: m.ExecutablePath,
+                Engine: m.Engine));
         }
 
         Log.Info("Discovery: {Total} Spiele ({Steam} via Steam, {Manual} manuell)",

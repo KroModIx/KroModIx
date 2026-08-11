@@ -11,23 +11,14 @@ using KroModIx.Services.Games;
 namespace KroModIx.ViewModels;
 
 /// <summary>VM für „🎮 Ordner mit Spielen scannen"-Wizard. User wählt einen
-/// Root-Ordner, der Host scannt nach bekannten Engines (aktuell Ren'Py),
-/// zeigt das Ergebnis und legt bei Bestätigung einen Manual-Game-Sammel-
-/// Anker an. Der Anker bekommt <c>SteamAppId</c> aus der Engine-Konvention
-/// (Ren'Py = 9000001) — der User sieht diese Zahl nie, sie ist intern
-/// für den Plugin-Aktivierungs-Match.</summary>
+/// Root-Ordner, der Host scannt nach bekannten Engines (aktuell Ren'Py) und
+/// legt bei Bestätigung pro erkanntem Container-Ordner ein Manual-Game an.
+/// Jede Kachel bekommt den Engine-Slug (z. B. <c>renpy</c>) — der Plugin-
+/// Aktivierungs-Planner matched darauf gegen <c>PluginManifest.Targets[].Engine</c>.</summary>
 public sealed partial class AddFolderCollectionDialogViewModel : ViewModelBase
 {
     private readonly ManualGamesService _manual;
     private readonly FolderEngineDetector _detector;
-
-    // Interner Anchor-AppId pro Engine — der Host + die Plugins wissen davon,
-    // der User nie. Für neue Engines hier ergänzen.
-    private static readonly Dictionary<string, int> EngineAppIds =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["renpy"] = 9000001,
-        };
 
     public AddFolderCollectionDialogViewModel(ManualGamesService manual, FolderEngineDetector detector)
     {
@@ -39,9 +30,6 @@ public sealed partial class AddFolderCollectionDialogViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ScanCommand))]
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     private string _rootDir = "";
-
-    [ObservableProperty]
-    private string _displayName = "";
 
     [ObservableProperty]
     private bool _isScanning;
@@ -59,7 +47,9 @@ public sealed partial class AddFolderCollectionDialogViewModel : ViewModelBase
 
     private EngineMatch? _match;
 
-    public ManualGameEntry? Result { get; private set; }
+    /// <summary>Neu angelegte Kacheln (v0.3+: pro erkanntem Container ein Eintrag).
+    /// Leer wenn User abgebrochen hat oder nichts neu war (Dedup).</summary>
+    public IReadOnlyList<ManualGameEntry> Results { get; private set; } = Array.Empty<ManualGameEntry>();
 
     public event EventHandler? RequestClose;
 
@@ -84,9 +74,8 @@ public sealed partial class AddFolderCollectionDialogViewModel : ViewModelBase
                 return;
             }
             foreach (var s in _match.Samples) Samples.Add(s);
-            ResultText = $"{_match.DisplayName}: {_match.ContainerCount} Spiel(e) gefunden.";
-            if (string.IsNullOrWhiteSpace(DisplayName))
-                DisplayName = $"{_match.DisplayName} Games";
+            ResultText = $"{_match.DisplayName}: {_match.ContainerCount} Spiel(e) gefunden. " +
+                $"Beim Import wird pro Spiel eine eigene Sidebar-Kachel angelegt.";
         }
         catch (Exception ex)
         {
@@ -104,20 +93,17 @@ public sealed partial class AddFolderCollectionDialogViewModel : ViewModelBase
     private void Confirm()
     {
         if (_match is null) return;
-        if (!EngineAppIds.TryGetValue(_match.Engine, out var appId))
-        {
-            ErrorMessage = $"Keine Anchor-AppId für Engine '{_match.Engine}' konfiguriert.";
-            return;
-        }
-        var name = string.IsNullOrWhiteSpace(DisplayName) ? $"{_match.DisplayName} Games" : DisplayName.Trim();
-        Result = _manual.Add(name, RootDir.Trim(), executablePath: null, coverPath: null, steamAppId: appId);
+        var items = _match.Containers
+            .Select(path => (DisplayName: Path.GetFileName(path)!, InstallDir: path))
+            .ToList();
+        Results = _manual.AddBulk(items, _match.Engine);
         RequestClose?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        Result = null;
+        Results = Array.Empty<ManualGameEntry>();
         RequestClose?.Invoke(this, EventArgs.Empty);
     }
 }

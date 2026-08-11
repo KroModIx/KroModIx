@@ -60,7 +60,8 @@ public sealed class ManualGamesService
 
     /// <summary>Fügt einen neuen Eintrag hinzu (generiert die ID) und persistiert sofort.</summary>
     public ManualGameEntry Add(string displayName, string installDir,
-        string? executablePath = null, string? coverPath = null, int? steamAppId = null)
+        string? executablePath = null, string? coverPath = null,
+        int? steamAppId = null, string? engine = null)
     {
         var entry = new ManualGameEntry
         {
@@ -70,11 +71,44 @@ public sealed class ManualGamesService
             ExecutablePath = executablePath,
             CoverPath = coverPath,
             SteamAppId = steamAppId,
+            Engine = engine,
         };
         _games.Add(entry);
         Save();
-        Log.Info("Manuelles Spiel hinzugefügt: {Name} ({Id})", entry.DisplayName, entry.Id);
+        Log.Info("Manuelles Spiel hinzugefügt: {Name} ({Id}, engine={Engine})",
+            entry.DisplayName, entry.Id, engine ?? "-");
         return entry;
+    }
+
+    /// <summary>Bulk-Import — legt N Einträge mit derselben Engine an, dedup't
+    /// gegen bestehende Einträge mit gleichem <c>InstallDir</c> (case-insensitive)
+    /// damit ein Zweit-Scan keine Duplikate erzeugt. Rückgabe: die neu angelegten
+    /// Einträge (existierende werden nicht upgedated).</summary>
+    public IReadOnlyList<ManualGameEntry> AddBulk(
+        IReadOnlyList<(string DisplayName, string InstallDir)> items, string engine)
+    {
+        var existingDirs = _games
+            .Where(g => !string.IsNullOrEmpty(g.InstallDir))
+            .Select(g => g.InstallDir)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = new List<ManualGameEntry>();
+        foreach (var (name, dir) in items)
+        {
+            if (existingDirs.Contains(dir)) continue;
+            var entry = new ManualGameEntry
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                DisplayName = name,
+                InstallDir = dir,
+                Engine = engine,
+            };
+            _games.Add(entry);
+            added.Add(entry);
+            existingDirs.Add(dir);
+        }
+        if (added.Count > 0) Save();
+        Log.Info("Bulk-Import: {N} neue Einträge (engine={Engine})", added.Count, engine);
+        return added;
     }
 
     public bool Remove(string id)

@@ -854,8 +854,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Öffnet den „🎮 Ordner mit Spielen scannen"-Wizard: User wählt
-    /// einen Root, der Host scannt nach Ren'Py-Marker, legt bei Erfolg eine
-    /// Sammel-Manual-Kachel an und triggert Plugin-Re-Aktivierung.</summary>
+    /// einen Root, der Host scannt nach Engine-Signaturen und legt pro
+    /// gefundenem Container eine eigene Sidebar-Kachel an. Die Kacheln matchen
+    /// gegen <c>PluginManifest.Targets[].Engine</c>.</summary>
     [RelayCommand]
     private async Task AddFolderCollectionAsync()
     {
@@ -864,25 +865,32 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var dialog = new AddFolderCollectionDialog { DataContext = vm };
         var owner = MainWindow();
         if (owner is not null) await dialog.ShowDialog(owner); else dialog.Show();
-        if (vm.Result is null) return;
+        if (vm.Results.Count == 0) return;
 
-        var entry = new GameEntry(new DiscoveredGame(
-            Key: $"manual:{vm.Result.Id}",
-            DisplayName: vm.Result.DisplayName,
-            InstallDir: vm.Result.InstallDir,
-            SteamAppId: vm.Result.SteamAppId,
-            ManualId: vm.Result.Id,
-            CustomCoverPath: vm.Result.CoverPath,
-            Source: DiscoveredGameSource.Manual));
-        _allGames.Add(entry);
-        _ = LoadCoversAsync(new[] { entry }, default);
+        var newEntries = new List<GameEntry>();
+        foreach (var r in vm.Results)
+        {
+            var entry = new GameEntry(new DiscoveredGame(
+                Key: $"manual:{r.Id}",
+                DisplayName: r.DisplayName,
+                InstallDir: r.InstallDir,
+                SteamAppId: r.SteamAppId,
+                ManualId: r.Id,
+                CustomCoverPath: r.CoverPath,
+                Source: DiscoveredGameSource.Manual,
+                ExecutablePath: r.ExecutablePath,
+                Engine: r.Engine));
+            _allGames.Add(entry);
+            newEntries.Add(entry);
+        }
+        _ = LoadCoversAsync(newEntries.ToArray(), default);
 
-        // Plugin-Aktivierung neu triggern — der neue Sammel-Anker matched
-        // gegen das RenPyAssist-Plugin (SteamAppId 9000001 Convention).
+        // Plugin-Aktivierung neu triggern — die neuen Engine-Kacheln matchen
+        // gegen Plugins mit passendem GameTarget.Engine.
         await ActivatePluginsAsync(default);
         ApplyFilterAndSort();
-        SelectedGame = entry;
-        EnqueueToast($"Sammlung „{entry.DisplayName}\" importiert", NotificationLevel.Success);
+        if (newEntries.Count > 0) SelectedGame = newEntries[0];
+        EnqueueToast($"🎮 {newEntries.Count} Spiel(e) importiert", NotificationLevel.Success);
     }
 
     /// <summary>Sidebar-Kontextmenü „🖼 Kachelbild ändern": öffnet File-Picker,

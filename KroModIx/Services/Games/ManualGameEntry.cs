@@ -23,4 +23,10 @@ public sealed class ManualGameEntry
     /// <summary>Wenn gesetzt: <see cref="GameCoverService"/> holt das Cover
     /// vom Steam-CDN, ohne dass Steam-Discovery greift.</summary>
     public int? SteamAppId { get; set; }
+
+    /// <summary>Engine-Slug für ordnerbasierte Plugin-Matches — z. B.
+    /// <c>renpy</c>. Wird vom "🎮 Ordner mit Spielen scannen"-Wizard gesetzt.
+    /// Plugins mit passendem <c>GameTarget.Engine</c> übernehmen die Kachel.
+    /// v1.9.0+.</summary>
+    public string? Engine { get; set; }
 }

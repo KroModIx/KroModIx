@@ -37,14 +37,12 @@ public sealed class FolderEngineDetector
 
     private static EngineMatch DetectRenpy(string root)
     {
-        int containers = 0;
-        var samples = new List<string>();
+        var containers = new List<string>();
 
         // (1) Root selbst hat game/ → Root ist ein einzelnes Ren'Py-Spiel.
         if (HasGameFolder(root))
         {
-            containers = 1;
-            samples.Add(Path.GetFileName(root));
+            containers.Add(root);
         }
         else
         {
@@ -55,17 +53,18 @@ public sealed class FolderEngineDetector
                 if (HasGameFolder(container)
                     || SafeEnumerateDirectories(container).Any(HasGameFolder))
                 {
-                    containers++;
-                    if (samples.Count < 5) samples.Add(Path.GetFileName(container));
+                    containers.Add(container);
                 }
             }
         }
 
+        var samples = containers.Take(5).Select(p => Path.GetFileName(p)!).ToList();
         return new EngineMatch(
             Engine: "renpy",
             DisplayName: "Ren'Py",
-            ContainerCount: containers,
-            Samples: samples);
+            ContainerCount: containers.Count,
+            Samples: samples,
+            Containers: containers);
     }
 
     private static bool HasGameFolder(string dir)
@@ -90,8 +89,11 @@ public sealed class FolderEngineDetector
 /// <param name="DisplayName">Menschenlesbarer Engine-Name.</param>
 /// <param name="ContainerCount">Wie viele Container-Ordner mit dieser Engine gefunden wurden.</param>
 /// <param name="Samples">Die ersten paar gefundenen Container-Namen für die UI.</param>
+/// <param name="Containers">Absolute Pfade aller gefundenen Container.
+///   Der Wizard legt daraus die Manual-Games an.</param>
 public sealed record EngineMatch(
     string Engine,
     string DisplayName,
     int ContainerCount,
-    IReadOnlyList<string> Samples);
+    IReadOnlyList<string> Samples,
+    IReadOnlyList<string> Containers);

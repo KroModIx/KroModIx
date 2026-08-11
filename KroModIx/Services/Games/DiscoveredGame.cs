@@ -24,7 +24,8 @@ public sealed record DiscoveredGame(
     string? ManualId,
     string? CustomCoverPath,
     DiscoveredGameSource Source,
-    string? ExecutablePath = null);
+    string? ExecutablePath = null,
+    string? Engine = null);
 
 public enum DiscoveredGameSource
 {
