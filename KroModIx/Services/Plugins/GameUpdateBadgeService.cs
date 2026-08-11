@@ -35,6 +35,10 @@ public sealed class GameUpdateBadgeService : IDisposable
 
     private readonly PluginActivator _activator;
     private readonly ConcurrentDictionary<int, GameUpdateInfo> _pending = new();
+    // v1.10.0: parallele Map für Manual-Games ohne SteamAppId (Engine-basiert).
+    // Key = InstallDir (lower-case), Value = das ursprünglich gemeldete Info.
+    private readonly ConcurrentDictionary<string, GameUpdateInfo> _pendingByInstallDir =
+        new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _loopCts;
 
     public GameUpdateBadgeService(PluginActivator activator)
@@ -50,6 +54,10 @@ public sealed class GameUpdateBadgeService : IDisposable
     /// <summary>Snapshot der aktuell bekannten Updates. Lookup by SteamAppId.
     /// Enthält nur AppIds mit <c>PendingCount &gt; 0</c>.</summary>
     public IReadOnlyDictionary<int, GameUpdateInfo> Pending => _pending;
+
+    /// <summary>v1.10.0: Snapshot der Updates für Manual-Games ohne SteamAppId,
+    /// gekeyed über <c>GameUpdateInfo.InstallDir</c> (case-insensitive).</summary>
+    public IReadOnlyDictionary<string, GameUpdateInfo> PendingByInstallDir => _pendingByInstallDir;
 
     /// <summary>Startet die periodische Abfrage im Hintergrund. Sollte einmal
     /// nach dem MainWindow-Init aufgerufen werden.</summary>
@@ -81,6 +89,7 @@ public sealed class GameUpdateBadgeService : IDisposable
         if (loaded.Count == 0) return;
 
         var fresh = new Dictionary<int, GameUpdateInfo>();
+        var freshByDir = new Dictionary<string, GameUpdateInfo>(StringComparer.OrdinalIgnoreCase);
         foreach (var l in loaded)
         {
             if (cancellationToken.IsCancellationRequested) return;
@@ -91,16 +100,22 @@ public sealed class GameUpdateBadgeService : IDisposable
                     ?? Array.Empty<GameUpdateInfo>();
                 foreach (var u in updates.Where(u => u.PendingCount > 0))
                 {
-                    // Bei mehreren Plugins für dieselbe AppId summieren wir
-                    // die Zähler — theoretisch könnten LS25 + ein hypothetisches
-                    // FS-Extra-Plugin beide Updates melden.
-                    if (fresh.TryGetValue(u.SteamAppId, out var existing))
-                        fresh[u.SteamAppId] = new GameUpdateInfo(
-                            u.SteamAppId,
-                            existing.PendingCount + u.PendingCount,
-                            existing.Summary ?? u.Summary);
-                    else
-                        fresh[u.SteamAppId] = u;
+                    // Route über InstallDir wenn gesetzt (Manual-Games, v1.10+),
+                    // sonst über SteamAppId (klassischer Steam-Plugin-Match).
+                    if (!string.IsNullOrEmpty(u.InstallDir))
+                    {
+                        freshByDir[u.InstallDir] = u;
+                    }
+                    else if (u.SteamAppId > 0)
+                    {
+                        if (fresh.TryGetValue(u.SteamAppId, out var existing))
+                            fresh[u.SteamAppId] = new GameUpdateInfo(
+                                u.SteamAppId,
+                                existing.PendingCount + u.PendingCount,
+                                existing.Summary ?? u.Summary);
+                        else
+                            fresh[u.SteamAppId] = u;
+                    }
                 }
                 Log.Debug("Update-Notifier {Plugin} lieferte {N} Updates",
                     l.Manifest.Id, updates.Count);
@@ -112,19 +127,37 @@ public sealed class GameUpdateBadgeService : IDisposable
             }
         }
 
-        // Änderungs-Detection: wenn beide Maps semantisch gleich sind, nichts
-        // feuern — sonst würde die Sidebar bei jedem 30-Minuten-Tick redundant
-        // neu rendern.
+        bool changed = false;
         if (!MapsEqual(_pending, fresh))
         {
             _pending.Clear();
             foreach (var kv in fresh) _pending[kv.Key] = kv.Value;
-            // Und die Einträge die nicht mehr gemeldet werden — auch weg
             foreach (var appId in _pending.Keys.ToList())
                 if (!fresh.ContainsKey(appId)) _pending.TryRemove(appId, out _);
-
-            Changed?.Invoke(this, EventArgs.Empty);
+            changed = true;
         }
+        if (!MapsEqualStr(_pendingByInstallDir, freshByDir))
+        {
+            _pendingByInstallDir.Clear();
+            foreach (var kv in freshByDir) _pendingByInstallDir[kv.Key] = kv.Value;
+            foreach (var dir in _pendingByInstallDir.Keys.ToList())
+                if (!freshByDir.ContainsKey(dir)) _pendingByInstallDir.TryRemove(dir, out _);
+            changed = true;
+        }
+        if (changed) Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static bool MapsEqualStr(
+        IReadOnlyDictionary<string, GameUpdateInfo> a,
+        IReadOnlyDictionary<string, GameUpdateInfo> b)
+    {
+        if (a.Count != b.Count) return false;
+        foreach (var (key, val) in a)
+        {
+            if (!b.TryGetValue(key, out var other)) return false;
+            if (other.PendingCount != val.PendingCount) return false;
+        }
+        return true;
     }
 
     private static bool MapsEqual(

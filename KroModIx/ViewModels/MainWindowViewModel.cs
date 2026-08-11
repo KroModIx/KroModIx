@@ -595,9 +595,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void RefreshUpdateBadges()
     {
         var pending = _updateBadges.Pending;
+        var pendingByDir = _updateBadges.PendingByInstallDir;
         foreach (var g in _allGames)
         {
-            if (g.Source.SteamAppId is int appId && pending.TryGetValue(appId, out var info))
+            GameUpdateInfo? info = null;
+            if (g.Source.SteamAppId is int appId && pending.TryGetValue(appId, out var byAppId))
+                info = byAppId;
+            else if (!string.IsNullOrEmpty(g.Source.InstallDir)
+                     && pendingByDir.TryGetValue(g.Source.InstallDir, out var byDir))
+                info = byDir;
+
+            if (info is not null)
             {
                 g.PendingUpdateCount = info.PendingCount;
                 g.UpdateBadgeTooltip = info.Summary ?? $"{info.PendingCount} Update(s) verfügbar";
@@ -858,19 +866,53 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Startet das aktuell ausgewählte Spiel. Wird sowohl vom
     /// „▶ Starten"-Button im Content-Header als auch vom Sidebar-
-    /// Doppelklick aufgerufen. Ohne Selection ein No-Op.</summary>
+    /// Doppelklick aufgerufen. Ohne Selection ein No-Op.
+    ///
+    /// <para>Ab v1.10.0: Plugins können <see cref="IGameLauncher"/> implementieren
+    /// und den Launch übernehmen (z. B. RenPyAssist öffnet bei verfügbarem
+    /// Update den f95zone-Thread statt das Spiel zu starten). Der Host-
+    /// Default-Launch (Steam-URL / Executable) läuft nur wenn das Plugin
+    /// false zurückgibt oder kein Launcher-Plugin geladen ist.</para></summary>
     [RelayCommand]
-    private void LaunchSelectedGame()
+    private async Task LaunchSelectedGameAsync()
     {
         if (SelectedGame is null) return;
+
+        // Plugin-Launcher-Delegation
+        var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, SelectedGame));
+        if (loaded?.Plugin is IGameLauncher launcher)
+        {
+            var detected = FindDetectedGameFor(loaded, SelectedGame);
+            if (detected is not null)
+            {
+                try
+                {
+                    if (await launcher.TryLaunchAsync(detected, default))
+                    {
+                        Log.Info("LaunchSelectedGame: Plugin {Id} hat übernommen", loaded.Manifest.Id);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn(ex, "IGameLauncher {Id}.TryLaunchAsync warf — Fallback auf Host-Launch",
+                        loaded.Manifest.Id);
+                }
+            }
+        }
+
+        // Host-Default-Launch
         var result = _launcher.Launch(SelectedGame.Source);
         StatusText = result.Message;
-        Log.Info("LaunchSelectedGame → {Ok}: {Msg}", result.Success, result.Message);
+        Log.Info("LaunchSelectedGame (Host-Default) → {Ok}: {Msg}", result.Success, result.Message);
     }
 
     public bool CanLaunchSelected =>
         SelectedGame is not null &&
-        (SelectedGame.Source.SteamAppId is not null || !string.IsNullOrWhiteSpace(SelectedGame.Source.ExecutablePath));
+        // Plugin-Launcher hat immer eine Chance, Host-Fallback nur bei bekannten Startpfaden
+        (_pluginActivator.Loaded.Any(l => l.Plugin is IGameLauncher && MatchesGame(l, SelectedGame))
+         || SelectedGame.Source.SteamAppId is not null
+         || !string.IsNullOrWhiteSpace(SelectedGame.Source.ExecutablePath));
 
     [RelayCommand]
     private void OpenPluginUpdates()

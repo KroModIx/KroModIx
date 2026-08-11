@@ -38,4 +38,13 @@ public interface IUpdateNotifier
 ///   zeigt „N" im Badge; bei &gt; 99 wird auf „99+" gekürzt.</param>
 /// <param name="Summary">Optionaler Tooltip-Text für den Badge (z.B.
 ///   „3 Mod-Updates bei modhoster.de"). Wenn null: Host zeigt Default-Text.</param>
-public sealed record GameUpdateInfo(int SteamAppId, int PendingCount, string? Summary = null);
+public sealed record GameUpdateInfo(int SteamAppId, int PendingCount, string? Summary = null)
+{
+    /// <summary>Alternativer Match-Key für Manual-Games ohne SteamAppId
+    /// (v1.10.0+). Wenn gesetzt, matched der Host über den InstallDir
+    /// (case-insensitive) statt über die SteamAppId — nötig für Ren'Py-
+    /// Kacheln und andere Engine-basierte Multi-Tile-Setups. Init-only
+    /// Property statt Ctor-Param, damit die 3-Positional-Args-Signatur
+    /// binary-kompatibel zu Contracts &lt;=1.9.x bleibt.</summary>
+    public string? InstallDir { get; init; }
+}
