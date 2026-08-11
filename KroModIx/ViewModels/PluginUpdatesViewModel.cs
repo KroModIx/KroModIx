@@ -53,8 +53,13 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     private void RefreshUpdates()
     {
         Rows.Clear();
+        // Defensive UI-Side-Dedup per PluginId — falls der Service trotz
+        // SemaphoreSlim mal doppelt einfügt (bei race conditions oder Event-
+        // Reentrancy), soll die UI trotzdem sauber bleiben.
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var u in _updates.AvailableUpdates)
-            Rows.Add(new UpdateRow(u));
+            if (seen.Add(u.PluginId))
+                Rows.Add(new UpdateRow(u));
         StatusMessage = Rows.Count == 0 ? "Keine Updates verfügbar." : "";
     }
 

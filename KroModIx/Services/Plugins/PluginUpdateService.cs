@@ -29,6 +29,11 @@ public sealed class PluginUpdateService
     private readonly PluginActivator _activator;
     private readonly List<PluginUpdateInfo> _available = new();
     private readonly object _lock = new();
+    // Race-Guard: verhindert dass zwei parallele CheckAllAsync-Aufrufe (z. B.
+    // Auto-Check beim Start UND "Jetzt prüfen" vom User) zeitgleich laufen und
+    // ihre Ergebnisse ineinander mischen. Der zweite Caller wartet auf den
+    // ersten und bekommt dessen Ergebnis geschenkt.
+    private readonly SemaphoreSlim _checkGate = new(1, 1);
 
     public PluginUpdateService(PluginActivator activator)
     {
@@ -42,8 +47,18 @@ public sealed class PluginUpdateService
         get { lock (_lock) return _available.ToList(); }
     }
 
-    /// <summary>Prüft alle aktuell geladenen Plugins. Rückgabe: Anzahl gefundener Updates.</summary>
+    /// <summary>Prüft alle aktuell geladenen Plugins. Rückgabe: Anzahl gefundener Updates.
+    /// Serialisiert parallele Aufrufe via SemaphoreSlim — der zweite Caller sieht
+    /// dasselbe Ergebnis wie der erste (kein doppeltes Netz-Fetching, keine
+    /// verdoppelten Update-Rows im UI).</summary>
     public async Task<int> CheckAllAsync(CancellationToken ct = default)
+    {
+        await _checkGate.WaitAsync(ct).ConfigureAwait(false);
+        try { return await CheckAllInternalAsync(ct).ConfigureAwait(false); }
+        finally { _checkGate.Release(); }
+    }
+
+    private async Task<int> CheckAllInternalAsync(CancellationToken ct)
     {
         var loaded = _activator.Loaded;
         var handler = new HttpClientHandler
