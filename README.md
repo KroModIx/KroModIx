@@ -1,83 +1,155 @@
-# KroModIx
+# KroModIx — Kroste Modding MatrIx
 
 [![CI](https://github.com/KroModIx/KroModIx/actions/workflows/ci.yml/badge.svg)](https://github.com/KroModIx/KroModIx/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/KroModIx/KroModIx)](https://github.com/KroModIx/KroModIx/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-One mod manager for all your Steam games. Cross-platform (Windows + Linux native — no Wine wrappers), Steam-aware, extensible via plugins.
+**Ein Mod-Manager für alle deine Steam-Spiele — plattformübergreifend
+(Windows + Linux nativ, kein Wine), Steam-aware, per Plugin erweiterbar.**
 
-> **Status:** Milestone 5. Steam library auto-discovery + plugin catalog + 1-click plugin install with **live activation (no app restart)** + first two real game plugins (LS25, Icarus). Steam-Tools (Runtimes, Proton, Redistributables) are hidden from the sidebar.
+Ein Fenster, links deine Spiele, rechts der spielspezifische Mod-Manager.
+Kein Umschalten zwischen mehreren Tools mehr.
 
-## Motivation
+## Warum KroModIx?
 
-Most game mod managers are Windows-only, closed-source, or need Wine acrobatics to run on Linux. Every game demands its own tool. KroModIx is one desktop app that:
+Die meisten Mod-Manager sind Windows-only, closed-source oder brauchen Wine-
+Bastelei auf Linux. Jedes Spiel verlangt sein eigenes Tool. KroModIx macht:
 
-- Auto-discovers your Steam library (Windows + Linux/Bazzite, including external drives via `libraryfolders.vdf`)
-- Lets you add non-Steam games manually
-- Loads a game-specific plugin (LS25, Icarus, Satisfactory, …) that knows how to manage mods for that title
-- Downloads and updates plugins from GitHub releases
-- Runs on Windows and Linux natively
+- **Steam-Library-Autodiscovery** (Windows + Linux/Bazzite, inkl. externe
+  Platten via `libraryfolders.vdf`)
+- **Nicht-Steam-Spiele manuell hinzufügen** — mit eigenem Cover, Executable-
+  Pfad und optional Steam-AppId
+- **Plugin pro Spiel** — jedes Plugin weiß wie es Mods für sein Spiel
+  verwaltet (Katalog, Downloads, Install, Update-Discovery)
+- **1-Klick-Plugin-Install** aus dem [PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex),
+  live aktivierbar ohne App-Neustart
+- **Automatische Plugin-Updates** aus GitHub-Releases (App-Neustart nötig
+  weil die Assembly geladen ist)
+- **Grüner ↑-Badge** auf einer Spielkachel wenn es Updates für installierte
+  Mods oder neue Katalog-Einträge gibt
+- **REST-API** für externe Steuerung (Screenshots, Clicks, Tab-Wechsel,
+  Plugin-Actions — siehe unten)
 
 ## Installation
 
-Grab the latest release from the [Releases page](https://github.com/KroModIx/KroModIx/releases):
+Aktuelles Release von der [Releases-Seite](https://github.com/KroModIx/KroModIx/releases):
 
-**Windows:** `ModManager-X.Y.Z-win-x64.zip` — unzip, run `ModManager.exe`. Self-contained, no install needed.
+**Windows:** `KroModIx-X.Y.Z-win-x64.zip` — entpacken, `KroModIx.exe`
+starten. Self-contained, keine Installation nötig.
 
-**Linux (AppImage, recommended):**
+**Linux (AppImage, empfohlen):**
 ```bash
-chmod +x ModManager-*-x86_64.AppImage
-./ModManager-*-x86_64.AppImage
+chmod +x KroModIx-*-x86_64.AppImage
+./KroModIx-*-x86_64.AppImage
 ```
 
-**Linux (tar.gz):** unpack `ModManager-X.Y.Z-linux-x64.tar.gz` and run `./ModManager`.
+**Linux (tar.gz):** `KroModIx-X.Y.Z-linux-x64.tar.gz` entpacken, `./KroModIx`
+starten.
 
 ## Bedienung
 
-- **Sidebar (left)** lists all installed Steam games (auto-discovered from all Steam library roots including external drives). Search box filters by title, the „only games with plugin"-toggle hides everything without a loaded plugin. Sort order: games with a plugin first, then alphabetical.
-- **Add non-Steam game** with the ➕ button: name + directory (mandatory) + executable + cover + optional Steam-AppId (auto-loads the cover from Steam CDN when set). Entries persist in `~/.config/KroModIx/manual-games.json`.
-- **Star overlay** on each tile: **filled gold ★** = plugin loaded and active · **outlined gold ☆** = plugin available in the [PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex), not yet installed · **no star** = no plugin known.
-- **Click a game with an outlined star** → the content area shows an install card: "Plugin available (Kroste). ⬇ Install". One click downloads the plugin from its GitHub release, extracts it, and activates it live — no app restart. The star immediately turns filled and the plugin's tabs appear.
-- **Click a game with a filled star** → the plugin's tabs render in the content area.
-- **Plugin deployment (manual)**: drop `<pluginName>/plugin.json` plus its DLL into `~/.config/KroModIx/plugins/<pluginName>/` (or `%APPDATA%\ModManager\plugins\<pluginName>\` on Windows) and restart. Live install (as above) is preferred.
+### Sidebar (links)
 
-## Available plugins
+Zeigt alle installierten Steam-Spiele aus **allen** Library-Roots inkl.
+externen Platten. Suchfeld filtert nach Titel, der „Alle Spiele"-Toggle
+wechselt zwischen „nur mit Plugin" und „alle". Sortierung: Plugins zuerst,
+dann alphabetisch. Steam-Tools (Runtimes, Proton-Versionen, Redistributables)
+werden ausgeblendet.
 
-- [`KroModIx/KroModIx.Plugin.LS25`](https://github.com/KroModIx/KroModIx.Plugin.LS25) — Landwirtschafts-Simulator 25
-- [`KroModIx/KroModIx.Plugin.Icarus`](https://github.com/KroModIx/KroModIx.Plugin.Icarus) — Icarus (RocketWerkz)
-- [`KroModIx/KroModIx.Plugin.Dummy`](https://github.com/KroModIx/KroModIx.Plugin.Dummy) — Demo plugin (end-to-end proof)
+**➕ Spiel hinzufügen** — für Nicht-Steam-Spiele: Name + Verzeichnis
+(Pflicht) + Executable + Cover + optional Steam-AppId (lädt bei gesetzter
+AppId das Cover automatisch aus dem Steam-CDN). Einträge persistieren in
+`~/.config/KroModIx/manual-games.json`.
 
-The catalog is served from [`KroModIx/KroModIx.PluginIndex`](https://github.com/KroModIx/KroModIx.PluginIndex). Send a PR to add your own.
+### Kachel-Overlays
+
+- **★ (gefüllt gold)** = Plugin geladen und aktiv
+- **☆ (umrandet gold)** = Plugin im PluginIndex verfügbar, noch nicht installiert
+- **↑ (grün, oben rechts)** = Updates für installierte Mods oder neue
+  Katalog-Einträge dieses Spiels
+
+**Klick auf Spiel mit umrandetem Stern** → Install-Karte im Content-Bereich:
+„Plugin verfügbar. ⬇ Installieren". Ein Klick lädt das Plugin aus dem
+GitHub-Release, entpackt, aktiviert live — der Stern wird sofort gefüllt und
+die Plugin-Tabs erscheinen.
+
+**Klick auf Spiel mit gefülltem Stern** → die Plugin-Tabs rendern im
+Content-Bereich (Katalog / Downloads / Installiert / Einstellungen — je
+nach Plugin).
+
+## Verfügbare Plugins
+
+| Plugin | Repo | Was |
+|---|---|---|
+| Landwirtschafts-Simulator 25 | [KroModIx.Plugin.LS25](https://github.com/KroModIx/KroModIx.Plugin.LS25) | GIANTS ModHub + Hof Hirschfeld + modhoster, DDS-Preview, Backup/Restore, KI-Zusammenfassung |
+| Satisfactory | [KroModIx.Plugin.Satisfactory](https://github.com/KroModIx/KroModIx.Plugin.Satisfactory) | ficsit.app-Katalog via GraphQL, `.smod`-Direct-Download, `.uplugin`-Manifest |
+| Icarus | [KroModIx.Plugin.Icarus](https://github.com/KroModIx/KroModIx.Plugin.Icarus) | Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download |
+| Dummy | [KroModIx.Plugin.Dummy](https://github.com/KroModIx/KroModIx.Plugin.Dummy) | Demo-Plugin für Entwicklungs-Tests |
+
+Der Katalog steht in [KroModIx.PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex).
+Eigenes Plugin? PR gegen die `plugins.json` schicken.
+
+## REST-API
+
+Der Host hat eine optionale REST-API zur externen Steuerung. Standardmäßig
+aus (kein Netz-Listener). Anschalten:
+
+```bash
+KroModIx --api-port 8765 --api-token <secret> --auto-shutdown-after 5m
+```
+
+Oder persistent in `~/.config/KroModIx/settings.json` (`ApiEnabled: true`
++ `ApiBearerToken`).
+
+Endpoints (Auszug):
+- `GET /state` — aktueller App-Zustand (aktives Spiel, geladene Plugins)
+- `GET /games` — alle Steam- und Manual-Spiele
+- `POST /select-game { gameId }` — Sidebar-Kachel wählen
+- `POST /select-tab { tabId }` — Plugin-Tab wechseln
+- `POST /screenshot` — PNG-Screenshot des Hauptfensters
+- `POST /events/click { elementId }` — auf Named-Control klicken
+- `GET /badges` — aktuelle Update-Badges pro Steam-AppId
+
+Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
+[KroModIx.RestApi](https://github.com/KroModIx/KroModIx.RestApi).
 
 ## Roadmap
 
-- **M1 — Foundation** ✅ shell, tray, About + Settings, self-update via GitHub releases
-- **M2 — Steam discovery + plugin loader** ✅ sidebar with large cover art, manual add, plugin scanning + activation
-- **M3 — LS25 plugin** ✅ installed-mods tab (Enable/Disable/Uninstall). Catalogs in v0.2+.
-- **M4 — Plugin index + install card + live activation** ✅ one-click install from GitHub, no restart.
-- **M5 — Icarus plugin** ✅ PAK-mod skeleton.
-- **M4.5 — Plugin update service** ✅ badge in the header + install flow with restart hint (assembly is loaded, can't be swapped hot).
-- **M6 — Satisfactory plugin** (custom locator for Bottles/Wine).
-- **M7 — Ren'Py plugin** (optional).
+| Milestone | Status | Was |
+|---|---|---|
+| M1 Foundation | ✅ | Shell, Tray, About/Settings, Self-Update via GitHub-Releases |
+| M2 Steam-Discovery + Plugin-Loader | ✅ | Sidebar mit großen Cover-Kacheln, manueller Add, Plugin-Scan + Aktivierung |
+| M3 LS25-Plugin | ✅ | Installiert-Tab, ModHub-Katalog, Detail-Dialog, KI-Zusammenfassung |
+| M4 PluginIndex + Install-Karte + Live-Aktivierung | ✅ | 1-Klick-Install ohne Restart |
+| M4.5 Plugin-Update-Service | ✅ | Update-Badge im Header + Install-Flow mit Restart-Hinweis |
+| M5 Icarus-Plugin | ✅ | Nexus-Katalog, PAK-Manual + Steam-Workshop |
+| M6 Satisfactory-Plugin | ✅ | ficsit.app GraphQL, `.smod`-Install |
+| REST-API (Phase 2) | ✅ | External-Control, Screenshots, Clicks, Tab-Wechsel |
+| KI-Erweiterung (Phase 3) | ✅ | Ollama + Cloud-Provider mit Modell-Discovery |
+| Sidebar-Verhalten (Phase 4) | ✅ | Toasts, Auto-Cleanup, Kachel-Badges |
+| **M7 Ren'Py-Plugin** | ⏳ | RenPyAssist mit f95zone.to-Anbindung + Worker |
 
-## Development
+## Entwicklung
 
 ```bash
-dotnet build   # build
-dotnet test    # tests
-dotnet run --project ModManager
+dotnet build          # Build
+dotnet test           # Tests
+dotnet run --project KroModIx
 ```
 
-Release: VS Code task **release (tag + push)** — checks the git state, sets a `vX.Y.Z` tag, pushes, and the release workflow builds the Windows ZIP, Linux tar.gz, and AppImage.
+Release: Tag `vX.Y.Z` setzen und pushen — GitHub-Action baut Windows-ZIP,
+Linux-tar.gz und AppImage.
 
 ## Logs
 
-Log files live in `logs/` next to the executable (daily archive, 14 days). Passwords and tokens are automatically masked. Attach the current log to any issue you file.
+Log-Files unter `logs/` neben der Executable (Tages-Archive, 14 Tage).
+Passwörter und Tokens werden automatisch maskiert. Bei Issues die aktuelle
+Log-Datei mitschicken.
 
-## License
+## Lizenz
 
-MIT — see [LICENSE](LICENSE).
+MIT — siehe [LICENSE](LICENSE).
 
 ---
 
-☕ Enjoying the tool? [Buy me a coffee](https://buymeacoffee.com/kroste)
+☕ [buymeacoffee.com/kroste](https://buymeacoffee.com/kroste)
