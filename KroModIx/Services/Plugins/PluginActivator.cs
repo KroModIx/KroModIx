@@ -38,6 +38,13 @@ public sealed class PluginActivator
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
+    /// <summary>Nach der App-Composition gesetzt (kein Ctor-Param, weil
+    /// BadgeService selbst einen PluginActivator braucht → Circular-Dep).
+    /// Wird beim <see cref="HostServicesImpl"/>-Erzeugen an das Plugin
+    /// weitergegeben, damit <c>IHostServices.RequestUpdateBadgeRefreshAsync</c>
+    /// den BadgeService triggern kann.</summary>
+    public GameUpdateBadgeService? UpdateBadges { get; set; }
+
     private readonly List<LoadedPlugin> _loaded = new();
     private readonly object _lock = new();
 
@@ -123,7 +130,7 @@ public sealed class PluginActivator
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
-                title => _progress.Begin(title), _manualGames);
+                title => _progress.Begin(title), _manualGames, UpdateBadges);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

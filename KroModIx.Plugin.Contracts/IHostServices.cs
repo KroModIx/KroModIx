@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Threading.Tasks;
 using NLog;
 
 namespace KroModIx.Plugin.Contracts;
@@ -49,4 +50,12 @@ public interface IHostServices
     /// true wenn ein passender Manual-Eintrag gefunden und aktualisiert wurde.
     /// Contracts v1.9.3+ (bei älteren Hosts default-implementiert = no-op).</summary>
     bool TrySetManualGameCover(string installDir, string coverPath) => false;
+
+    /// <summary>Fordert vom Host einen sofortigen Refresh der Update-Badges
+    /// (grüner ↑ auf Sidebar-Kacheln). Wird von Plugins gerufen, wenn sich
+    /// intern der Update-Status geändert hat — z. B. nach einem Auto-Install
+    /// eines Updates. Ohne diesen Call zeigt die Sidebar bis zum nächsten
+    /// periodischen Poll (60 s) noch den alten Zustand. Contracts v1.10.1+
+    /// (bei älteren Hosts default-implementiert = no-op).</summary>
+    Task RequestUpdateBadgeRefreshAsync() => Task.CompletedTask;
 }

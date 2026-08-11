@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using KroModIx.Localization;
 using KroModIx.Plugin.Contracts;
 using KroModIx.Services.Games;
@@ -20,6 +21,7 @@ public sealed class HostServicesImpl : IHostServices
     private readonly string _pluginId;
 
     private readonly ManualGamesService? _manualGames;
+    private readonly GameUpdateBadgeService? _updateBadges;
 
     public HostServicesImpl(
         string pluginId,
@@ -30,7 +32,8 @@ public sealed class HostServicesImpl : IHostServices
         IHostShell shell,
         IAiService ai,
         Func<string, IProgressScope> progressFactory,
-        ManualGamesService? manualGames = null)
+        ManualGamesService? manualGames = null,
+        GameUpdateBadgeService? updateBadges = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -42,6 +45,7 @@ public sealed class HostServicesImpl : IHostServices
         Ai = ai;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
+        _updateBadges = updateBadges;
 
         PluginDataDir = Path.Combine(AppPaths.ConfigRoot, "plugin-data", pluginId);
         Directory.CreateDirectory(PluginDataDir);
@@ -83,6 +87,13 @@ public sealed class HostServicesImpl : IHostServices
     /// MainWindowViewModel horcht darauf und ruft LoadCoversAsync für die
     /// betroffene Kachel neu.</summary>
     public static event EventHandler<string>? ManualCoverChanged;
+
+    public async Task RequestUpdateBadgeRefreshAsync()
+    {
+        if (_updateBadges is null) return;
+        try { await _updateBadges.RefreshAsync(); }
+        catch (Exception ex) { Logger.Debug(ex, "RequestUpdateBadgeRefresh fehlgeschlagen"); }
+    }
 
     public bool TrySetManualGameCover(string installDir, string coverPath)
     {

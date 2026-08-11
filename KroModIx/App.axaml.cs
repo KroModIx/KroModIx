@@ -37,6 +37,13 @@ public partial class App : Application
     {
         Services = BuildServiceProvider();
 
+        // Circular-Dep-Aufhebung: PluginActivator braucht Zugriff auf den
+        // BadgeService (für IHostServices.RequestUpdateBadgeRefreshAsync),
+        // aber BadgeService selbst braucht PluginActivator im Ctor. Setzen
+        // nach der Composition.
+        Services.GetRequiredService<PluginActivator>().UpdateBadges =
+            Services.GetRequiredService<GameUpdateBadgeService>();
+
         var settings = Services.GetRequiredService<AppSettingsService>();
         LocalizationService.Instance.SetCulture(settings.Current.UiCulture);
 
