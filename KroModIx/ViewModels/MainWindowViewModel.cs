@@ -89,6 +89,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
 
+        // Plugin hat via IHostServices.TrySetManualGameCover den Cover-Pfad
+        // eines Manual-Games gesetzt → betroffene Sidebar-Kachel neu laden.
+        Services.Plugins.HostServicesImpl.ManualCoverChanged += (_, manualId) =>
+            Dispatcher.UIThread.Post(() =>
+            {
+                var entry = _allGames.FirstOrDefault(g => g.Source.ManualId == manualId);
+                if (entry is null) return;
+                // Cover-Cache-Path wechselte → CustomCoverPath im DiscoveredGame
+                // ist immutable, also frisch neu bauen aus ManualEntry.
+                var fresh = _manual.All.FirstOrDefault(m => m.Id == manualId);
+                if (fresh is null) return;
+                entry.Source = entry.Source with { CustomCoverPath = fresh.CoverPath };
+                _ = LoadCoversAsync(new[] { entry }, default);
+            });
+
         _updateBadges.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshUpdateBadges);
         _pluginUpdates.UpdatesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {

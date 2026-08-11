@@ -42,4 +42,11 @@ public interface IHostServices
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
+
+    /// <summary>Setzt für ein Manual-Game (identifiziert über <paramref name="installDir"/>,
+    /// case-insensitive) den Cover-Bild-Pfad. Der Host aktualisiert die Sidebar-Kachel
+    /// entsprechend. Für Steam-Games ohne Effekt (Steam-CDN gewinnt). Rückgabe:
+    /// true wenn ein passender Manual-Eintrag gefunden und aktualisiert wurde.
+    /// Contracts v1.9.3+ (bei älteren Hosts default-implementiert = no-op).</summary>
+    bool TrySetManualGameCover(string installDir, string coverPath) => false;
 }

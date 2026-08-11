@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using KroModIx.Localization;
 using KroModIx.Plugin.Contracts;
+using KroModIx.Services.Games;
 using NLog;
 
 namespace KroModIx.Services.Plugins;
@@ -17,6 +19,8 @@ public sealed class HostServicesImpl : IHostServices
 {
     private readonly string _pluginId;
 
+    private readonly ManualGamesService? _manualGames;
+
     public HostServicesImpl(
         string pluginId,
         ISecretProtection secrets,
@@ -25,7 +29,8 @@ public sealed class HostServicesImpl : IHostServices
         ILocalization localization,
         IHostShell shell,
         IAiService ai,
-        Func<string, IProgressScope> progressFactory)
+        Func<string, IProgressScope> progressFactory,
+        ManualGamesService? manualGames = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -36,6 +41,7 @@ public sealed class HostServicesImpl : IHostServices
         Shell = shell;
         Ai = ai;
         _progressFactory = progressFactory;
+        _manualGames = manualGames;
 
         PluginDataDir = Path.Combine(AppPaths.ConfigRoot, "plugin-data", pluginId);
         Directory.CreateDirectory(PluginDataDir);
@@ -71,4 +77,25 @@ public sealed class HostServicesImpl : IHostServices
     }
 
     public IProgressScope BeginProgress(string title) => _progressFactory(title);
+
+    /// <summary>Trigger, damit die MainWindow-Sidebar den neuen Cover-Path
+    /// nachlädt. Wird von <see cref="TrySetManualGameCover"/> gefeuert;
+    /// MainWindowViewModel horcht darauf und ruft LoadCoversAsync für die
+    /// betroffene Kachel neu.</summary>
+    public static event EventHandler<string>? ManualCoverChanged;
+
+    public bool TrySetManualGameCover(string installDir, string coverPath)
+    {
+        if (_manualGames is null) return false;
+        if (string.IsNullOrWhiteSpace(installDir) || string.IsNullOrWhiteSpace(coverPath))
+            return false;
+        var entry = _manualGames.All.FirstOrDefault(g =>
+            string.Equals(g.InstallDir, installDir, StringComparison.OrdinalIgnoreCase));
+        if (entry is null) return false;
+        if (string.Equals(entry.CoverPath, coverPath, StringComparison.Ordinal)) return true; // no-op
+        _manualGames.Update(entry.Id, e => e.CoverPath = coverPath);
+        Logger.Debug("Manual-Cover gesetzt: {Name} -> {Path}", entry.DisplayName, coverPath);
+        ManualCoverChanged?.Invoke(null, entry.Id);
+        return true;
+    }
 }

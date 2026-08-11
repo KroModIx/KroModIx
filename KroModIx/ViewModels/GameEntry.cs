@@ -15,7 +15,7 @@ public sealed partial class GameEntry : ObservableObject
         Source = source;
     }
 
-    public DiscoveredGame Source { get; }
+    public DiscoveredGame Source { get; set; }
 
     /// <summary>Schlüssel aus der Discovery (steam:&lt;appid&gt; oder manual:&lt;guid&gt;).</summary>
     public string Key => Source.Key;

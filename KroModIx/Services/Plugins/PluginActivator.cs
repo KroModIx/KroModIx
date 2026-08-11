@@ -36,6 +36,7 @@ public sealed class PluginActivator
     private readonly IHostShell _shell;
     private readonly IAiService _ai;
     private readonly StatusProgressCoordinator _progress;
+    private readonly ManualGamesService _manualGames;
 
     private readonly List<LoadedPlugin> _loaded = new();
     private readonly object _lock = new();
@@ -48,7 +49,8 @@ public sealed class PluginActivator
         ILocalization localization,
         IHostShell shell,
         IAiService ai,
-        StatusProgressCoordinator progress)
+        StatusProgressCoordinator progress,
+        ManualGamesService manualGames)
     {
         _steam = steam;
         _secrets = secrets;
@@ -58,6 +60,7 @@ public sealed class PluginActivator
         _shell = shell;
         _ai = ai;
         _progress = progress;
+        _manualGames = manualGames;
     }
 
     /// <summary>Aktuell geladene Plugins (Thread-safe Snapshot).</summary>
@@ -120,7 +123,7 @@ public sealed class PluginActivator
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
-                title => _progress.Begin(title));
+                title => _progress.Begin(title), _manualGames);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);
