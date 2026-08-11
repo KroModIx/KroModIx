@@ -853,6 +853,38 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Öffnet den „🎮 Ordner mit Spielen scannen"-Wizard: User wählt
+    /// einen Root, der Host scannt nach Ren'Py-Marker, legt bei Erfolg eine
+    /// Sammel-Manual-Kachel an und triggert Plugin-Re-Aktivierung.</summary>
+    [RelayCommand]
+    private async Task AddFolderCollectionAsync()
+    {
+        var detector = _services.GetRequiredService<FolderEngineDetector>();
+        var vm = new AddFolderCollectionDialogViewModel(_manual, detector);
+        var dialog = new AddFolderCollectionDialog { DataContext = vm };
+        var owner = MainWindow();
+        if (owner is not null) await dialog.ShowDialog(owner); else dialog.Show();
+        if (vm.Result is null) return;
+
+        var entry = new GameEntry(new DiscoveredGame(
+            Key: $"manual:{vm.Result.Id}",
+            DisplayName: vm.Result.DisplayName,
+            InstallDir: vm.Result.InstallDir,
+            SteamAppId: vm.Result.SteamAppId,
+            ManualId: vm.Result.Id,
+            CustomCoverPath: vm.Result.CoverPath,
+            Source: DiscoveredGameSource.Manual));
+        _allGames.Add(entry);
+        _ = LoadCoversAsync(new[] { entry }, default);
+
+        // Plugin-Aktivierung neu triggern — der neue Sammel-Anker matched
+        // gegen das RenPyAssist-Plugin (SteamAppId 9000001 Convention).
+        await ActivatePluginsAsync(default);
+        ApplyFilterAndSort();
+        SelectedGame = entry;
+        EnqueueToast($"Sammlung „{entry.DisplayName}\" importiert", NotificationLevel.Success);
+    }
+
     /// <summary>Sidebar-Kontextmenü „🖼 Kachelbild ändern": öffnet File-Picker,
     /// kopiert das ausgewählte Bild in <see cref="AppPaths.UserCoverDir"/>
     /// (persistent an unser Cache-Verzeichnis gebunden, damit der User seinen

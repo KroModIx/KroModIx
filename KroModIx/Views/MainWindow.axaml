@@ -114,7 +114,7 @@
                         <TextBox Name="SidebarSearchBox"
                                  Text="{Binding SearchText, Mode=TwoWay}"
                                  PlaceholderText="{loc:Tr Main_Sidebar_Search_Placeholder}" />
-                        <Grid ColumnDefinitions="*,Auto">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
                             <!-- Toggle „Alle Spiele" statt binärer OnlyWithPlugin.
                                  An = zeigt auch Non-Plugin-Games (ausgegraut).
                                  Aus (Default) = nur Spiele mit Plugin. -->
@@ -125,8 +125,14 @@
                                           IsChecked="{Binding ShowAllGames, Mode=TwoWay}"
                                           Foreground="{DynamicResource KrosteSecondaryTextBrush}"
                                           FontSize="12" />
-                            <Button Name="AddGameButton"
+                            <Button Name="AddFolderCollectionButton"
                                     Grid.Column="1" Classes="ghost" FontSize="12"
+                                    Margin="0,0,6,0"
+                                    Content="🎮"
+                                    ToolTip.Tip="Ordner mit Spielen scannen (Ren'Py-Sammlung, …)"
+                                    Command="{Binding AddFolderCollectionCommand}" />
+                            <Button Name="AddGameButton"
+                                    Grid.Column="2" Classes="ghost" FontSize="12"
                                     Content="{loc:Tr Main_Sidebar_AddGame}"
                                     Command="{Binding AddGameCommand}" />
                         </Grid>

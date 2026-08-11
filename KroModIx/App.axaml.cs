@@ -84,6 +84,7 @@ public partial class App : Application
         services.AddSingleton<SteamLibraryService>();
         services.AddSingleton<GameCoverService>();
         services.AddSingleton<ManualGamesService>();
+        services.AddSingleton<FolderEngineDetector>();
         services.AddSingleton<GameDiscoveryService>();
         services.AddSingleton<GamesCacheService>();
         services.AddSingleton<GameLauncherService>();
