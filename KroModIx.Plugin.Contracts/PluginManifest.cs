@@ -63,6 +63,17 @@ public sealed class PluginManifest
     [JsonPropertyName("checksum")]
     public string? Checksum { get; set; }
 
+    /// <summary>Für Plugins ohne echten Steam-Bezug (z. B. RenPyAssist —
+    /// verwaltet Ren'Py-Ordner, kein Steam-Spiel): der Host legt beim
+    /// Discovery ein Manual-Game mit dieser SteamAppId und diesem
+    /// DisplayName an, falls noch keins existiert. Dadurch bekommt das
+    /// Plugin garantiert eine Sidebar-Kachel — der User muss nicht
+    /// selbst „➕ Spiel hinzufügen" klicken. Die SteamAppId dient nur
+    /// als Match-Anchor und sollte eine echte-aber-neutrale Id sein,
+    /// die vom Plugin exklusiv beansprucht wird.</summary>
+    [JsonPropertyName("virtualGame")]
+    public PluginVirtualGame? VirtualGame { get; set; }
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -86,6 +97,22 @@ public sealed class PluginManifest
     public static PluginManifest FromFile(string path) => FromJson(File.ReadAllText(path));
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOpts);
+}
+
+/// <summary>Virtuelle Sidebar-Kachel für Plugins ohne echten Steam-Bezug.
+/// Der Host legt beim Startup ein <c>ManualGameEntry</c> mit diesen Werten
+/// an, falls noch keiner mit der gleichen SteamAppId existiert. Anschließend
+/// aktiviert der Standard-Planner das Plugin über den SteamAppId-Match.</summary>
+public sealed class PluginVirtualGame
+{
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>Anchor-SteamAppId. Muss auch in <see cref="PluginManifest.Targets"/>
+    /// als <see cref="GameTarget.SteamAppId"/> auftauchen — sonst matcht der Planner
+    /// nichts.</summary>
+    [JsonPropertyName("steamAppId")]
+    public int SteamAppId { get; set; }
 }
 
 public sealed class PluginUpdateSource

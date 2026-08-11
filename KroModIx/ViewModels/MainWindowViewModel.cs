@@ -402,11 +402,41 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         try
         {
             var discovered = await Task.Run(_pluginScanner.Scan, ct).ConfigureAwait(true);
+
+            // Plugins mit VirtualGame (z. B. RenPyAssist ohne echten Steam-
+            // Bezug): Manual-Anker anlegen falls noch keiner mit der
+            // SteamAppId existiert, danach die Sidebar-Games neu einlesen
+            // damit der neue Anker im ersten Plan mitgezählt wird.
+            bool anyEnsured = false;
+            foreach (var disc in discovered)
+            {
+                var vg = disc.Manifest.VirtualGame;
+                if (vg is null || vg.SteamAppId == 0
+                    || string.IsNullOrWhiteSpace(vg.DisplayName)) continue;
+                if (_manual.EnsureVirtualAnchor(vg.DisplayName, vg.SteamAppId))
+                    anyEnsured = true;
+            }
+            if (anyEnsured)
+            {
+                var refreshed = await Task.Run(() => _discovery.Discover(), ct).ConfigureAwait(true);
+                _allGames.Clear();
+                foreach (var g in refreshed) _allGames.Add(new GameEntry(g));
+                _gamesCache.Save(refreshed);
+                Log.Info("Virtual-Anchor(s) angelegt — Sidebar neu geladen: {N} Spiele", _allGames.Count);
+            }
+
             var currentGames = _allGames.Select(g => g.Source).ToList();
             var hostVer = ParseVersion(_hostUpdate.CurrentVersion);
             var decisions = _pluginPlanner.Plan(discovered, currentGames, hostVer);
             await _pluginActivator.ActivateManyAsync(decisions, ct).ConfigureAwait(true);
             RefreshPluginStates();
+
+            if (anyEnsured)
+            {
+                // Erst nach Aktivierung Filter/Sort neu anwenden — neue Kachel
+                // taucht sonst nicht mit korrektem PluginState in der Liste auf.
+                ApplyFilterAndSort();
+            }
         }
         catch (Exception ex)
         {

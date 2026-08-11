@@ -31,6 +31,33 @@ public sealed class ManualGamesService
 
     public IReadOnlyList<ManualGameEntry> All => _games;
 
+    /// <summary>Legt für ein Plugin-Manifest mit <see cref="KroModIx.Plugin.Contracts.PluginVirtualGame"/>
+    /// einen Manual-Game-Anker an, falls noch keiner mit dieser <paramref name="steamAppId"/>
+    /// existiert. Rückgabe true = neu angelegt, false = existierte schon.</summary>
+    public bool EnsureVirtualAnchor(string displayName, int steamAppId)
+    {
+        if (_games.Any(g => g.SteamAppId == steamAppId))
+        {
+            Log.Debug("Virtual-Anchor {AppId} existiert bereits — kein Ensure nötig", steamAppId);
+            return false;
+        }
+        // InstallDir muss syntaktisch gesetzt sein, wird aber vom Anchor selbst
+        // nicht benutzt (Ren'Py-Root steht im Plugin-eigenen Settings-Store).
+        var placeholder = OperatingSystem.IsWindows() ? @"C:\" : "/";
+        _games.Add(new ManualGameEntry
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            DisplayName = displayName,
+            InstallDir = placeholder,
+            ExecutablePath = null,
+            CoverPath = null,
+            SteamAppId = steamAppId,
+        });
+        Save();
+        Log.Info("Virtual-Anchor angelegt: {Name} (AppId {AppId})", displayName, steamAppId);
+        return true;
+    }
+
     /// <summary>Fügt einen neuen Eintrag hinzu (generiert die ID) und persistiert sofort.</summary>
     public ManualGameEntry Add(string displayName, string installDir,
         string? executablePath = null, string? coverPath = null, int? steamAppId = null)
