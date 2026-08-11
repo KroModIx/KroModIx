@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,10 +35,51 @@ public sealed class PluginUpdateService
     // ihre Ergebnisse ineinander mischen. Der zweite Caller wartet auf den
     // ersten und bekommt dessen Ergebnis geschenkt.
     private readonly SemaphoreSlim _checkGate = new(1, 1);
+    // Persistenter Cache pro pluginId. Wird bei jedem erfolgreichen Check
+    // aktualisiert. Bei API-Fehler (403 Rate-Limit, Netz-Timeout etc.) wird
+    // der Cache als Fallback genutzt — sonst würde ein einziges Rate-Limit
+    // dazu führen, dass alle bekannten Updates aus der UI verschwinden.
+    // (Rate-Limit ist real: unauthenticated 60 req/h, bei 5 Plugins × einige
+    // App-Starts + "Jetzt prüfen"-Klicks schnell erreicht.)
+    private readonly string _cachePath = Path.Combine(AppPaths.ConfigRoot, "plugin-update-cache.json");
+    private readonly Dictionary<string, CachedRelease> _cache = new(StringComparer.OrdinalIgnoreCase);
 
     public PluginUpdateService(PluginActivator activator)
     {
         _activator = activator;
+        LoadCache();
+    }
+
+    private void LoadCache()
+    {
+        try
+        {
+            if (!File.Exists(_cachePath)) return;
+            var json = File.ReadAllText(_cachePath);
+            var items = JsonSerializer.Deserialize<Dictionary<string, CachedRelease>>(json);
+            if (items is null) return;
+            lock (_lock)
+            {
+                _cache.Clear();
+                foreach (var kv in items) _cache[kv.Key] = kv.Value;
+            }
+            Log.Debug("Plugin-Update-Cache geladen: {N} Eintrag/Einträge", items.Count);
+        }
+        catch (Exception ex) { Log.Warn(ex, "Plugin-Update-Cache unlesbar — starte leer"); }
+    }
+
+    private void SaveCache()
+    {
+        try
+        {
+            Dictionary<string, CachedRelease> snapshot;
+            lock (_lock) snapshot = new(_cache, StringComparer.OrdinalIgnoreCase);
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            var tmp = _cachePath + ".tmp";
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, _cachePath, overwrite: true);
+        }
+        catch (Exception ex) { Log.Warn(ex, "Plugin-Update-Cache-Save fehlgeschlagen"); }
     }
 
     public event EventHandler? UpdatesChanged;
@@ -70,13 +112,29 @@ public sealed class PluginUpdateService
         http.DefaultRequestHeaders.UserAgent.ParseAdd("KroModIx-PluginUpdateCheck");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
 
-        var updates = new List<PluginUpdateInfo>();
+        // Wenn ein GITHUB_TOKEN in der Env liegt (User setzt), nutzen — hebt
+        // das Rate-Limit von 60 auf 5000 req/h. Optional, kein Zwang.
+        var ghToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
+        if (!string.IsNullOrWhiteSpace(ghToken))
+            http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ghToken);
+
+        int freshFetched = 0, cacheFallback = 0;
+        bool rateLimited = false;
         foreach (var lp in loaded)
         {
             var us = lp.Manifest.UpdateSource;
             if (us is null || !string.Equals(us.Kind, "github", StringComparison.OrdinalIgnoreCase)
                            || string.IsNullOrWhiteSpace(us.Repo))
                 continue;
+
+            // Bei Rate-Limit-Treffer nicht weiter Requests feuern — wir würden
+            // nur weitere 403er einsammeln. Nachfolgende Plugins nutzen ihren
+            // Cache-Eintrag.
+            if (rateLimited)
+            {
+                cacheFallback++;
+                continue;
+            }
 
             try
             {
@@ -85,33 +143,58 @@ public sealed class PluginUpdateService
                 var latestTag = release?.TagName?.TrimStart('v');
                 if (string.IsNullOrWhiteSpace(latestTag)) continue;
 
-                if (TryParseVersion(latestTag, out var latest)
-                    && TryParseVersion(lp.Manifest.Version, out var current)
-                    && latest > current)
+                var asset = release!.Assets?.FirstOrDefault(a =>
+                    a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
+                lock (_lock)
                 {
-                    var asset = release!.Assets?.FirstOrDefault(a =>
-                        a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
-                    updates.Add(new PluginUpdateInfo(
-                        PluginId: lp.Manifest.Id,
-                        PluginDisplayName: lp.Manifest.DisplayName,
-                        InstalledVersion: lp.Manifest.Version,
-                        LatestVersion: latestTag,
+                    _cache[lp.Manifest.Id] = new CachedRelease(
+                        LatestTag: latestTag,
                         AssetUrl: asset?.BrowserDownloadUrl,
                         AssetName: asset?.Name,
-                        ReleaseUrl: release.HtmlUrl));
+                        ReleaseUrl: release.HtmlUrl,
+                        CheckedAtUtc: DateTime.UtcNow);
                 }
+                freshFetched++;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden
+                && (ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+                 || ex.Message.Contains("API rate", StringComparison.OrdinalIgnoreCase)))
+            {
+                Log.Warn("GitHub-API-Rate-Limit erreicht (60 req/h unauthenticated) — nutze " +
+                    "gecachte Update-Info. Optional GITHUB_TOKEN als Env-Var setzen (5000 req/h).");
+                rateLimited = true;
+                cacheFallback++;
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Update-Check für {Id} fehlgeschlagen", lp.Manifest.Id);
+                Log.Debug(ex, "Update-Check für {Id} fehlgeschlagen — nutze Cache-Eintrag", lp.Manifest.Id);
+                cacheFallback++;
             }
         }
 
-        // Dedup per PluginId — falls _activator.Loaded aus irgendeinem Grund
-        // dieselbe pluginId doppelt liefert (z.B. nach unvollständigem
-        // Hot-Swap-Attempt), soll die Update-Liste im UI trotzdem sauber sein.
-        // Nehmen den ersten Treffer pro PluginId — bei mehreren gleichen
-        // Einträgen ist eh dieselbe LatestVersion.
+        SaveCache();
+
+        // Effektive Update-Liste aus Cache + Manifest-Version berechnen.
+        // Cache enthält immer den letzten bekannten Stand — auch wenn dieser
+        // Run keinen frischen Fetch geschafft hat (Rate-Limit/Netz).
+        var updates = new List<PluginUpdateInfo>();
+        foreach (var lp in loaded)
+        {
+            CachedRelease? cached;
+            lock (_lock) _cache.TryGetValue(lp.Manifest.Id, out cached);
+            if (cached is null) continue;
+            if (!TryParseVersion(cached.LatestTag, out var latest)
+                || !TryParseVersion(lp.Manifest.Version, out var current)
+                || latest <= current) continue;
+            updates.Add(new PluginUpdateInfo(
+                PluginId: lp.Manifest.Id,
+                PluginDisplayName: lp.Manifest.DisplayName,
+                InstalledVersion: lp.Manifest.Version,
+                LatestVersion: cached.LatestTag,
+                AssetUrl: cached.AssetUrl,
+                AssetName: cached.AssetName,
+                ReleaseUrl: cached.ReleaseUrl));
+        }
         var deduped = updates
             .GroupBy(u => u.PluginId, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
@@ -123,8 +206,8 @@ public sealed class PluginUpdateService
             _available.AddRange(deduped);
         }
         UpdatesChanged?.Invoke(this, EventArgs.Empty);
-        Log.Info("Plugin-Update-Check: {N} Update(s) verfügbar (aus {Raw} Rohtreffern)",
-            deduped.Count, updates.Count);
+        Log.Info("Plugin-Update-Check: {N} Update(s) verfügbar (fresh={Fresh}, cache-fallback={Cache})",
+            deduped.Count, freshFetched, cacheFallback);
         return deduped.Count;
     }
 
@@ -278,3 +361,13 @@ public sealed record PluginUpdateInfo(
     string? AssetUrl,
     string? AssetName,
     string? ReleaseUrl);
+
+/// <summary>Cache-Eintrag pro pluginId — was war das letzte Release, das der
+/// Service von GitHub gesehen hat. Wird persistiert in
+/// <c>~/.config/KroModIx/plugin-update-cache.json</c>.</summary>
+public sealed record CachedRelease(
+    string LatestTag,
+    string? AssetUrl,
+    string? AssetName,
+    string? ReleaseUrl,
+    DateTime CheckedAtUtc);
