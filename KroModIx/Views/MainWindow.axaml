@@ -335,6 +335,29 @@
                                        Classes="muted" FontSize="12" />
                             <TextBlock Text="{Binding PluginDescription}"
                                        Classes="secondary" TextWrapping="Wrap" />
+                            <!-- v1.11: Genre-Kategorien als Chips -->
+                            <ItemsControl ItemsSource="{Binding Categories}"
+                                          IsVisible="{Binding HasCategories}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource KrosteAccentBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="8,2"
+                                                Margin="0,0,6,4"
+                                                Background="{DynamicResource KrosteAccentSoftBrush}">
+                                            <TextBlock Text="{Binding}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource KrosteTextBrush}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Rectangle Classes="divider-h" />
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Button Classes="accent" Content="⬇  Installieren"

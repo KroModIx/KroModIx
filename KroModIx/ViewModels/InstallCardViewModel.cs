@@ -48,6 +48,10 @@ public sealed partial class InstallCardViewModel : ViewModelBase
     public string PluginTitle => _entry.DisplayName;
     public string PluginAuthor => _entry.Author;
     public string PluginDescription => _entry.Description;
+    /// <summary>v1.11: Genre-Kategorien fuer Chip-Rendering. Leere Liste
+    /// wenn der PluginIndex-Eintrag keine categories setzt.</summary>
+    public IReadOnlyList<string> Categories => _entry.Categories;
+    public bool HasCategories => _entry.Categories.Count > 0;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallCommand))]

@@ -35,6 +35,13 @@ public sealed class PluginIndexEntry
 
     [JsonPropertyName("iconUrl")]
     public string? IconUrl { get; set; }
+
+    /// <summary>v1.11: Genre-Tags (z. B. <c>["visual-novel", "adult"]</c>).
+    /// Werden im InstallCard als Chips gerendert und im PluginUpdates-Window
+    /// als Filter-Facette angeboten. Fehlt im Index-JSON → leere Liste,
+    /// kein Rendering (rueckwaerts-kompatibel).</summary>
+    [JsonPropertyName("categories")]
+    public List<string> Categories { get; set; } = new();
 }
 
 public sealed class PluginIndexUpdateSource
