@@ -393,6 +393,48 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- Tab 4: Nexus Mods (v1.14) — zentraler API-Key fuer alle Nexus-Plugins -->
+            <TabItem Name="SettingsTabNexus" Header="🌐  Nexus">
+                <ScrollViewer>
+                    <Border Padding="24">
+                        <StackPanel Spacing="14">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Nexus Mods Personal-API-Key" Classes="h2" FontSize="13" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Zentral im Host konfiguriert — alle Plugins die Nexus nutzen (Icarus, Cyberpunk 2077, künftige) verwenden diesen Key. Ohne Key sind Katalog + Downloads nicht verfügbar. Rate-Limit mit Key: 2500 Requests/Stunde (ohne: 250). Premium-Accounts können Mods direkt via App downloaden; Non-Premium landet weiter beim Browser-Flow." />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox Text="{Binding NexusApiKeyDraft, Mode=TwoWay}"
+                                                 PasswordChar="•"
+                                                 Width="360"
+                                                 PlaceholderText="dein Nexus-API-Key …" />
+                                        <Button Classes="accent" Content="💾  Speichern &amp; Validieren"
+                                                Command="{Binding SaveNexusApiKeyCommand}" />
+                                        <Button Classes="ghost" Content="🔄  Nur validieren"
+                                                Command="{Binding ValidateNexusCommand}" />
+                                        <Button Classes="danger" Content="🗑  Löschen"
+                                                Command="{Binding DeleteNexusApiKeyCommand}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding NexusStatus}"
+                                               Classes="secondary" FontSize="12"
+                                               TextWrapping="Wrap" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="Key holen unter:" Classes="muted" FontSize="11"
+                                                   VerticalAlignment="Center" />
+                                        <Button Classes="ghost" Content="🔗 nexusmods.com/users/myaccount"
+                                                Command="{Binding OpenNexusApiKeyPageCommand}"
+                                                FontSize="11" Padding="8,2" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </views:ChromeWindow>

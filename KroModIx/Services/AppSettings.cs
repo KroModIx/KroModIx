@@ -54,6 +54,13 @@ public sealed class AppSettings
     /// Update-Badge. Toggle via Rechtsklick-Kontextmenü.</summary>
     public List<string> FavoriteGameKeys { get; set; } = new();
 
+    /// <summary>v1.14: Nexus-Mods Personal-API-Key (DPAPI/libsecret-
+    /// verschlüsselt via <see cref="ISecretProtection"/>). Zentral im Host,
+    /// alle Nexus-basierten Plugins (Icarus, Cyberpunk 2077, …) teilen ihn.
+    /// Setzen/Löschen im Host-Settings-Fenster (Tab „Nexus"). Leer/null =
+    /// kein Key konfiguriert, Nexus-Katalog nicht verfügbar.</summary>
+    public string? NexusApiKeyProtected { get; set; }
+
     /// <summary>Wenn true: nach einem Discovery-Refresh, der ein Zielspiel
     /// eines geladenen Plugins entfernt hat UND dieses Plugin kein anderes
     /// noch-installiertes Zielspiel mehr hat, wird das Plugin-Verzeichnis

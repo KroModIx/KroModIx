@@ -35,6 +35,7 @@ public sealed class PluginActivator
     private readonly ILocalization _localization;
     private readonly IHostShell _shell;
     private readonly IAiService _ai;
+    private readonly INexusService _nexus;
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -56,6 +57,7 @@ public sealed class PluginActivator
         ILocalization localization,
         IHostShell shell,
         IAiService ai,
+        INexusService nexus,
         StatusProgressCoordinator progress,
         ManualGamesService manualGames)
     {
@@ -66,6 +68,7 @@ public sealed class PluginActivator
         _localization = localization;
         _shell = shell;
         _ai = ai;
+        _nexus = nexus;
         _progress = progress;
         _manualGames = manualGames;
     }
@@ -130,7 +133,7 @@ public sealed class PluginActivator
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
-                title => _progress.Begin(title), _manualGames, UpdateBadges);
+                _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

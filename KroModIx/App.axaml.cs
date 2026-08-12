@@ -124,6 +124,20 @@ public partial class App : Application
         services.AddSingleton<IAiService, HostAiServiceImpl>();
         services.AddSingleton<SystemHardwareService>();
 
+        // v1.14: Zentraler Nexus-Baukasten — API-Key + Client leben im Host,
+        // alle Nexus-basierten Plugins (Icarus, Cyberpunk, …) teilen ihn.
+        services.AddSingleton<KroModIx.Services.Nexus.NexusApiKeyStore>();
+        services.AddSingleton<KroModIx.Services.Nexus.HostNexusServiceImpl>(sp =>
+        {
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var keyStore = sp.GetRequiredService<KroModIx.Services.Nexus.NexusApiKeyStore>();
+            var impl = new KroModIx.Services.Nexus.HostNexusServiceImpl(httpFactory, keyStore);
+            keyStore.SetNexus(impl); // Circular-Dep aufloesen
+            return impl;
+        });
+        services.AddSingleton<INexusService>(sp =>
+            sp.GetRequiredService<KroModIx.Services.Nexus.HostNexusServiceImpl>());
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

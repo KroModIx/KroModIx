@@ -597,6 +597,73 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         }
     }
 
+    // ---------- v1.14: Zentraler Nexus-API-Key (fuer Icarus/Cyberpunk/…) ----------
+
+    [ObservableProperty] private string _nexusApiKeyDraft = "";
+    [ObservableProperty] private string _nexusStatus = "Kein Nexus-API-Key konfiguriert.";
+    [ObservableProperty] private bool _nexusIsValid;
+
+    /// <summary>Laedt den aktuellen Key-State beim Fenster-Open. Wird
+    /// intern beim ersten Get von <see cref="NexusApiKeyDraft"/> ausgeloest
+    /// bzw. explizit aus dem View-Code-Behind.</summary>
+    public void LoadNexusState()
+    {
+        var store = _services.GetRequiredService<KroModIx.Services.Nexus.NexusApiKeyStore>();
+        var nexus = _services.GetRequiredService<KroModIx.Services.Nexus.HostNexusServiceImpl>();
+        var key = store.GetApiKey();
+        NexusApiKeyDraft = string.IsNullOrEmpty(key) ? "" : "••••••••••••••••••••••••";
+        NexusStatus = nexus.HasApiKey
+            ? (string.IsNullOrEmpty(nexus.UserName)
+                ? "Key konfiguriert — noch nicht validiert. Klick 'Validieren'."
+                : $"✔ {nexus.UserName} (Premium: {(nexus.IsPremium ? "ja" : "nein")})")
+            : "Kein Nexus-API-Key konfiguriert.";
+        NexusIsValid = nexus.HasApiKey && !string.IsNullOrEmpty(nexus.UserName);
+    }
+
+    [RelayCommand]
+    private async Task SaveNexusApiKeyAsync()
+    {
+        var store = _services.GetRequiredService<KroModIx.Services.Nexus.NexusApiKeyStore>();
+        // Draft-Wert ist entweder der neue Klartext-Key oder die maskierte
+        // Anzeige — Placeholder ignorieren (nur speichern wenn User was neu
+        // eingegeben hat, sonst nur validieren).
+        var draft = NexusApiKeyDraft?.Trim() ?? "";
+        if (!string.IsNullOrEmpty(draft) && !draft.All(c => c == '•'))
+        {
+            store.Save(draft);
+        }
+        await ValidateNexusAsync();
+    }
+
+    [RelayCommand]
+    private async Task ValidateNexusAsync()
+    {
+        var nexus = _services.GetRequiredService<KroModIx.Services.Nexus.HostNexusServiceImpl>();
+        NexusStatus = "Validiere …";
+        var result = await nexus.ValidateAsync();
+        NexusIsValid = result.Valid;
+        NexusStatus = result.Valid
+            ? $"✔ {result.UserName} (Premium: {(result.IsPremium ? "ja" : "nein")})"
+            : $"✘ {result.Message}";
+    }
+
+    [RelayCommand]
+    private void DeleteNexusApiKey()
+    {
+        var store = _services.GetRequiredService<KroModIx.Services.Nexus.NexusApiKeyStore>();
+        store.Delete();
+        NexusApiKeyDraft = "";
+        NexusStatus = "Kein Nexus-API-Key konfiguriert.";
+        NexusIsValid = false;
+    }
+
+    [RelayCommand]
+    private void OpenNexusApiKeyPage()
+    {
+        var shell = _services.GetRequiredService<IHostShell>();
+        shell.OpenExternalUrl("https://www.nexusmods.com/users/myaccount?tab=api+access");
+    }
+
     // ---------- v1.12: Host-Profile-Export/Import (Multi-Host-Setup) ----------
 
     [ObservableProperty] private string _profileStatus = "";

@@ -31,6 +31,7 @@ public sealed class HostServicesImpl : IHostServices
         ILocalization localization,
         IHostShell shell,
         IAiService ai,
+        INexusService nexus,
         Func<string, IProgressScope> progressFactory,
         ManualGamesService? manualGames = null,
         GameUpdateBadgeService? updateBadges = null)
@@ -43,6 +44,7 @@ public sealed class HostServicesImpl : IHostServices
         Localization = localization;
         Shell = shell;
         Ai = ai;
+        Nexus = nexus;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
         _updateBadges = updateBadges;
@@ -64,6 +66,7 @@ public sealed class HostServicesImpl : IHostServices
     public ILocalization Localization { get; }
     public IHostShell Shell { get; }
     public IAiService Ai { get; }
+    public INexusService Nexus { get; }
 
     public HttpClient CreateHttpClient(string? subsystem = null)
     {

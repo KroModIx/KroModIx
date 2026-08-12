@@ -40,6 +40,13 @@ public interface IHostServices
     /// auf Host-Einstellungen verweisen falls false.</summary>
     IAiService Ai { get; }
 
+    /// <summary>Zentraler Nexus-Mods-Client (v1.14.0+). Personal-API-Key wird
+    /// einmal im Host-Settings-Fenster („Nexus"-Tab) hinterlegt, alle Plugins
+    /// die Nexus-Katalog/Downloads nutzen (Icarus, Cyberpunk 2077, künftige)
+    /// teilen ihn. Bei älteren Hosts default-implementiert als leere
+    /// Rate-Limit-freundliche No-Op.</summary>
+    INexusService Nexus => NullNexusService.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
