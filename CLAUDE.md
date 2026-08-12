@@ -57,22 +57,36 @@
   - v1.10.1: `IHostServices.RequestUpdateBadgeRefreshAsync` — Plugin triggert Sidebar-Refresh nach lokalen State-Changes
   - v1.10.2: **Plugin-Update-Cache** — persistenter JSON-Cache in `~/.config/KroModIx/plugin-update-cache.json` mit Rate-Limit-Fallback (GitHub 60 req/h ohne Token). Bei 403 wird der Cache als Fallback genutzt statt `_available` zu leeren. Optionaler `GITHUB_TOKEN`-Env-Var-Support (5000 req/h).
   - v1.10.3: `IHostServices.TryRenameManualGame` + `ManualGameRenamed`-Event — Plugin kann Container-Ordner umbenennen, Host re-keyed Sidebar-Kachel + Manual-Games-Store atomar und baut die Detail-View neu.
+  - v1.10.4: Suchfilter im PluginUpdates-Window — TextBox filtert live beide Sektionen (Verfügbare Updates + Installierte Plugins) nach DisplayName oder PluginId.
+  - v1.11.0: PluginIndex-Kategorien — optionales `categories`-Feld pro Plugin im `plugins.json`, gerendert als Chips im InstallCard.
+  - v1.12.0: **Multi-Host-Setup** — `HostProfileService` exportiert/importiert Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner. Kein Auto-Sync (rclone/git-Backend wäre zu komplex für seltenen Use-Case).
+
+**RenPyAssist v0.11+ und LS25 v1.13+ Ausbauten:**
+- RenPyAssist v0.11.0: Animierte GIF-Cover in Detail-View via `Avalonia.Labs.Gif` — CoverCache persistiert bei GIF-URLs sowohl die konvertierte PNG (Sidebar-Kachel) als auch das Original-GIF nebenbei (Detail-View loopt autoplay).
+- RenPyAssist v0.11.1: Screenshot-Timeline im Save-Editor — chronologische Thumbnail-Leiste (128×72) unten am Editor, Klick selektiert den Save. Paralleles Screenshot-Extract mit SemaphoreSlim(4).
+- RenPyAssist v0.12.0: KrosteMod Choice-Auto-Expand + Konditional-Cheats — Walkthrough zeigt `if`-Condition als `(K req: …)`-Tag, Cheat-Menu markiert Choice-Gate-Vars mit 🔓.
+- LS25 v1.13.0: Bulk-ZIP-Import — Ordner wählen, alle .zip darin werden sequenziell installiert (Progress-Scope im Host-Statusbar).
 
 ## Roadmap
 
-Der Kern-Manager + alle geplanten Game-Plugins sind fertig. Offene Punkte
-sind projektspezifische Ausbauten:
+Der Kern-Manager + alle Game-Plugins + alle Erweiterungen der letzten
+Iteration sind fertig. Was jetzt kommen könnte:
 
-- **LS25-Plugin-Feature-Polish**: DDS-Preview auf Linux stabilisieren
-  (SixLabors-Path), Bulk-Import aus Steam-Workshop.
-- **Ren'Py-Plugin v0.11+**: KrosteMod-Pipeline erweitern
-  (Choice-Auto-Expand, Konditional-Cheats), Screenshot-Timeline im
-  Save-Editor, animierte Cover mit `AvaloniaGif` in der Detail-View
-  (Sidebar-Kachel bleibt Standbild via ffmpeg-thumbnail).
-- **PluginIndex-Kuration**: eigene Kategorien pro Genre, Suchfilter im
-  PluginUpdates-Window.
-- **Multi-Host-Support**: gleiche Plugin-Installation auf mehreren
-  Rechnern synchron halten (rclone-Backend? git-Remote?). Niedrige Prio.
+- **Steam-Workshop-Sync für LS25/Icarus/Satisfactory**: workshop-content-
+  Scan pro Library-Root + Metadata-Enrichment via Steam Web API. Wäre ein
+  Contract-Level-Feature (`IHostServices.GetWorkshopContent(appId)`), kein
+  Plugin-lokales Hack.
+- **PluginIndex-Kategorien in der Sidebar**: aktuell nur im InstallCard.
+  Bei > 10 Plugins wäre eine Genre-Filter-Facette in der Sidebar-Suche
+  sinnvoll.
+- **Auto-Update-Notifier für Host-Self-Update**: HostUpdateService checkt
+  aktuell nur bei App-Start. Ein 24h-Timer im Hintergrund + Toast-Hint
+  wäre nice.
+- **DDS-Preview auf Linux stabilisieren**: LS25 nutzt Pfim → BC7-Format
+  scheitert bei einigen Mods. ffmpeg als Fallback (kann DDS lesen) oder
+  ein zweiter DDS-Decoder-NuGet.
+
+Alles Punkte ohne fixe Reihenfolge — nach Bedarf.
 
 ## Referenz
 

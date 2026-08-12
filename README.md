@@ -128,9 +128,12 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | REST-API (Phase 2) | ✅ | External-Control, Screenshots, Clicks, Tab-Wechsel |
 | KI-Erweiterung (Phase 3) | ✅ | Ollama + Cloud-Provider mit Modell-Discovery |
 | Sidebar-Verhalten (Phase 4) | ✅ | Toasts, Auto-Cleanup, Kachel-Badges |
-| M7 Ren'Py-Plugin | ✅ | RenPyAssist mit f95zone-Anbindung, RPA-Browser, KrosteMod-Pipeline, Inline-Video-Playback |
+| M7 Ren'Py-Plugin | ✅ | RenPyAssist mit f95zone-Anbindung, RPA-Browser, KrosteMod-Pipeline (Walkthrough/Cheat/Rename/Translate), Inline-Video-Playback, animierte GIF-Cover, Screenshot-Timeline |
 | Plugin-Update-Cache (v1.10.2) | ✅ | Rate-Limit-Fallback + persistenter Cache in `~/.config/KroModIx/plugin-update-cache.json` — Update-Info überlebt GitHub 403er + Restarts |
 | Container-Rename-API (v1.10.3) | ✅ | Plugins können via `IHostServices.TryRenameManualGame` Container-Ordner umbenennen, Host re-keyed Sidebar-Kachel + Manual-Games-Store atomar |
+| Plugin-Manager-Suchfilter (v1.10.4) | ✅ | Live-Filter über "Verfügbare Updates" + "Installierte Plugins" nach Name oder Plugin-ID |
+| PluginIndex-Kategorien (v1.11.0) | ✅ | Genre-Chips im InstallCard (`categories`-Feld im `plugins.json`) |
+| Multi-Host-Profile (v1.12.0) | ✅ | Export/Import von Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner (Settings-Fenster) |
 
 ## Entwicklung
 
