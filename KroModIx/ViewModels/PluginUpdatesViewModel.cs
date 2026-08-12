@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KroModIx.Plugin.Contracts;
@@ -40,7 +41,12 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         _dialogs = dialogs;
         RefreshUpdates();
         RefreshInstalled();
-        _updates.UpdatesChanged += (_, _) => RefreshUpdates();
+        // UpdatesChanged feuert i.d.R. vom Background-Thread des Update-
+        // Checks; ObservableCollection<T> ist nicht thread-safe. Ohne
+        // Dispatch fuehrten Clear/Add-Sequenzen zu Duplikaten in der
+        // Installed-Liste (screenshot v1.14.2 → alle Plugins doppelt).
+        _updates.UpdatesChanged += (_, _) =>
+            Dispatcher.UIThread.Post(RefreshUpdates);
     }
 
     public ObservableCollection<UpdateRow> Rows { get; } = new();
@@ -59,21 +65,32 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
-        ApplyFilters();
+        ApplyUpdatesFilter();
+        ApplyInstalledFilter();
     }
 
-    private void ApplyFilters()
+    /// <summary>Filtert und rendert nur die Updates-Liste. Getrennt von
+    /// <see cref="ApplyInstalledFilter"/> damit ein Refresh der Updates die
+    /// Installed-Collection nicht mit anfasst — Clear+Add auf einer nicht-UI-
+    /// Thread-Sequenz produzierte sonst Row-Duplikate in der Installed-
+    /// Liste (v1.14.2 Bug: 6 Plugins wurden als 12 gerendert).</summary>
+    private void ApplyUpdatesFilter()
     {
         var q = (SearchText ?? "").Trim();
         Rows.Clear();
         foreach (var r in _allUpdates)
             if (Match(q, r.DisplayName, r.Source.PluginId)) Rows.Add(r);
-        Installed.Clear();
-        foreach (var r in _allInstalled)
-            if (Match(q, r.DisplayName, r.PluginId)) Installed.Add(r);
         StatusMessage = Rows.Count == 0
             ? (_allUpdates.Count == 0 ? "Keine Updates verfügbar." : "Kein Update matcht den Filter.")
             : "";
+    }
+
+    private void ApplyInstalledFilter()
+    {
+        var q = (SearchText ?? "").Trim();
+        Installed.Clear();
+        foreach (var r in _allInstalled)
+            if (Match(q, r.DisplayName, r.PluginId)) Installed.Add(r);
         InstalledStatus = _allInstalled.Count == 0
             ? "Keine Plugins installiert."
             : (Installed.Count == _allInstalled.Count
@@ -98,7 +115,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         foreach (var u in _updates.AvailableUpdates)
             if (seen.Add(u.PluginId))
                 _allUpdates.Add(new UpdateRow(u));
-        ApplyFilters();
+        ApplyUpdatesFilter();
     }
 
     private void RefreshInstalled()
@@ -109,8 +126,18 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
             var scanned = _scanner.Scan();
             var loadedIds = new HashSet<string>(
                 _activator.Loaded.Select(l => l.Manifest.Id), StringComparer.OrdinalIgnoreCase);
-            foreach (var p in scanned.OrderBy(p => p.Manifest.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+            // Dedup per PluginId: PluginRegistryScanner liefert ein Manifest
+            // pro (BundledPluginsDir, UserPluginsDir)-Ordner — wenn ein
+            // Plugin in beiden liegt (Bundled-App-Install + User-Update)
+            // taucht es zweimal auf. Bevorzugung: User (spaeter im Enumerate-
+            // Order) mit hoeherer SemVer waere korrekt, aber der Uninstall-
+            // Ziel-Dir muss stimmen — daher IsUserInstalled=true vorziehen.
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in scanned
+                .OrderBy(p => IsUnderUserPluginsDir(p.Directory) ? 0 : 1)
+                .ThenBy(p => p.Manifest.DisplayName, StringComparer.CurrentCultureIgnoreCase))
             {
+                if (!seen.Add(p.Manifest.Id)) continue;
                 var isUser = IsUnderUserPluginsDir(p.Directory);
                 _allInstalled.Add(new InstalledPluginRow
                 {
@@ -123,7 +150,10 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
                     IsLoaded = loadedIds.Contains(p.Manifest.Id),
                 });
             }
-            ApplyFilters();
+            // Nach dem Ordner-Prio-Sort wieder alphabetisch fuer die Anzeige.
+            _allInstalled.Sort((a, b) => StringComparer.CurrentCultureIgnoreCase.Compare(
+                a.DisplayName, b.DisplayName));
+            ApplyInstalledFilter();
         }
         catch (Exception ex)
         {
