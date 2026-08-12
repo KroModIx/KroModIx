@@ -258,17 +258,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // LastSelectedGameId nicht überschreiben, bevor RestoreLastSelection läuft.
     private bool _persistSelection;
 
+    // v1.14.5: gesetzt waehrend ApplyFilterAndSort — verhindert dass der
+    // transiente ListBox-Clear-Selection=null einen Tab-Rebuild ausloest.
+    private bool _inFilterRefresh;
+
     partial void OnSelectedGameChanged(GameEntry? value)
     {
         if (value is null)
         {
+            // Transient null aus ApplyFilterAndSort (VisibleGames.Clear
+            // propagiert SelectedItem=null via TwoWay-Bind). Wenn wir hier
+            // PluginTabs leeren + Render-Cache invalidieren, wird kurz
+            // drauf beim SelectedGame=previouslySelected komplett neu
+            // gerendert — neue Plugin-VM-Instanz, alle Cover weg,
+            // Tab-Selection faellt auf Tab 0. Solange wir im Filter-
+            // Refresh-Fenster sind, ignorieren wir das null.
+            if (_inFilterRefresh) return;
             PluginTabs = null;
             ShowPluginTabs = false;
-            // Beim Filter-Wechsel („nur mit Plugin") ruft die ListBox
-            // ItemsSource.Clear() → SelectedItem = null. Wenn der Filter
-            // das gleiche Spiel gleich wieder selektiert, würde der
-            // Render-Cache den erneuten Render als redundant abtun und
-            // die Tabs blieben leer. Cache invalidieren.
             _lastRenderKey = null;
             return;
         }
@@ -781,11 +788,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // WICHTIG: Avalonias ListBox setzt SelectedItem auf null wenn die
         // ItemsSource.Clear() aufgerufen wird — bei TwoWay-Binding rennt das
         // durch bis zu unserem SelectedGame und nullt es. Deshalb vorher
-        // sichern und nach dem Refill wiederherstellen.
+        // sichern und nach dem Refill wiederherstellen. Das _inFilterRefresh-
+        // Flag signalisiert OnSelectedGameChanged, das transiente null zu
+        // ignorieren — sonst wuerden die PluginTabs geleert und der Render-
+        // Cache invalidiert, was beim Wiederherstellen zu einem kompletten
+        // Tab-Rebuild fuehrt (Cover weg, Tab-Selection auf Tab 0).
         var previouslySelected = SelectedGame;
 
-        VisibleGames.Clear();
-        foreach (var g in sorted) VisibleGames.Add(g);
+        _inFilterRefresh = true;
+        try
+        {
+            VisibleGames.Clear();
+            foreach (var g in sorted) VisibleGames.Add(g);
+        }
+        finally { _inFilterRefresh = false; }
 
         if (previouslySelected is not null && VisibleGames.Contains(previouslySelected))
             SelectedGame = previouslySelected;
