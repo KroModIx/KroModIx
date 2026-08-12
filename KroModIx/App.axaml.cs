@@ -63,6 +63,7 @@ public partial class App : Application
             {
                 _ = mainVm.InitializeAsync();
                 _ = StartApiAsync(settings.Current);
+                _ = AutoValidateNexusAsync();
                 ScheduleAutoShutdownIfRequested(desktop);
             };
 
@@ -144,6 +145,28 @@ public partial class App : Application
         services.AddTransient<PluginUpdatesViewModel>();
 
         return services.BuildServiceProvider();
+    }
+
+    /// <summary>Loest beim App-Start den Nexus-API-Key-Check aus wenn ein Key
+    /// im Store liegt. Ohne diesen Auto-Validate steht <c>HostNexusServiceImpl.IsPremium</c>
+    /// bis zum ersten Settings-Fenster-Open auf false — Plugins geben dann
+    /// den Download-Button auch fuer Premium-User disabled aus, obwohl der
+    /// Key laengst validiert ist. Fehler werden verschluckt (Netzausfall,
+    /// Nexus-Downtime) — der Manuelle-Validieren-Button im Settings-Fenster
+    /// bleibt als Fallback.</summary>
+    private async Task AutoValidateNexusAsync()
+    {
+        try
+        {
+            var nexus = Services!.GetRequiredService<KroModIx.Services.Nexus.HostNexusServiceImpl>();
+            if (!nexus.HasApiKey) return;
+            var result = await nexus.ValidateAsync();
+            Log.Info("Nexus-Auto-Validate: {Msg}", result.Message);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Nexus-Auto-Validate fehlgeschlagen (unkritisch).");
+        }
     }
 
     private async Task StartApiAsync(AppSettings settings)

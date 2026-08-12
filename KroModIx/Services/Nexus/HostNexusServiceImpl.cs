@@ -84,6 +84,14 @@ public sealed class HostNexusServiceImpl : INexusService, IDisposable
                 return new NexusValidateResult(false, "", false, "Leere Antwort von Nexus.");
             _userName = user.Name ?? "";
             _isPremium = user.IsPremium;
+            // v1.14.2: Nach Validate erneut ApiKeyChanged feuern damit
+            // Plugins den frisch ermittelten IsPremium-Status uebernehmen
+            // koennen. Sequenz beim User-Save war: Save() → RaiseApiKeyChanged
+            // (reset _isPremium=false) → Plugin liest false → Validate() setzt
+            // _isPremium=true, aber kein Event mehr → Plugin-Rows stecken
+            // mit IsPremium=false fest. Der zusaetzliche Event nach Validate
+            // schliesst diese Luecke.
+            ApiKeyChanged?.Invoke(this, EventArgs.Empty);
             return new NexusValidateResult(true, _userName, _isPremium,
                 $"{_userName} (Premium: {(_isPremium ? "ja" : "nein")})");
         }
