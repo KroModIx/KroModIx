@@ -142,13 +142,40 @@ public sealed class OllamaProvider : IAiProvider
             messages.Add(new ChatMessage("system", systemPrompt));
         messages.Add(new ChatMessage("user", userPrompt));
 
-        var req = new ChatRequest(_model, messages, Stream: false, Format: "");
-        using var response = await _http.PostAsJsonAsync(
-            $"{_endpoint}/api/chat", req, cancellationToken).ConfigureAwait(false);
+        // Streaming: Ollama /api/chat liefert bei stream=true NDJSON — pro
+        // Zeile ein JSON-Chunk mit {"message":{"content":"..."}, "done":bool}.
+        // Wichtig: HttpCompletionOption.ResponseHeadersRead — sonst haelt der
+        // HttpClient.Timeout die gesamte Response-Dauer im Auge und schlaegt
+        // bei 14B-Modellen + langen Prompts (Ren'Py-Descriptions) irgendwann
+        // zu (COMException "canceled due to the configured Timeout").
+        // Mit ResponseHeadersRead endet der Timeout beim ersten Chunk; die
+        // Generierung selbst kann dann beliebig lange laufen.
+        var req = new ChatRequest(_model, messages, Stream: true, Format: "");
+        using var httpReq = new HttpRequestMessage(HttpMethod.Post, $"{_endpoint}/api/chat")
+        {
+            Content = JsonContent.Create(req),
+        };
+        using var response = await _http.SendAsync(httpReq,
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<ChatResponse>(cancellationToken)
-            ?? throw new InvalidOperationException("Ollama-Antwort war leer.");
-        return (body.Message?.Content ?? "").Trim();
+
+        var sb = new StringBuilder();
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (line is null) break; // EOF
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            ChatStreamChunk? chunk;
+            try { chunk = JsonSerializer.Deserialize<ChatStreamChunk>(line); }
+            catch { continue; } // Chunks die kein JSON sind ignorieren
+            if (chunk?.Message?.Content is { Length: > 0 } piece)
+                sb.Append(piece);
+            if (chunk?.Done == true) break;
+        }
+        return sb.ToString().Trim();
     }
 
     // ---- DTOs ---------------------------------------------------------------
@@ -165,6 +192,11 @@ public sealed class OllamaProvider : IAiProvider
 
     private sealed record ChatResponse(
         [property: JsonPropertyName("message")] ChatMessage? Message);
+
+    /// <summary>NDJSON-Chunk bei stream=true. done=true = letzter Chunk.</summary>
+    private sealed record ChatStreamChunk(
+        [property: JsonPropertyName("message")] ChatMessage? Message,
+        [property: JsonPropertyName("done")] bool Done);
 
     private sealed record TagsResponse(
         [property: JsonPropertyName("models")] IReadOnlyList<TagModel>? Models);

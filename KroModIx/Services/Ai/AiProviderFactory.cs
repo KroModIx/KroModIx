@@ -33,9 +33,14 @@ public sealed class AiProviderFactory
 
         // Cloud-Provider brauchen Timeouts, die auch längere Rate-Limit-Waits
         // überleben. Ollama bekommt einen sehr langen Timeout, weil grössere
-        // Batches an lokalen Modellen mehrere Minuten dauern können.
+        // Batches an lokalen Modellen mehrere Minuten dauern können. Mit
+        // grossen Modellen (14B+) und langen Prompts (Ren'Py-Descriptions
+        // mit Changelog) waren die alten 10 Min zu knapp — CompleteAsync
+        // nutzt jetzt Streaming (ResponseHeadersRead), Timeout gilt damit
+        // nur bis first-byte, die eigentliche Generierung ist idle-open.
+        // Trotzdem 30 Min als Safety-Net fuer Non-Streaming-Paths.
         http.Timeout = settings.Provider == AiProviderType.Ollama
-            ? TimeSpan.FromMinutes(10) : TimeSpan.FromMinutes(2);
+            ? TimeSpan.FromMinutes(30) : TimeSpan.FromMinutes(2);
 
         return settings.Provider switch
         {
