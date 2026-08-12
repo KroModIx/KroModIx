@@ -63,6 +63,16 @@
   - v1.12.1: Plugin-Update-Install crash 0x80131130 gefixt — DLLs werden als `<name>.dll.new` abgelegt, `PluginRegistryScanner.PromotePendingUpdates()` beim App-Start renamed sie vor dem Plugin-Load.
   - v1.12.2: `OllamaProvider.CompleteAsync` nutzt jetzt `stream: true` + `HttpCompletionOption.ResponseHeadersRead` — Timeout gilt nur bis first-byte, große Modelle (14B+) hängen nicht mehr am Gesamt-Timeout.
   - v1.13.0: **Favoriten + Update-Sortierung** — `AppSettings.FavoriteGameKeys` persistiert, Sidebar sortiert Favoriten > Games mit Update > Plugin-Spiele > Rest. Rechtsklick-Kontextmenü toggelt Favorit. Header-Badge „🎮 N Mod-Updates" zeigt globale Anzahl.
+  - v1.14.0: **Nexus-Baukasten** — `IHostServices.Nexus` (Contracts v1.14.0), `HostNexusServiceImpl` portiert aus Icarus. User pflegt Personal-API-Key im Host-Settings-Tab „🌐 Nexus", `NexusApiKeyStore` verschlüsselt via `ISecretProtection`. Alle Nexus-basierten Plugins (Icarus v1.15, Cyberpunk 2077 v0.2+) teilen den Key.
+
+**Neues Plugin: Cyberpunk 2077 (KroModIx/KroModIx.Plugin.Cyberpunk2077):**
+- v0.1.0: Installiert-Tab mit Discovery aller fünf gängigen Mod-Typen (Archive, REDmod, CET, RED4ext, redscript). Enable/Disable via `.disabled`-Suffix, Uninstall + Bulk-Aktionen.
+- v0.2.0: Nexus-Katalog-Tab (aggregiert latest_added/updated/trending für game_slug `cyberpunk2077`), Cover-Enrichment, Kategorien-Filter.
+- v0.3.0: Downloads-Tab + `CyberpunkZipInstaller` mit Auto-Layout-Detection (bekannte ZIP-Root-Präfixe → direktes Extract; Flat-Layout-Fallback für `.archive`-only-ZIPs).
+- v0.4.0: `IUpdateNotifier` — REDmod-Version vs Nexus-Katalog-latest, grüner ↑-Badge auf der Cyberpunk-Sidebar-Kachel.
+
+**Icarus-Migration:**
+- v1.15.0: eigenen `NexusApiClient`/`NexusSettingsService` durch Adapter auf `_host.Nexus` ersetzt. `NexusSettingsTab` entfernt (User nutzt Host-Settings-Tab „🌐 Nexus"). MinHostVersion 1.7.0 → 1.14.0. Migrations-Toast bei erstem Start wenn Plugin-Key ohne Host-Key existiert.
 
 **RenPyAssist v0.11+ und LS25 v1.13+ Ausbauten:**
 - RenPyAssist v0.11.0: Animierte GIF-Cover in Detail-View via `Avalonia.Labs.Gif` — CoverCache persistiert bei GIF-URLs sowohl die konvertierte PNG (Sidebar-Kachel) als auch das Original-GIF nebenbei (Detail-View loopt autoplay).

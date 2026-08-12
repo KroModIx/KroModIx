@@ -84,6 +84,7 @@ nach Plugin).
 | Landwirtschafts-Simulator 25 | [KroModIx.Plugin.LS25](https://github.com/KroModIx/KroModIx.Plugin.LS25) | GIANTS ModHub + Hof Hirschfeld + modhoster, DDS-Preview, Backup/Restore, KI-Zusammenfassung |
 | Satisfactory | [KroModIx.Plugin.Satisfactory](https://github.com/KroModIx/KroModIx.Plugin.Satisfactory) | ficsit.app-Katalog via GraphQL, `.smod`-Direct-Download, `.uplugin`-Manifest |
 | Icarus | [KroModIx.Plugin.Icarus](https://github.com/KroModIx/KroModIx.Plugin.Icarus) | Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download |
+| Cyberpunk 2077 | [KroModIx.Plugin.Cyberpunk2077](https://github.com/KroModIx/KroModIx.Plugin.Cyberpunk2077) | Discovery aller fünf Mod-Typen (Archive/REDmod/CET/RED4ext/redscript), Nexus-Katalog, Downloads-Tab mit ZIP-Auto-Layout-Detection, Update-Discovery |
 | Ren'Py Assist | [KroModIx.Plugin.RenPyAssist](https://github.com/KroModIx/KroModIx.Plugin.RenPyAssist) | f95zone-Anbindung mit Login, Sub-Path-Rotation für Updates, RPA-Browser + Save-Editor, KrosteMod-Pipeline (Walkthrough/Cheat/Rename), Inline-Video-Playback |
 | Dummy | [KroModIx.Plugin.Dummy](https://github.com/KroModIx/KroModIx.Plugin.Dummy) | Demo-Plugin für Entwicklungs-Tests |
 
@@ -135,6 +136,7 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | PluginIndex-Kategorien (v1.11.0) | ✅ | Genre-Chips im InstallCard (`categories`-Feld im `plugins.json`) |
 | Multi-Host-Profile (v1.12.0) | ✅ | Export/Import von Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner (Settings-Fenster) |
 | Favoriten + Update-Sortierung (v1.13.0) | ✅ | Rechtsklick-Toggle „⭐ Favorit" pro Sidebar-Kachel, Sortierung: Favoriten > Games mit Update > mit Plugin > Rest. Header-Badge „🎮 N Mod-Updates" |
+| Nexus-Baukasten (v1.14.0) | ✅ | `IHostServices.Nexus`-Contract, geteilter API-Key im Host-Settings-Tab „🌐 Nexus". Alle Nexus-basierten Plugins (Icarus, Cyberpunk, künftige) teilen ihn. |
 
 ## Entwicklung
 
