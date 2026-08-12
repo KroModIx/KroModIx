@@ -68,6 +68,39 @@ public interface INexusService
 
     Task<IReadOnlyList<NexusCategory>> GetCategoriesAsync(
         string gameSlug, CancellationToken ct = default);
+
+    /// <summary>Voller Katalog-Browse ueber die Nexus-GraphQL-API mit
+    /// Pagination und optionaler Volltextsuche. Im Gegensatz zu
+    /// <see cref="GetLatestModsAsync"/> (nur ~20 Eintraege pro Endpoint)
+    /// deckt das den kompletten Nexus-Bestand des Spiels ab
+    /// (Cyberpunk 2077 ~23000, Icarus ~200, etc.).
+    ///
+    /// <para>Kein API-Key noetig — der GraphQL-Endpoint <c>api-router.nexusmods.com</c>
+    /// ist oeffentlich fuer Read-Only-Queries. Contracts v1.15.0+ — bei
+    /// aelteren Hosts default-implementiert als leeres Ergebnis, Plugin
+    /// soll dann auf <see cref="GetLatestModsAsync"/> zurueckfallen.</para></summary>
+    Task<NexusModBrowseResult> SearchModsAsync(
+        string gameSlug,
+        int offset = 0,
+        int count = 20,
+        NexusSort sort = NexusSort.LatestUpdate,
+        string? searchQuery = null,
+        CancellationToken ct = default)
+        => Task.FromResult(new NexusModBrowseResult(0, Array.Empty<NexusCatalogEntry>()));
+}
+
+/// <summary>Ergebnis von <see cref="INexusService.SearchModsAsync"/>.
+/// <c>TotalCount</c> = insgesamt verfuegbare Mods (fuer Pagination-Anzeige),
+/// <c>Entries</c> = die auf dieser Seite zurueckgegebenen.</summary>
+public sealed record NexusModBrowseResult(int TotalCount, IReadOnlyList<NexusCatalogEntry> Entries);
+
+/// <summary>Sortier-Optionen fuer <see cref="INexusService.SearchModsAsync"/>.</summary>
+public enum NexusSort
+{
+    LatestUpdate,
+    LatestAdd,
+    MostEndorsed,
+    MostDownloaded,
 }
 
 /// <summary>Ergebnis von <see cref="INexusService.ValidateAsync"/>.

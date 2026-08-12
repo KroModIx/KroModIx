@@ -319,6 +319,120 @@ public sealed class HostNexusServiceImpl : INexusService, IDisposable
         }
     }
 
+    /// <summary>v1.15.0: GraphQL-basierter Voll-Katalog-Browse. Nexus-API v1
+    /// (die anderen Methoden hier) gibt nur ~20 Eintraege pro Kurzlisten-
+    /// Endpoint zurueck — fuer den vollen Katalog (Cyberpunk 2077 hat ~23000
+    /// Mods) brauchen wir die neue GraphQL-API auf
+    /// <c>api-router.nexusmods.com/graphql</c>. Die ist oeffentlich (kein
+    /// API-Key), unterstuetzt Pagination via offset/count, Volltextsuche
+    /// via nameStemmed-MATCHES und Sortierung per Sort-Input.</summary>
+    public async Task<NexusModBrowseResult> SearchModsAsync(
+        string gameSlug, int offset = 0, int count = 20,
+        NexusSort sort = NexusSort.LatestUpdate, string? searchQuery = null,
+        CancellationToken ct = default)
+    {
+        var sortField = sort switch
+        {
+            NexusSort.LatestAdd => "createdAt",
+            NexusSort.MostEndorsed => "endorsements",
+            NexusSort.MostDownloaded => "downloads",
+            _ => "updatedAt",
+        };
+
+        // Filter-JSON zusammenstellen. gameDomainName ist Pflicht, nameStemmed
+        // ist optional (nur wenn User in der Suche was eingegeben hat).
+        var filterParts = new List<string>
+        {
+            $"{{gameDomainName:{{op:EQUALS,value:\"{EscapeGqlString(gameSlug)}\"}}}}",
+        };
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+            filterParts.Add($"{{nameStemmed:{{op:MATCHES,value:\"{EscapeGqlString(searchQuery.Trim())}\"}}}}");
+
+        var filter = $"{{filter:[{string.Join(',', filterParts)}],op:AND}}";
+        var query = $"query {{ mods(filter:{filter}, offset:{offset}, count:{count}, sort:{{{sortField}:{{direction:DESC}}}}) {{ totalCount nodes {{ modId name summary version author endorsements downloads createdAt updatedAt pictureUrl thumbnailUrl adult category }} }} }}";
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post,
+                "https://api-router.nexusmods.com/graphql");
+            req.Content = new StringContent(
+                JsonSerializer.Serialize(new { query }),
+                System.Text.Encoding.UTF8, "application/json");
+            using var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                Log.Warn("Nexus GraphQL SearchMods HTTP {Code}: {Slug}", (int)resp.StatusCode, gameSlug);
+                return new NexusModBrowseResult(0, Array.Empty<NexusCatalogEntry>());
+            }
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            var parsed = JsonSerializer.Deserialize<GqlResponse>(body, GqlJsonOpts);
+            if (parsed?.Data?.Mods is null)
+            {
+                Log.Warn("Nexus GraphQL SearchMods leere Antwort/Error: {Body}",
+                    body.Length > 500 ? body[..500] : body);
+                return new NexusModBrowseResult(0, Array.Empty<NexusCatalogEntry>());
+            }
+            var m = parsed.Data.Mods;
+            var entries = new List<NexusCatalogEntry>(m.Nodes?.Count ?? 0);
+            foreach (var n in m.Nodes ?? new())
+            {
+                entries.Add(new NexusCatalogEntry(
+                    ModId: n.ModId,
+                    Name: n.Name ?? "",
+                    Author: n.Author ?? "",
+                    Summary: n.Summary ?? "",
+                    Category: n.Category ?? "",
+                    Version: n.Version ?? "",
+                    PictureUrl: n.ThumbnailUrl ?? n.PictureUrl ?? "",
+                    UpdatedUtc: DateTime.TryParse(n.UpdatedAt, out var u) ? u.ToUniversalTime() : DateTime.MinValue,
+                    Downloads: n.Downloads,
+                    Endorsements: n.Endorsements,
+                    Available: true));
+            }
+            Log.Debug("Nexus GraphQL {Slug} sort={Sort} offset={O} count={C}: {N}/{T} Eintraege",
+                gameSlug, sort, offset, count, entries.Count, m.TotalCount);
+            return new NexusModBrowseResult(m.TotalCount, entries);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Nexus GraphQL SearchMods fehlgeschlagen: {Slug}", gameSlug);
+            return new NexusModBrowseResult(0, Array.Empty<NexusCatalogEntry>());
+        }
+    }
+
+    private static string EscapeGqlString(string s)
+        => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    private static readonly JsonSerializerOptions GqlJsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+    };
+
+    private sealed class GqlResponse { public GqlData? Data { get; set; } }
+    private sealed class GqlData { public GqlModsResult? Mods { get; set; } }
+    private sealed class GqlModsResult
+    {
+        public int TotalCount { get; set; }
+        public List<GqlModNode>? Nodes { get; set; }
+    }
+    private sealed class GqlModNode
+    {
+        public int ModId { get; set; }
+        public string? Name { get; set; }
+        public string? Summary { get; set; }
+        public string? Version { get; set; }
+        public string? Author { get; set; }
+        public int Endorsements { get; set; }
+        public int Downloads { get; set; }
+        public string? UpdatedAt { get; set; }
+        public string? CreatedAt { get; set; }
+        public string? PictureUrl { get; set; }
+        public string? ThumbnailUrl { get; set; }
+        public bool Adult { get; set; }
+        public string? Category { get; set; }
+    }
+
     private static void LogRateLimit(HttpResponseMessage resp)
     {
         if (resp.Headers.TryGetValues("X-RL-Hourly-Remaining", out var h))
