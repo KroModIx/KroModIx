@@ -504,6 +504,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             .SelectMany(p => p.SteamAppIds)
             .ToHashSet() ?? new HashSet<int>();
 
+        // v1.14.4: PluginState des SELECTED Games vor der Neuberechnung
+        // merken. Nur wenn er sich aendert, muessen wir die Content-View
+        // neu bauen — sonst zerstoeren wir die laufende Plugin-Tab-VM (z.B.
+        // NexusViewModel mit geladenen Covers) und die TabControl-Selection
+        // faellt auf Tab 0 zurueck. Trigger fuer diesen unnoetigen Re-Render
+        // war v.a. LoadPluginIndexAsync (kommt ~10-15 s nach App-Start
+        // asynchron vom Netz und ruft dann RefreshPluginStates auf).
+        var oldStateOfSelected = SelectedGame?.PluginState;
+
         int installedCount = 0, availableCount = 0;
         foreach (var g in _allGames)
         {
@@ -527,7 +536,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         RefreshFavoriteFlags();
         ApplyFilterAndSort();
         RefreshDimmingFlags();
-        if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+
+        if (SelectedGame is null) return;
+        var newStateOfSelected = SelectedGame.PluginState;
+        if (oldStateOfSelected != newStateOfSelected)
+        {
+            Log.Info("RefreshPluginStates: PluginState {Old}→{New} fuer selected — Re-Render Tabs",
+                oldStateOfSelected, newStateOfSelected);
+            RenderContentForSelected(SelectedGame);
+        }
     }
 
     /// <summary>Baut den Sidebar-Key zu einem DetectedGame. Steam-Games via
