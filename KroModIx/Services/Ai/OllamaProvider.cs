@@ -47,6 +47,7 @@ public sealed class OllamaProvider : IAiProvider
 
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_endpoint)) return false;
         try
         {
             using var res = await _http.GetAsync($"{_endpoint}/api/tags", cancellationToken);
@@ -61,6 +62,10 @@ public sealed class OllamaProvider : IAiProvider
 
     public async Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken = default)
     {
+        // Endpoint-Guard: bei leerem/uninitialisiertem Ollama-Endpoint wuerde
+        // "/api/tags" relativ interpretiert → InvalidOperationException
+        // "An invalid request URI was provided". Frueh raus, keine Warn.
+        if (string.IsNullOrWhiteSpace(_endpoint)) return [];
         try
         {
             var res = await _http.GetFromJsonAsync<TagsResponse>(
