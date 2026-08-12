@@ -16,9 +16,15 @@ public sealed class PluginRegistryScanner
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
     /// <summary>Alle gefundenen Manifeste. Wenn ein Manifest inhaltlich kaputt
-    /// ist, wird es im Log gemeldet und übersprungen — nie App-Start blockieren.</summary>
+    /// ist, wird es im Log gemeldet und übersprungen — nie App-Start blockieren.
+    /// <para>v1.12.1: promotet vor dem Scan alle <c>*.dll.new</c>-Sidecars
+    /// aus dem PluginUpdateService — diese wurden waehrend der App-Laufzeit
+    /// abgelegt weil man laufende Assemblies nicht in-Prozess ersetzen
+    /// kann (Type-Load-Crash 0x80131130).</para></summary>
     public IReadOnlyList<DiscoveredPlugin> Scan()
     {
+        PromotePendingUpdates();
+
         var result = new List<DiscoveredPlugin>();
 
         foreach (var pluginsRoot in EnumeratePluginRoots())
@@ -42,6 +48,37 @@ public sealed class PluginRegistryScanner
 
         Log.Info("Plugin-Scan: {Count} Manifest(e) gefunden", result.Count);
         return result;
+    }
+
+    /// <summary>Aktiviert <c>*.dll.new</c>-Sidecars: benennt sie in die
+    /// Ziel-Datei um (ueberschreibt die alte DLL). Wird beim App-Start
+    /// aufgerufen bevor irgendein Plugin geladen wird. Fehler pro Datei
+    /// werden geloggt, die anderen laufen weiter.</summary>
+    private static void PromotePendingUpdates()
+    {
+        int promoted = 0, failed = 0;
+        foreach (var pluginsRoot in EnumeratePluginRoots())
+        {
+            if (!Directory.Exists(pluginsRoot)) continue;
+            foreach (var pending in Directory.EnumerateFiles(
+                pluginsRoot, "*.dll.new", SearchOption.AllDirectories))
+            {
+                var target = pending[..^4]; // strip ".new"
+                try
+                {
+                    File.Move(pending, target, overwrite: true);
+                    promoted++;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn(ex, "Pending-Update konnte nicht aktiviert werden: {P}", pending);
+                    failed++;
+                }
+            }
+        }
+        if (promoted > 0 || failed > 0)
+            Log.Info("Pending-Plugin-Updates aktiviert: {N} ok, {F} Fehler",
+                promoted, failed);
     }
 
     /// <summary>Ordner in Discovery-Reihenfolge: bundled vor user (bei

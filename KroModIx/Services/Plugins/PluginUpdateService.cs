@@ -261,36 +261,48 @@ public sealed class PluginUpdateService
                 await input.CopyToAsync(output, ct).ConfigureAwait(false);
             }
 
-            // Neue Version in einen Sibling-Ordner entpacken, danach atomar
-            // die Dateien im Plugin-Dir überschreiben. Die geladene DLL bleibt
-            // im Prozess offen — File.Copy funktioniert unter Linux (mmap-
-            // basiert, lässt Ersetzen zu), unter Windows warnt es beim Öffnen
-            // aber der Restart-Hinweis kommt sowieso.
+            // Neue Version in einen Sibling-Ordner entpacken, danach die
+            // Dateien in den Plugin-Ordner uebernehmen. Kritisch: .dll-Files
+            // NIE direkt overschreiben, auch nicht auf Linux — obwohl
+            // File.Copy dort mmap-basiert Erfolg meldet, hat der laufende
+            // Prozess noch die alte DLL geladen und JIT-Type-Resolution
+            // crasht bei naechstem Zugriff mit COMException 0x80131130
+            // ("Unable to get nested type properties"). Muster:
+            //   *.dll   → als <name>.dll.new ablegen, PromotePendingUpdates()
+            //            beim App-Start (PluginBootstrap) benennt die um
+            //   sonst   → direkt schreiben (plugin.json muss die neue Version
+            //            zeigen, sonst detektiert der Update-Check beim
+            //            naechsten Lauf wieder ein Update = Endlosschleife)
             var stagingDir = Path.Combine(Path.GetTempPath(),
                 $"modmanager-update-staging-{info.PluginId}-{Guid.NewGuid():N}");
             Directory.CreateDirectory(stagingDir);
             ZipFile.ExtractToDirectory(tmpZip, stagingDir, overwriteFiles: true);
 
+            int deferredDlls = 0;
             foreach (var srcFile in Directory.EnumerateFiles(stagingDir, "*", SearchOption.AllDirectories))
             {
                 var rel = Path.GetRelativePath(stagingDir, srcFile);
                 var dst = Path.Combine(pluginDir, rel);
                 Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
-                try
+                bool isAssembly = dst.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+                if (isAssembly && File.Exists(dst))
+                {
+                    // DLL existiert schon → sicher als .new ablegen.
+                    // Der PluginBootstrap.PromotePendingUpdates-Call beim
+                    // App-Start uebernimmt die Datei vor dem Plugin-Scan.
+                    var pending = dst + ".new";
+                    File.Copy(srcFile, pending, overwrite: true);
+                    deferredDlls++;
+                }
+                else
                 {
                     File.Copy(srcFile, dst, overwrite: true);
                 }
-                catch (IOException ex)
-                {
-                    // Windows-Fall: DLL ist geladen und gelockt. Fallback:
-                    // .new-Datei danebenlegen, beim nächsten Start rename.
-                    var pending = dst + ".new";
-                    File.Copy(srcFile, pending, overwrite: true);
-                    Log.Warn(ex, "Konnte {Dst} nicht direkt überschreiben — als {Pending} abgelegt, wird beim nächsten Start aktiviert",
-                        dst, pending);
-                }
             }
             try { Directory.Delete(stagingDir, recursive: true); } catch { /* ignore */ }
+            if (deferredDlls > 0)
+                Log.Info("Update {Id}: {N} DLL(s) als .new abgelegt — Aktivierung beim Neustart",
+                    info.PluginId, deferredDlls);
 
             Log.Info("Update installiert für {Id}: {Old} → {New}. Neustart nötig.",
                 info.PluginId, info.InstalledVersion, info.LatestVersion);
