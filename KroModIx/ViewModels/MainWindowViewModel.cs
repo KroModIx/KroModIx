@@ -821,6 +821,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // (int)IndexCache-Count. Ändert sich nichts davon, ist der Render redundant.
     private string? _lastRenderKey;
 
+    // v1.14.6: Pro Game-Key gecachte Plugin-Tabs. Ohne den Cache erzeugt
+    // jeder Game-Wechsel eine frische Plugin-VM-Instanz — die vorherige
+    // (mit geladenen Covers, Screenshots, Katalog-State) wird verworfen.
+    // Wechsel zurueck fuehrt zu leeren Rows waehrend die Cover neu
+    // geladen werden. Cache-Key = renderKey (entry.Key|State|LoadedId|
+    // IdxCount) — aendert sich der Plugin-Zustand des Games, faellt der
+    // Eintrag automatisch weg und wird frisch aufgebaut.
+    private readonly Dictionary<string, ObservableCollection<TabItem>> _pluginTabsCache = new();
+
     private void RenderContentForSelected(GameEntry entry)
     {
         var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, entry));
@@ -885,6 +894,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        // Cache-Reuse: wenn wir fuer denselben renderKey schon Tabs erzeugt
+        // haben, wiederverwenden statt neu bauen. Damit ueberleben die
+        // Plugin-VMs (Nexus-Rows mit Covers, Screenshot-Thumbnails,
+        // Detail-Caches) einen Wechsel zu einem anderen Game und zurueck.
+        if (_pluginTabsCache.TryGetValue(currentKey, out var cached))
+        {
+            PluginTabs = cached;
+            ShowPluginTabs = cached.Count > 0;
+            ShowContentPlaceholder = cached.Count == 0;
+            if (cached.Count == 0)
+                ContentPlaceholderText = "Plugin geladen, aber ohne sichtbare Tabs.";
+            return;
+        }
+
         var tabs = new ObservableCollection<TabItem>();
         foreach (var contribution in loaded.Plugin.GetTabContributions(detected)
                      .Where(c => c.IsVisible(detected))
@@ -912,6 +935,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     contribution.Id, loaded.Manifest.Id);
             }
         }
+        // Alte Cache-Eintraege dieses Games (mit anderem renderKey — z.B.
+        // vor einem Plugin-Update) verwerfen, damit der Cache nicht ewig
+        // waechst.
+        var stalePrefix = entry.Key + "|";
+        foreach (var k in _pluginTabsCache.Keys.Where(k => k.StartsWith(stalePrefix, StringComparison.Ordinal)).ToList())
+            _pluginTabsCache.Remove(k);
+        _pluginTabsCache[currentKey] = tabs;
+
         PluginTabs = tabs;
         ShowPluginTabs = tabs.Count > 0;
         ShowContentPlaceholder = tabs.Count == 0;
