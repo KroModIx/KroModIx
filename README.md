@@ -134,6 +134,7 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | Plugin-Manager-Suchfilter (v1.10.4) | ✅ | Live-Filter über "Verfügbare Updates" + "Installierte Plugins" nach Name oder Plugin-ID |
 | PluginIndex-Kategorien (v1.11.0) | ✅ | Genre-Chips im InstallCard (`categories`-Feld im `plugins.json`) |
 | Multi-Host-Profile (v1.12.0) | ✅ | Export/Import von Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner (Settings-Fenster) |
+| Favoriten + Update-Sortierung (v1.13.0) | ✅ | Rechtsklick-Toggle „⭐ Favorit" pro Sidebar-Kachel, Sortierung: Favoriten > Games mit Update > mit Plugin > Rest. Header-Badge „🎮 N Mod-Updates" |
 
 ## Entwicklung
 

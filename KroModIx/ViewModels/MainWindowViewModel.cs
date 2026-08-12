@@ -524,6 +524,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         Log.Info("RefreshPluginStates: {Installed} installed, {Available} available (of {Total} games); selected={Sel}",
             installedCount, availableCount, _allGames.Count, SelectedGame?.Key ?? "<none>");
 
+        RefreshFavoriteFlags();
         ApplyFilterAndSort();
         RefreshDimmingFlags();
         if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
@@ -638,6 +639,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 g.UpdateBadgeTooltip = null;
             }
         }
+        // v1.13: Header-Badge + Sortierung neu triggern — Games mit Update
+        // sollen jetzt in der Sidebar oben stehen (nach den Favoriten).
+        OnPropertyChanged(nameof(TotalGamesWithUpdates));
+        OnPropertyChanged(nameof(HasGamesWithUpdates));
+        ApplyFilterAndSort();
     }
 
     /// <summary>Setzt <see cref="GameEntry.IsDimmed"/> für alle Spiele.
@@ -648,6 +654,40 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         foreach (var g in _allGames)
             g.IsDimmed = ShowAllGames && g.PluginState == PluginState.None;
+    }
+
+    /// <summary>v1.13: syncrhonisiert <see cref="GameEntry.IsFavorite"/> aus
+    /// den <c>AppSettings.FavoriteGameKeys</c>. Wird nach Discovery + nach
+    /// jedem Toggle aufgerufen.</summary>
+    private void RefreshFavoriteFlags()
+    {
+        var favs = new HashSet<string>(_settings.Current.FavoriteGameKeys, StringComparer.Ordinal);
+        foreach (var g in _allGames)
+            g.IsFavorite = favs.Contains(g.Key);
+    }
+
+    /// <summary>v1.13: Anzahl aller Spiele mit ausstehenden Mod-Updates.
+    /// Wird im MainWindow-Header als "🎮 N Mod-Updates" angezeigt — parallel
+    /// zum bereits existierenden Plugin-Update-Badge "↑ N".</summary>
+    public int TotalGamesWithUpdates => _allGames.Count(g => g.HasUpdates);
+    public bool HasGamesWithUpdates => TotalGamesWithUpdates > 0;
+
+    /// <summary>v1.13: toggelt Favoriten-Status des aktuell selektierten
+    /// Spiels. Aufruf aus dem Sidebar-Kontextmenü (Rechtsklick auf Kachel).</summary>
+    [RelayCommand]
+    private void ToggleFavorite(GameEntry? entry)
+    {
+        entry ??= SelectedGame;
+        if (entry is null) return;
+        entry.IsFavorite = !entry.IsFavorite;
+        _settings.Update(s =>
+        {
+            var set = new HashSet<string>(s.FavoriteGameKeys, StringComparer.Ordinal);
+            if (entry.IsFavorite) set.Add(entry.Key);
+            else set.Remove(entry.Key);
+            s.FavoriteGameKeys = set.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        });
+        ApplyFilterAndSort();
     }
 
     private async Task LoadCoversAsync(GameEntry[] entries, CancellationToken ct)
@@ -704,12 +744,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(q))
             filtered = filtered.Where(g => g.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase));
         // Default: nur mit Plugin. ShowAllGames aktiv → alles (Non-Plugin-Games
-        // werden im XAML ausgegraut via IsDimmed).
+        // werden im XAML ausgegraut via IsDimmed). Favoriten sind IMMER sichtbar
+        // egal ob Plugin oder nicht — sonst waere das Feature bei "nur mit
+        // Plugin" nutzlos.
         if (!ShowAllGames)
-            filtered = filtered.Where(g => g.PluginState != PluginState.None);
+            filtered = filtered.Where(g => g.PluginState != PluginState.None || g.IsFavorite);
 
+        // v1.13: Sortier-Reihenfolge — Favoriten ganz oben, dann Spiele mit
+        // Mod-Updates, dann Plugin-Spiele (Installed vor Available), zuletzt
+        // Rest. Innerhalb jeder Gruppe alphabetisch.
         var sorted = filtered
-            .OrderByDescending(g => g.PluginState == PluginState.Installed)
+            .OrderByDescending(g => g.IsFavorite)
+            .ThenByDescending(g => g.HasUpdates)
+            .ThenByDescending(g => g.PluginState == PluginState.Installed)
             .ThenByDescending(g => g.PluginState == PluginState.Available)
             .ThenBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();

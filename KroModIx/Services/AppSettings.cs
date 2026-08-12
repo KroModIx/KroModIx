@@ -49,6 +49,11 @@ public sealed class AppSettings
     /// überflüssig aber schadet nicht).</summary>
     public List<string> HiddenGameKeys { get; set; } = new();
 
+    /// <summary>v1.13: vom User als Favorit markierte Spiele (GameEntry.Keys).
+    /// Erscheinen ganz oben in der Sidebar, unabhängig von Plugin-Status oder
+    /// Update-Badge. Toggle via Rechtsklick-Kontextmenü.</summary>
+    public List<string> FavoriteGameKeys { get; set; } = new();
+
     /// <summary>Wenn true: nach einem Discovery-Refresh, der ein Zielspiel
     /// eines geladenen Plugins entfernt hat UND dieses Plugin kein anderes
     /// noch-installiertes Zielspiel mehr hat, wird das Plugin-Verzeichnis

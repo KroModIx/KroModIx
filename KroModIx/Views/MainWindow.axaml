@@ -39,6 +39,16 @@
                             IsVisible="{Binding HasAiChip}"
                             Command="{Binding OpenSettingsCommand}"
                             ToolTip.Tip="{Binding AiChipTooltip}" />
+                    <!-- v1.13: Mod-Updates-Badge im Header — zeigt Anzahl Spiele
+                         die einen grünen ↑-Sidebar-Badge haben. Klick scrollt in
+                         der Sidebar zum ersten Update-Spiel (via Filter). -->
+                    <TextBlock Classes="accent secondary"
+                               Text="{Binding TotalGamesWithUpdates, StringFormat='🎮 {0} Mod-Updates'}"
+                               IsVisible="{Binding HasGamesWithUpdates}"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Margin="0,0,12,0"
+                               ToolTip.Tip="Spiele mit ausstehenden Mod-Updates (siehe grüner ↑ auf der Sidebar-Kachel)" />
                     <!-- Update-Badge: accent-Style wenn Plugin-Updates verfügbar,
                          sonst ghost mit „Plugins verwalten" — gleicher Command,
                          öffnet den Plugin-Manager (Updates + installierte Plugins). -->
@@ -173,6 +183,10 @@
                                         Opacity="{Binding IsDimmed, Converter={x:Static vm:DimOpacityConverter.Instance}}">
                                     <Border.ContextMenu>
                                         <ContextMenu>
+                                            <MenuItem Header="⭐  Favorit umschalten"
+                                                      Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).ToggleFavoriteCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <Separator />
                                             <MenuItem Header="🖼  Kachelbild ändern…"
                                                       Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).ChangeCoverCommand}"
                                                       CommandParameter="{Binding}" />
@@ -216,6 +230,21 @@
                                                 <TextBlock Text="{Binding StarSymbol}"
                                                            Foreground="{DynamicResource KrosteGoldBrush}"
                                                            FontSize="26"
+                                                           FontWeight="Bold" />
+                                            </Border>
+                                            <!-- v1.13: Favoriten-Marker (Herz) unter dem Plugin-Stern.
+                                                 Versetzt nach unten damit's nicht mit dem Stern kollidiert. -->
+                                            <Border HorizontalAlignment="Left"
+                                                    VerticalAlignment="Top"
+                                                    Margin="4,40,0,0"
+                                                    Padding="4,0"
+                                                    CornerRadius="4"
+                                                    Background="#B3000000"
+                                                    IsVisible="{Binding IsFavorite}"
+                                                    ToolTip.Tip="Favorit — bleibt oben in der Sidebar">
+                                                <TextBlock Text="♥"
+                                                           Foreground="#e0b14c"
+                                                           FontSize="20"
                                                            FontWeight="Bold" />
                                             </Border>
                                             <!-- Update-Badge oben rechts: grüner ↑ + kleine Zahl,

@@ -60,6 +60,9 @@
   - v1.10.4: Suchfilter im PluginUpdates-Window — TextBox filtert live beide Sektionen (Verfügbare Updates + Installierte Plugins) nach DisplayName oder PluginId.
   - v1.11.0: PluginIndex-Kategorien — optionales `categories`-Feld pro Plugin im `plugins.json`, gerendert als Chips im InstallCard.
   - v1.12.0: **Multi-Host-Setup** — `HostProfileService` exportiert/importiert Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner. Kein Auto-Sync (rclone/git-Backend wäre zu komplex für seltenen Use-Case).
+  - v1.12.1: Plugin-Update-Install crash 0x80131130 gefixt — DLLs werden als `<name>.dll.new` abgelegt, `PluginRegistryScanner.PromotePendingUpdates()` beim App-Start renamed sie vor dem Plugin-Load.
+  - v1.12.2: `OllamaProvider.CompleteAsync` nutzt jetzt `stream: true` + `HttpCompletionOption.ResponseHeadersRead` — Timeout gilt nur bis first-byte, große Modelle (14B+) hängen nicht mehr am Gesamt-Timeout.
+  - v1.13.0: **Favoriten + Update-Sortierung** — `AppSettings.FavoriteGameKeys` persistiert, Sidebar sortiert Favoriten > Games mit Update > Plugin-Spiele > Rest. Rechtsklick-Kontextmenü toggelt Favorit. Header-Badge „🎮 N Mod-Updates" zeigt globale Anzahl.
 
 **RenPyAssist v0.11+ und LS25 v1.13+ Ausbauten:**
 - RenPyAssist v0.11.0: Animierte GIF-Cover in Detail-View via `Avalonia.Labs.Gif` — CoverCache persistiert bei GIF-URLs sowohl die konvertierte PNG (Sidebar-Kachel) als auch das Original-GIF nebenbei (Detail-View loopt autoplay).

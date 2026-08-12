@@ -77,6 +77,13 @@ public sealed partial class GameEntry : ObservableObject
     /// dieselbe Aktion in der UI aber semantisch ein anderer Weg im VM).</summary>
     public bool IsManual => Source.Source == DiscoveredGameSource.Manual;
 
+    /// <summary>v1.13: als Favorit markiert (User via Kontextmenü). Favoriten
+    /// erscheinen ganz oben in der Sidebar unabhängig von Plugin-Status oder
+    /// Update-Badge. Symbol: gefülltes Herz oben links (versetzt zum
+    /// Plugin-Stern).</summary>
+    [ObservableProperty]
+    private bool _isFavorite;
+
     partial void OnPluginStateChanged(PluginState value) => OnPropertyChanged(nameof(StarSymbol));
 }
 
