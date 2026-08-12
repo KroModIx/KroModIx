@@ -140,6 +140,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ProgressIndeterminate = e.Indeterminate;
         });
 
+        // v1.14.7: Bei Sprachwechsel den kompletten Plugin-Tab-Cache
+        // invalidieren + Content-View neu rendern. Ohne das behaelt der
+        // v1.14.6-Cache die vorhandenen View-Instanzen mit ihren zum
+        // Construct-Zeitpunkt gelesenen Strings.T()-Werten — die Uebersetzung
+        // wird erst beim naechsten Plugin-Reload sichtbar.
+        Localization.LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(Localization.LocalizationService.Current)
+                or nameof(Localization.LocalizationService.CurrentIso))) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                _pluginTabsCache.Clear();
+                _lastRenderKey = null;
+                if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+            });
+        };
+
         // Persistierten Sidebar-Filter beim Start übernehmen.
         _showAllGames = _settings.Current.SidebarShowAllGames;
     }
