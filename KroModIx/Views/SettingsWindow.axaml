@@ -43,6 +43,23 @@
                                                Text="Standard aus: Plugins bleiben erhalten, auch wenn du das zugehörige Spiel deinstallierst — so sind deine Mod-Konfigurationen noch da wenn du das Spiel neu installierst. Aktiviere die Option nur, wenn du nach jeder Steam-Deinstallation aufräumen möchtest. Die Deinstallation wird zur nächsten Discovery-Runde ausgeführt, das Plugin bleibt bis zum nächsten App-Start noch geladen." />
                                 </StackPanel>
                             </Border>
+
+                            <!-- Multi-Host-Setup (v1.12) -->
+                            <TextBlock Text="MULTI-HOST-SETUP" Classes="section-label" Margin="0,8,0,0" />
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Exportiere deine Basis-Config (installierte Plugins + Manual-Games) als JSON, damit du auf einem zweiten Rechner die gleiche Einrichtung nachziehen kannst. Cover/Cache/Secrets bleiben maschinen-lokal — auf dem zweiten Rechner musst du dich in den jeweiligen Plugins (f95zone, Nexus) manuell neu einloggen." />
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Button Content="⤴  Profile exportieren…"
+                                                Command="{Binding ExportProfileCommand}" />
+                                        <Button Content="⤵  Profile importieren…"
+                                                Command="{Binding ImportProfileCommand}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ProfileStatus}"
+                                               Classes="secondary" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </ScrollViewer>

@@ -112,6 +112,8 @@ public partial class App : Application
         services.AddSingleton<PluginUninstaller>();
         services.AddSingleton<PluginUpdateService>();
         services.AddSingleton<GameUpdateBadgeService>();
+        // v1.12: Host-Profile-Export/Import (Multi-Host-Setup).
+        services.AddSingleton<KroModIx.Services.HostProfile.HostProfileService>();
 
         // KI — Kroste-Baukasten. AiSettingsService persistiert Provider/
         // Endpoint/Modell/verschlüsselte API-Keys. HostAiServiceImpl wrappt

@@ -596,6 +596,71 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
             RecommendedOllamaModels.Add(row);
         }
     }
+
+    // ---------- v1.12: Host-Profile-Export/Import (Multi-Host-Setup) ----------
+
+    [ObservableProperty] private string _profileStatus = "";
+
+    /// <summary>Exportiert die aktuelle Host-Config (installierte Plugins +
+    /// Manual-Games) als JSON. Auf dem zweiten Rechner via Import wieder
+    /// einlesen — dort werden fehlende Plugins nachinstalliert und Manual-
+    /// Games ergaenzt. Cover/Cache/Secrets bleiben maschinen-lokal.</summary>
+    [RelayCommand]
+    private async Task ExportProfileAsync()
+    {
+        var dialogs = _services.GetRequiredService<IDialogService>();
+        var picked = await dialogs.PickFolderAsync("Export-Zielordner waehlen");
+        if (string.IsNullOrEmpty(picked)) return;
+        try
+        {
+            var svc = _services.GetRequiredService<KroModIx.Services.HostProfile.HostProfileService>();
+            var profile = svc.Export();
+            var path = System.IO.Path.Combine(picked,
+                $"kromodix-profile-{DateTime.Now:yyyyMMdd-HHmm}.json");
+            svc.SaveToFile(profile, path);
+            ProfileStatus = $"Exportiert: {profile.Plugins.Count} Plugins, {profile.ManualGames.Count} Manual-Games → {path}";
+        }
+        catch (Exception ex)
+        {
+            ProfileStatus = $"Export-Fehler: {ex.Message}";
+        }
+    }
+
+    /// <summary>Importiert ein zuvor exportiertes Host-Profile. Fehlende
+    /// Plugins werden ueber den PluginIndex nachinstalliert (falls die
+    /// PluginIds dort gelistet sind), Manual-Games ergaenzt (dedup gegen
+    /// InstallDir). Cover/Cache/Secrets werden NICHT importiert.</summary>
+    [RelayCommand]
+    private async Task ImportProfileAsync()
+    {
+        var dialogs = _services.GetRequiredService<IDialogService>();
+        var picked = await dialogs.PickFileAsync("Host-Profile-JSON waehlen",
+            ("KroModIx-Profile (.json)", new[] { "*.json" }));
+        if (string.IsNullOrEmpty(picked)) return;
+        try
+        {
+            var svc = _services.GetRequiredService<KroModIx.Services.HostProfile.HostProfileService>();
+            var profile = svc.LoadFromFile(picked);
+            if (profile is null)
+            {
+                ProfileStatus = "Import-Fehler: Datei konnte nicht gelesen werden.";
+                return;
+            }
+            int addedGames = svc.ImportManualGames(profile);
+            var missing = svc.MissingPlugins(profile);
+            var msg = $"Import: {addedGames} Manual-Games ergaenzt";
+            if (missing.Count > 0)
+            {
+                var ids = string.Join(", ", missing.Select(m => m.Id));
+                msg += $". Fehlende Plugins ({missing.Count}): {ids} — bitte manuell installieren (Plugin-Manager → Jetzt pruefen).";
+            }
+            ProfileStatus = msg;
+        }
+        catch (Exception ex)
+        {
+            ProfileStatus = $"Import-Fehler: {ex.Message}";
+        }
+    }
 }
 
 public sealed record LanguageOption(string Iso, string DisplayLabel, string ShortIso);
