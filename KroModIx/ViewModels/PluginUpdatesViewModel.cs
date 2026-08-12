@@ -49,23 +49,61 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     [ObservableProperty] private bool _restartHinted;
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private string _installedStatus = "";
+    /// <summary>Suchfilter — matcht case-insensitive gegen DisplayName und
+    /// PluginId in beiden Listen (Updates + Installed).</summary>
+    [ObservableProperty] private string _searchText = "";
+
+    // Ungefilterter Cache damit ein Filter-Toggle ohne Netz-Refresh geht.
+    private readonly List<UpdateRow> _allUpdates = new();
+    private readonly List<InstalledPluginRow> _allInstalled = new();
+
+    partial void OnSearchTextChanged(string value)
+    {
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var q = (SearchText ?? "").Trim();
+        Rows.Clear();
+        foreach (var r in _allUpdates)
+            if (Match(q, r.DisplayName, r.Source.PluginId)) Rows.Add(r);
+        Installed.Clear();
+        foreach (var r in _allInstalled)
+            if (Match(q, r.DisplayName, r.PluginId)) Installed.Add(r);
+        StatusMessage = Rows.Count == 0
+            ? (_allUpdates.Count == 0 ? "Keine Updates verfügbar." : "Kein Update matcht den Filter.")
+            : "";
+        InstalledStatus = _allInstalled.Count == 0
+            ? "Keine Plugins installiert."
+            : (Installed.Count == _allInstalled.Count
+                ? $"{_allInstalled.Count} Plugin(s) installiert."
+                : $"{Installed.Count} von {_allInstalled.Count} Plugin(s) matchen den Filter.");
+    }
+
+    private static bool Match(string query, string displayName, string pluginId)
+    {
+        if (string.IsNullOrEmpty(query)) return true;
+        return displayName.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || pluginId.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
 
     private void RefreshUpdates()
     {
-        Rows.Clear();
+        _allUpdates.Clear();
         // Defensive UI-Side-Dedup per PluginId — falls der Service trotz
         // SemaphoreSlim mal doppelt einfügt (bei race conditions oder Event-
         // Reentrancy), soll die UI trotzdem sauber bleiben.
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var u in _updates.AvailableUpdates)
             if (seen.Add(u.PluginId))
-                Rows.Add(new UpdateRow(u));
-        StatusMessage = Rows.Count == 0 ? "Keine Updates verfügbar." : "";
+                _allUpdates.Add(new UpdateRow(u));
+        ApplyFilters();
     }
 
     private void RefreshInstalled()
     {
-        Installed.Clear();
+        _allInstalled.Clear();
         try
         {
             var scanned = _scanner.Scan();
@@ -74,7 +112,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
             foreach (var p in scanned.OrderBy(p => p.Manifest.DisplayName, StringComparer.CurrentCultureIgnoreCase))
             {
                 var isUser = IsUnderUserPluginsDir(p.Directory);
-                Installed.Add(new InstalledPluginRow
+                _allInstalled.Add(new InstalledPluginRow
                 {
                     PluginId = p.Manifest.Id,
                     DisplayName = p.Manifest.DisplayName,
@@ -85,7 +123,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
                     IsLoaded = loadedIds.Contains(p.Manifest.Id),
                 });
             }
-            InstalledStatus = $"{Installed.Count} Plugin(s) installiert.";
+            ApplyFilters();
         }
         catch (Exception ex)
         {

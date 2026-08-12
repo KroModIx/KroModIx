@@ -31,6 +31,10 @@
                 <ScrollViewer>
                     <StackPanel Spacing="18">
 
+                        <!-- Suchfilter über beiden Listen (v1.10.4+) -->
+                        <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                                 PlaceholderText="🔍 Filter (Name oder Plugin-ID) …" />
+
                         <!-- Sektion 1: Verfügbare Updates -->
                         <TextBlock Text="VERFÜGBARE UPDATES" Classes="section-label" />
                         <Border Classes="card">
