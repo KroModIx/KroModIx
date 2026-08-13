@@ -143,6 +143,13 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | Plugin-Tab-Views persistent (v1.14.4–v1.14.6) | ✅ | `RefreshPluginStates` und `ApplyFilterAndSort` verwerfen keine geladenen Plugin-VMs mehr; Tab-Cache pro Game — Wechsel + Zurück behält Cover/Screenshots/Detail-State |
 | Sprachwechsel invalidiert Tab-Cache (v1.14.7) | ✅ | Übersetzungen im Plugin (via `Strings.T(key)`) werden sofort nach Sprachwechsel im Content sichtbar |
 | Nexus-Voll-Katalog via GraphQL (v1.15.0) | ✅ | `INexusService.SearchModsAsync` — Pagination + Server-side Volltextsuche + 4 Sort-Optionen. REST-v1-Endpoints geben nur ~20 Kurzlisten-Einträge, GraphQL deckt den kompletten Bestand ab (Cyberpunk 23000+, Skyrim 70000+) |
+| Plugin-Sichtbarkeits-Debug (v1.15.1) | ✅ | `Log.Debug` in `PluginActivator` gibt bei jedem Plugin-Load die DetectedGames-InstallDirs aus — bei „Plugin nicht sichtbar für X"-Bugreports sofort verfügbar |
+| Live-Manual-Add-Contract (v1.17.0) | ✅ | Neues Spiel per „➕ hinzufügen" landet ohne App-Neustart in geladenen Plugins — Contract `IGameModPlugin.OnGameAddedAsync` + `PluginActivator.NotifyGameAddedAsync` propagieren an alle geladenen Plugins mit Match. Sidebar-Kachel + Plugin-State sofort korrekt. |
+| Kategorien-Sidebar-Suche (v1.17.0) | ✅ | Sidebar-Suchfeld matcht jetzt zusätzlich zu Spielnamen auch die `categories` aus dem PluginIndex — „RPG" filtert alle Games mit Plugins die `"categories": ["RPG"]` deklarieren |
+| Auto-Update-Notifier (v1.17.0) | ✅ | 24h-Timer im Hintergrund, bei neuer Host-Version ein Toast (kein Auto-Install — User klickt im About-Dialog) |
+| Debug-Endpoint `/debug/plugin-games` (v1.17.0) | ✅ | REST-API liefert pro geladenem Plugin die DetectedGames mit InstallDirs — schnelle Diagnose bei „Plugin nicht sichtbar"-Bugs |
+| Steam-Workshop-Baukasten (v1.17.0) | ✅ | `IHostServices.Workshop`-Contract: Discovery via `workshop/content/<appId>/` in allen Steam-Library-Roots + optional Web-API-Enrichment (`GetPublishedFileDetails`). LS25/Icarus/Satisfactory können einen einheitlichen Workshop-Tab bauen ohne Pfad-Discovery selbst zu machen. |
+| App-Icon-Facelift (v1.17.0) | ✅ | `scripts/build_icon.py v2`: gestapelte Kroste-Gold-Cards + Stern-Akzent auf vertikalem Dark-Gradient — neu generiert (PNG 512×512 + ICO Multi-Res) |
 
 ## Entwicklung
 
