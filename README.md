@@ -25,8 +25,9 @@ Bastelei auf Linux. Jedes Spiel verlangt sein eigenes Tool. KroModIx macht:
   live aktivierbar ohne App-Neustart
 - **Automatische Plugin-Updates** aus GitHub-Releases (App-Neustart nötig
   weil die Assembly geladen ist)
-- **Grüner ↑-Badge** auf einer Spielkachel wenn es Updates für installierte
-  Mods oder neue Katalog-Einträge gibt
+- **Grüner ↑-Badge** auf einer Spielkachel wenn es Updates für **installierte
+  Mods** gibt (Actionable-Signal — neue Katalog-Einträge zählen bewusst nicht,
+  sonst wäre der Pfeil dauerhaft grün)
 - **REST-API** für externe Steuerung (Screenshots, Clicks, Tab-Wechsel,
   Plugin-Actions — siehe unten)
 
@@ -65,8 +66,8 @@ AppId das Cover automatisch aus dem Steam-CDN). Einträge persistieren in
 
 - **★ (gefüllt gold)** = Plugin geladen und aktiv
 - **☆ (umrandet gold)** = Plugin im PluginIndex verfügbar, noch nicht installiert
-- **↑ (grün, oben rechts)** = Updates für installierte Mods oder neue
-  Katalog-Einträge dieses Spiels
+- **↑ (grün, oben rechts)** = Updates für installierte Mods dieses Spiels
+  (nur echte Actionable-Updates — nicht Community-Katalog-News)
 
 **Klick auf Spiel mit umrandetem Stern** → Install-Karte im Content-Bereich:
 „Plugin verfügbar. ⬇ Installieren". Ein Klick lädt das Plugin aus dem
@@ -81,11 +82,11 @@ nach Plugin).
 
 | Plugin | Repo | Was |
 |---|---|---|
-| Landwirtschafts-Simulator 25 | [KroModIx.Plugin.LS25](https://github.com/KroModIx/KroModIx.Plugin.LS25) | GIANTS ModHub + Hof Hirschfeld + modhoster, DDS-Preview, Backup/Restore, KI-Zusammenfassung |
+| Landwirtschafts-Simulator 25 | [KroModIx.Plugin.LS25](https://github.com/KroModIx/KroModIx.Plugin.LS25) | GIANTS ModHub + Hof Hirschfeld + modhoster, DDS-Preview, Backup/Restore, KI-Zusammenfassung, Bulk-ZIP-Import |
 | Satisfactory | [KroModIx.Plugin.Satisfactory](https://github.com/KroModIx/KroModIx.Plugin.Satisfactory) | ficsit.app-Katalog via GraphQL, `.smod`-Direct-Download, `.uplugin`-Manifest |
-| Icarus | [KroModIx.Plugin.Icarus](https://github.com/KroModIx/KroModIx.Plugin.Icarus) | Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download |
-| Cyberpunk 2077 | [KroModIx.Plugin.Cyberpunk2077](https://github.com/KroModIx/KroModIx.Plugin.Cyberpunk2077) | Discovery aller fünf Mod-Typen (Archive/REDmod/CET/RED4ext/redscript), Nexus-Katalog, Downloads-Tab mit ZIP-Auto-Layout-Detection, Update-Discovery |
-| Ren'Py Assist | [KroModIx.Plugin.RenPyAssist](https://github.com/KroModIx/KroModIx.Plugin.RenPyAssist) | f95zone-Anbindung mit Login, Sub-Path-Rotation für Updates, RPA-Browser + Save-Editor, KrosteMod-Pipeline (Walkthrough/Cheat/Rename), Inline-Video-Playback |
+| Icarus | [KroModIx.Plugin.Icarus](https://github.com/KroModIx/KroModIx.Plugin.Icarus) | Nexus-Katalog, PAK-Manual + Steam-Workshop, Premium-Direct-Download, Detail-Dialog mit Screenshot-Galerie |
+| Cyberpunk 2077 | [KroModIx.Plugin.Cyberpunk2077](https://github.com/KroModIx/KroModIx.Plugin.Cyberpunk2077) | Alle fünf Mod-Typen (Archive/REDmod/CET/RED4ext/redscript), **Voll-Katalog via Nexus-GraphQL (~23000 Mods, Pagination + Server-Search + Sort)**, Detail-Dialog mit Screenshot-Galerie + KI-Zusammenfassung, ZIP/RAR/7z-Install mit Auto-Layout, Downloads- + Installiert-Tab mit Nexus-Enrichment (Cover + Author + Version), DE+EN-Übersetzung |
+| Ren'Py Assist | [KroModIx.Plugin.RenPyAssist](https://github.com/KroModIx/KroModIx.Plugin.RenPyAssist) | f95zone-Anbindung mit Login, Sub-Path-Rotation für Updates, RPA-Browser + Save-Editor, KrosteMod-Pipeline (Walkthrough/Cheat/Rename/Translate), **Standalone-.rpyc-Decompiler** (portiert aus RenPack, cross-platform ohne Python), Inline-Video-Playback, animierte GIF-Cover |
 | Dummy | [KroModIx.Plugin.Dummy](https://github.com/KroModIx/KroModIx.Plugin.Dummy) | Demo-Plugin für Entwicklungs-Tests |
 
 Der Katalog steht in [KroModIx.PluginIndex](https://github.com/KroModIx/KroModIx.PluginIndex).
@@ -137,6 +138,11 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | Multi-Host-Profile (v1.12.0) | ✅ | Export/Import von Plugin-Liste + Manual-Games als JSON zum Nachziehen auf einem zweiten Rechner (Settings-Fenster) |
 | Favoriten + Update-Sortierung (v1.13.0) | ✅ | Rechtsklick-Toggle „⭐ Favorit" pro Sidebar-Kachel, Sortierung: Favoriten > Games mit Update > mit Plugin > Rest. Header-Badge „🎮 N Mod-Updates" |
 | Nexus-Baukasten (v1.14.0) | ✅ | `IHostServices.Nexus`-Contract, geteilter API-Key im Host-Settings-Tab „🌐 Nexus". Alle Nexus-basierten Plugins (Icarus, Cyberpunk, künftige) teilen ihn. |
+| Nexus-Auto-Validate + IsPremium-Event (v1.14.2) | ✅ | App-Start triggert `ValidateAsync` wenn ein Key im Store liegt, `ApiKeyChanged` feuert auch nach dem Validate — Premium-Download-Buttons in Plugins funktionieren ohne Settings-Fenster-Reopen |
+| Plugin-Manager-Dedup (v1.14.3) | ✅ | Installiert-Liste dedupt per PluginId (Bundled- vs. User-Ordner-Kollision) + UpdatesChanged auf UI-Thread |
+| Plugin-Tab-Views persistent (v1.14.4–v1.14.6) | ✅ | `RefreshPluginStates` und `ApplyFilterAndSort` verwerfen keine geladenen Plugin-VMs mehr; Tab-Cache pro Game — Wechsel + Zurück behält Cover/Screenshots/Detail-State |
+| Sprachwechsel invalidiert Tab-Cache (v1.14.7) | ✅ | Übersetzungen im Plugin (via `Strings.T(key)`) werden sofort nach Sprachwechsel im Content sichtbar |
+| Nexus-Voll-Katalog via GraphQL (v1.15.0) | ✅ | `INexusService.SearchModsAsync` — Pagination + Server-side Volltextsuche + 4 Sort-Optionen. REST-v1-Endpoints geben nur ~20 Kurzlisten-Einträge, GraphQL deckt den kompletten Bestand ab (Cyberpunk 23000+, Skyrim 70000+) |
 
 ## Entwicklung
 
