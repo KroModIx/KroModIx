@@ -144,6 +144,12 @@ public sealed class PluginActivator
 
             Log.Info("Plugin geladen: {Id} v{Ver} ({Games} Spiel(e))",
                 manifest.Id, manifest.Version, detectedGames.Count);
+            // Debug-Diagnose fuer Plugin-vs-Sidebar-Match-Bugs (v1.15.1+):
+            // in DEBUG-Level damit produktive Logs nicht ueberlaufen, aber bei
+            // Bugreport „Plugin nicht sichtbar fuer Spiel X" sofort verfuegbar.
+            if (detectedGames.Count > 0)
+                Log.Debug("  DetectedGames InstallDirs: {Dirs}",
+                    string.Join(" | ", detectedGames.Select(d => d.InstallDir)));
             return loaded;
         }
         catch (Exception ex)
