@@ -31,4 +31,16 @@ public interface IGameModPlugin
     IEnumerable<IGameTabContribution> GetTabContributions(DetectedGame game);
 
     Task ShutdownAsync();
+
+    /// <summary>Wird gerufen wenn wahrend der App-Laufzeit ein neues Spiel
+    /// hinzugefuegt wurde (Manual-Add via „➕ Spiel hinzufuegen" oder Wizard),
+    /// das per Plugin-Target matched. Plugin kann das Spiel in seinen internen
+    /// State aufnehmen (Registry, Watcher etc.) und wenn der User draufklickt
+    /// wird direkt <see cref="GetTabContributions"/> gefragt.
+    ///
+    /// <para>Contracts v1.16.0+. Default-Implementation macht nichts —
+    /// aeltere Plugins bleiben kompatibel, brauchen aber App-Neustart bis
+    /// das neue Spiel im Plugin-Kontext ankommt.</para></summary>
+    Task OnGameAddedAsync(DetectedGame game, CancellationToken ct = default)
+        => Task.CompletedTask;
 }

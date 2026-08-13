@@ -139,6 +139,17 @@ public partial class App : Application
         services.AddSingleton<INexusService>(sp =>
             sp.GetRequiredService<KroModIx.Services.Nexus.HostNexusServiceImpl>());
 
+        // v1.17: Zentraler Steam-Workshop-Baukasten (Discovery + optional
+        // Web-API-Enrichment). Plugins (LS25, Icarus, Satisfactory) muessen
+        // die Pfad-Discovery nicht mehr selbst machen.
+        services.AddSingleton<IWorkshopService>(sp =>
+        {
+            var library = sp.GetRequiredService<KroModIx.Services.Steam.SteamLibraryService>();
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var http = httpFactory.CreateClient("workshop");
+            return new KroModIx.Services.Steam.HostWorkshopServiceImpl(library, http);
+        });
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

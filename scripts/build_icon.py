@@ -1,137 +1,132 @@
 """
-KroModIx App-Icon-Generator.
+KroModIx App-Icon-Generator (v2 — aufgewertet).
 
-Design: Ein stilisiertes Puzzleteil (Plugin-Metapher) in Kroste-Gold (#E0B14C)
-auf abgerundetem dunklem Grund (#161C23). Puzzle = zentrale Plugin-Idee des
-KroModIx-Apps. Funktioniert auch als 16x16-Favicon.
+Design: Drei gestapelte, gerundete Cards in Kroste-Gold-Verlauf auf einem
+dunklen Grund mit subtiler Vertical-Gradient. Symbolisiert die zentrale
+Idee des Apps: uebereinander gelegte Mod-Karten pro Spiel. Ein kleiner
+gefuellter Stern oben rechts als „Plugin aktiv"-Akzent.
 
 Erzeugt:
-- /home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets/kromodix.png (256x256, master)
-- /home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets/kromodix.ico (Multi-Res 16..256)
+- KroModIx/KroModIx/Assets/kromodix.png (512x512, master)
+- KroModIx/KroModIx/Assets/kromodix.ico (Multi-Res 16..256)
 """
 
-from PIL import Image, ImageDraw
+import os
+from math import cos, sin, pi
+from PIL import Image, ImageDraw, ImageFilter
 
 OUT_DIR = "/home/OsteL/Entwicklung/Org.KroModIx/KroModIx/KroModIx/Assets"
 
-GOLD    = (224, 177, 76, 255)   # #E0B14C  Kroste-Gold (App-Akzent)
-GOLD_D  = (176, 138, 55, 255)   # #B08A37  dunkler Rand
-SURFACE = (22, 28, 35, 255)     # #161C23  Grund
-BORDER  = (46, 52, 60, 255)     # #2E343C
-TRANSP  = (0, 0, 0, 0)
+# ------- Kroste-Palette -----------------------------------------------------
+GOLD_HI    = (245, 205, 110, 255)  # heller Gold-Highlight
+GOLD       = (224, 177,  76, 255)  # #E0B14C  Kroste-Gold (App-Akzent)
+GOLD_DK    = (176, 138,  55, 255)  # #B08A37  dunkler Rand/Schatten
+BG_TOP     = ( 30,  36,  46, 255)  # #1E242E
+BG_BOT     = ( 12,  16,  22, 255)  # #0C1016
+BORDER     = ( 60,  66,  76, 255)  # #3C424C
+CARD_LINE  = ( 68,  50,  20, 255)  # subtiles Detail auf den Cards
+TRANSP     = (0, 0, 0, 0)
 
-CORNER = 48  # Grundstein-Radius (auf 256)
+CORNER_HI = 96  # Base-Radius auf 512
 
 
-def make_icon(size: int) -> Image.Image:
-    """Baut das Icon in der angegebenen Kantenlaenge."""
-    scale = size / 256
-
-    # Hochaufloesend zeichnen und dann downsamplen — sonst wird das Puzzleteil
-    # bei kleinen Groessen zu grob (JPEG-Look).
-    hi = max(256, size)
-    hi_scale = hi / 256
-
-    img = Image.new("RGBA", (hi, hi), TRANSP)
-    d = ImageDraw.Draw(img)
-
-    # Grund: abgerundetes Quadrat
-    corner = int(CORNER * hi_scale)
-    d.rounded_rectangle(
-        [(0, 0), (hi - 1, hi - 1)],
-        radius=corner,
-        fill=SURFACE,
-        outline=BORDER,
-        width=max(1, int(2 * hi_scale)),
-    )
-
-    # --- Puzzleteil in Gold ---------------------------------------------------
-    # Zentraler Body: leicht abgerundetes Quadrat, ca. 55% der Icon-Kante.
-    body = int(140 * hi_scale)
-    cx = hi // 2
-    cy = hi // 2
-    body_r = int(10 * hi_scale)
-    b_left = cx - body // 2
-    b_top = cy - body // 2
-    b_right = cx + body // 2
-    b_bottom = cy + body // 2
-
-    d.rounded_rectangle(
-        [(b_left, b_top), (b_right, b_bottom)],
-        radius=body_r,
-        fill=GOLD,
-    )
-
-    # Nase oben (konvex) — Kreis, halb im Body versenkt
-    knob = int(48 * hi_scale)
-    d.ellipse(
-        [(cx - knob // 2, b_top - knob // 2),
-         (cx + knob // 2, b_top + knob // 2)],
-        fill=GOLD,
-    )
-
-    # Nase rechts (konvex)
-    d.ellipse(
-        [(b_right - knob // 2, cy - knob // 2),
-         (b_right + knob // 2, cy + knob // 2)],
-        fill=GOLD,
-    )
-
-    # Aussparung links (konkav) — Kreis in SURFACE-Farbe
-    hole = int(48 * hi_scale)
-    d.ellipse(
-        [(b_left - hole // 2, cy - hole // 2),
-         (b_left + hole // 2, cy + hole // 2)],
-        fill=SURFACE,
-    )
-
-    # Aussparung unten (konkav)
-    d.ellipse(
-        [(cx - hole // 2, b_bottom - hole // 2),
-         (cx + hole // 2, b_bottom + hole // 2)],
-        fill=SURFACE,
-    )
-
-    # Feiner Rand am Puzzleteil (Body + Knobs), damit die Silhouette auch
-    # klein sauber ist. Wir zeichnen die Umrisse leicht dunkler, um dem
-    # Body Kontur zu geben, ohne den Gold-Look zu zerstoeren.
-    stroke = max(1, int(2 * hi_scale))
-    # Ich zeichne den Body-Umriss NICHT durchlaufend, weil er sonst die
-    # Nase-Uebergaenge kaputt macht — nur einen dezenten Schatten simulieren
-    # via zweitem Ellipsen-Kreis der Nasen und einer 1px-Kontur des Body.
-    d.rounded_rectangle(
-        [(b_left, b_top), (b_right, b_bottom)],
-        radius=body_r,
-        outline=GOLD_D,
-        width=stroke,
-    )
-
-    # Auf Zielgroesse skalieren (LANCZOS = beste Downsampling-Qualitaet)
-    if hi != size:
-        img = img.resize((size, size), Image.LANCZOS)
-
+def vertical_gradient(size: int, top: tuple, bot: tuple) -> Image.Image:
+    """Vertikaler Gradient — reine PIL-Loesung mit paste je Zeile
+    (schneller als per-Pixel-putpixel-Loop)."""
+    img = Image.new("RGBA", (size, size), TRANSP)
+    line = Image.new("RGBA", (size, 1), TRANSP)
+    for y in range(size):
+        t = y / max(1, size - 1)
+        r = int(top[0] + (bot[0] - top[0]) * t)
+        g = int(top[1] + (bot[1] - top[1]) * t)
+        b = int(top[2] + (bot[2] - top[2]) * t)
+        line.paste((r, g, b, 255), (0, 0, size, 1))
+        img.paste(line, (0, y))
     return img
 
 
+def rounded_mask(size: int, radius: int) -> Image.Image:
+    m = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(m).rounded_rectangle(
+        [(0, 0), (size - 1, size - 1)], radius=radius, fill=255)
+    return m
+
+
+def draw_card(draw: ImageDraw.ImageDraw, box, fill_top, fill_bot, radius):
+    """Card mit Faux-Gradient (2 gestackte rounded rects mit unterschiedlicher
+    Farbe geben schon einen tuechtigen Gold-Verlauf-Effekt) + duenne Innenlinie."""
+    x1, y1, x2, y2 = box
+    draw.rounded_rectangle([x1, y1, x2, y2], radius=radius, fill=fill_bot,
+                           outline=GOLD_DK, width=3)
+    mid = y1 + (y2 - y1) // 2
+    draw.rounded_rectangle([x1 + 2, y1 + 2, x2 - 2, mid],
+                           radius=radius - 2, fill=fill_top)
+    draw.line([(x1 + 20, y2 - 20), (x2 - 20, y2 - 20)],
+              fill=CARD_LINE, width=3)
+
+
+def draw_star(draw: ImageDraw.ImageDraw, cx: int, cy: int, r: int, fill):
+    pts = []
+    for i in range(10):
+        angle = -pi / 2 + i * pi / 5
+        rr = r if i % 2 == 0 else r * 0.42
+        pts.append((cx + rr * cos(angle), cy + rr * sin(angle)))
+    draw.polygon(pts, fill=fill, outline=GOLD_DK)
+
+
+def make_icon(size: int) -> Image.Image:
+    """Rendert intern auf 512 und resampled — kleine Groessen bleiben scharf."""
+    hi = 512
+
+    # (1) Base
+    grad = vertical_gradient(hi, BG_TOP, BG_BOT)
+    mask = rounded_mask(hi, CORNER_HI)
+    base = Image.new("RGBA", (hi, hi), TRANSP)
+    base.paste(grad, (0, 0), mask)
+
+    border_layer = Image.new("RGBA", (hi, hi), TRANSP)
+    ImageDraw.Draw(border_layer).rounded_rectangle(
+        [(0, 0), (hi - 1, hi - 1)], radius=CORNER_HI, outline=BORDER, width=6)
+    base.alpha_composite(border_layer)
+
+    # (2) Drei gestapelte Cards — versetzt fuer Stapel-Look
+    cards_layer = Image.new("RGBA", (hi, hi), TRANSP)
+    dc = ImageDraw.Draw(cards_layer)
+    card_r = 26
+    draw_card(dc, (110, 195, 400, 445), GOLD, GOLD_DK, card_r)  # unten/hinten
+    draw_card(dc, (140, 155, 372, 405), GOLD_HI, GOLD, card_r)  # mittig
+    draw_card(dc, (95, 105, 355, 355), GOLD_HI, GOLD, card_r)   # vorne/oben
+
+    # (3) Sanfter Schatten unter dem Stapel
+    shadow = Image.new("RGBA", (hi, hi), TRANSP)
+    ImageDraw.Draw(shadow).ellipse([(90, 435), (410, 465)], fill=(0, 0, 0, 90))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=8))
+    base.alpha_composite(shadow)
+    base.alpha_composite(cards_layer)
+
+    # (4) Stern oben rechts
+    star_layer = Image.new("RGBA", (hi, hi), TRANSP)
+    draw_star(ImageDraw.Draw(star_layer), cx=420, cy=100, r=50, fill=GOLD_HI)
+    base.alpha_composite(star_layer)
+
+    if size != hi:
+        base = base.resize((size, size), Image.LANCZOS)
+    return base
+
+
 def main():
-    import os
     os.makedirs(OUT_DIR, exist_ok=True)
+    master = make_icon(512)
+    master_path = os.path.join(OUT_DIR, "kromodix.png")
+    master.save(master_path, "PNG", optimize=True)
+    print(f"wrote {master_path} 512x512")
 
-    # 1) Master-PNG 256x256
-    master = make_icon(256)
-    master.save(f"{OUT_DIR}/kromodix.png", "PNG")
-    print(f"Wrote kromodix.png (256x256) to {OUT_DIR}")
-
-    # 2) Multi-Res ICO fuer Windows-Exe
-    sizes = [16, 24, 32, 48, 64, 128, 256]
-    icons = [make_icon(s) for s in sizes]
-    icons[0].save(
-        f"{OUT_DIR}/kromodix.ico",
-        format="ICO",
-        sizes=[(s, s) for s in sizes],
-        append_images=icons[1:],
-    )
-    print(f"Wrote kromodix.ico (multi-res: {sizes})")
+    ico_sizes = [16, 24, 32, 48, 64, 128, 256]
+    ico_images = [make_icon(s) for s in ico_sizes]
+    ico_path = os.path.join(OUT_DIR, "kromodix.ico")
+    ico_images[-1].save(ico_path, format="ICO",
+                        sizes=[(s, s) for s in ico_sizes])
+    print(f"wrote {ico_path} {ico_sizes}")
 
 
 if __name__ == "__main__":

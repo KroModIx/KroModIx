@@ -58,6 +58,13 @@ public sealed class ManualGamesService
         return true;
     }
 
+    /// <summary>v1.16.0: feuert nach jedem <see cref="Add"/> oder Bulk-Add-
+    /// Eintrag. Host-VM haengt sich hier ein und ruft
+    /// <c>IGameModPlugin.OnGameAddedAsync</c> auf den passenden geladenen
+    /// Plugins — damit live-hinzugefuegte Games ohne App-Neustart in Plugins
+    /// erscheinen.</summary>
+    public event EventHandler<ManualGameEntry>? GameAdded;
+
     /// <summary>Fügt einen neuen Eintrag hinzu (generiert die ID) und persistiert sofort.</summary>
     public ManualGameEntry Add(string displayName, string installDir,
         string? executablePath = null, string? coverPath = null,
@@ -77,6 +84,7 @@ public sealed class ManualGamesService
         Save();
         Log.Info("Manuelles Spiel hinzugefügt: {Name} ({Id}, engine={Engine})",
             entry.DisplayName, entry.Id, engine ?? "-");
+        GameAdded?.Invoke(this, entry);
         return entry;
     }
 
@@ -106,7 +114,11 @@ public sealed class ManualGamesService
             added.Add(entry);
             existingDirs.Add(dir);
         }
-        if (added.Count > 0) Save();
+        if (added.Count > 0)
+        {
+            Save();
+            foreach (var e in added) GameAdded?.Invoke(this, e);
+        }
         Log.Info("Bulk-Import: {N} neue Einträge (engine={Engine})", added.Count, engine);
         return added;
     }

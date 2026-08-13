@@ -47,6 +47,14 @@ public interface IHostServices
     /// Rate-Limit-freundliche No-Op.</summary>
     INexusService Nexus => NullNexusService.Instance;
 
+    /// <summary>Zentraler Steam-Workshop-Client (v1.17.0+). Enumeriert
+    /// lokal installierte Workshop-Items pro AppId und reichert sie
+    /// (optional) mit Steam-Web-API-Metadaten an. LS25/Icarus/Satisfactory
+    /// koennen einen einheitlichen „Workshop"-Tab bauen ohne die Pfad-
+    /// Discovery jeweils selbst zu machen. Bei aelteren Hosts default =
+    /// <see cref="NullWorkshopService.Instance"/>.</summary>
+    IWorkshopService Workshop => NullWorkshopService.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);

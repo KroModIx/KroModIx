@@ -89,6 +89,33 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
 
+        // v1.16.0: Manual-Add zur Laufzeit → Sidebar-Kachel sofort einfuegen +
+        // geladene Plugins per OnGameAddedAsync benachrichtigen, damit sich
+        // Watcher/Registry ohne App-Neustart aufs neue Spiel ausrichten. Muss
+        // auf dem UI-Thread laufen weil _allGames + VisibleGames dort leben.
+        _manual.GameAdded += (_, entry) => Dispatcher.UIThread.Post(async () =>
+        {
+            var key = $"manual:{entry.Id}";
+            if (_allGames.Any(g => g.Key == key)) return; // AddBulk-Dedupe
+            var discovered = new DiscoveredGame(
+                Key: key,
+                DisplayName: entry.DisplayName,
+                InstallDir: entry.InstallDir,
+                SteamAppId: entry.SteamAppId,
+                ManualId: entry.Id,
+                CustomCoverPath: entry.CoverPath,
+                Source: DiscoveredGameSource.Manual,
+                ExecutablePath: entry.ExecutablePath,
+                Engine: entry.Engine);
+            var newEntry = new GameEntry(discovered);
+            _allGames.Add(newEntry);
+            ApplyFilterAndSort();
+            _ = LoadCoversAsync(new[] { newEntry }, default);
+            try { await _pluginActivator.NotifyGameAddedAsync(discovered).ConfigureAwait(true); }
+            catch (Exception ex) { Log.Debug(ex, "NotifyGameAddedAsync warf"); }
+            RefreshPluginStates();
+        });
+
         // Plugin hat via IHostServices.TrySetManualGameCover den Cover-Pfad
         // eines Manual-Games gesetzt → betroffene Sidebar-Kachel neu laden.
         Services.Plugins.HostServicesImpl.ManualCoverChanged += (_, manualId) =>
@@ -364,6 +391,34 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // Refresh alle 30min, mit initialem 10s-Delay damit der Discovery-
         // Rush erst durchläuft.
         _updateBadges.Start();
+
+        // v1.16.0: Host-Self-Update-Check periodisch. Initial nach 60 s
+        // (nicht direkt beim Start um Discovery-Rush nicht zu ueberlagern),
+        // dann alle 24 h. Bei verfuegbarem Update ein Toast — kein Auto-
+        // Install (der User klickt selbst im About-Dialog).
+        _ = HostUpdateCheckLoopAsync(ct);
+    }
+
+    private async Task HostUpdateCheckLoopAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(TimeSpan.FromSeconds(60), ct); } catch { return; }
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var result = await _hostUpdate.CheckForUpdateAsync(ct);
+                if (result.UpdateAvailable)
+                {
+                    Log.Info("Host-Update verfuegbar: {Cur} → {Latest}",
+                        result.CurrentVersion, result.LatestVersion);
+                    Dispatcher.UIThread.Post(() => EnqueueToast(
+                        $"🎉 KroModIx v{result.LatestVersion} verfuegbar — im Ueber-Dialog installieren.",
+                        NotificationLevel.Info, TimeSpan.FromSeconds(12)));
+                }
+            }
+            catch (Exception ex) { Log.Debug(ex, "Host-Update-Check fehlgeschlagen"); }
+            try { await Task.Delay(TimeSpan.FromHours(24), ct); } catch { return; }
+        }
     }
 
     /// <summary>Fresh Steam-Discovery im Hintergrund. Vergleicht das Ergebnis
@@ -772,6 +827,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Alle PluginIndex-Kategorien fuer ein Game (leere Sequenz wenn
+    /// kein Plugin im Index passt). Nutzt SteamAppId-Match; Manual-Games
+    /// haben aktuell keine PluginIndex-Zuordnung → immer leer.</summary>
+    private IEnumerable<string> CategoriesForGame(GameEntry g)
+    {
+        if (_indexCache is null) yield break;
+        if (g.Source.SteamAppId is not int appId) yield break;
+        foreach (var p in _indexCache.Plugins.Where(p => p.SteamAppIds.Contains(appId)))
+            foreach (var c in p.Categories) yield return c;
+    }
+
     private void ApplyFilterAndSort()
     {
         var q = SearchText?.Trim() ?? string.Empty;
@@ -783,7 +849,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         IEnumerable<GameEntry> filtered = _allGames.Where(g => !hidden.Contains(g.Key));
         if (!string.IsNullOrEmpty(q))
-            filtered = filtered.Where(g => g.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase));
+        {
+            // v1.16.0: Suche matcht DisplayName ODER eine der PluginIndex-
+            // Kategorien des Games (z.B. „rpg", „farming"). Damit werden
+            // Kategorien nutzbar ohne extra Sidebar-UI-Element.
+            filtered = filtered.Where(g =>
+                g.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || CategoriesForGame(g).Any(c => c.Contains(q, StringComparison.OrdinalIgnoreCase)));
+        }
         // Default: nur mit Plugin. ShowAllGames aktiv → alles (Non-Plugin-Games
         // werden im XAML ausgegraut via IsDimmed). Favoriten sind IMMER sichtbar
         // egal ob Plugin oder nicht — sonst waere das Feature bei "nur mit

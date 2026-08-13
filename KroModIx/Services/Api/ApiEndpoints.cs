@@ -314,6 +314,28 @@ internal static class ApiEndpoints
             return Results.Text(JsonSerializer.Serialize(list, Json), "application/json");
         });
 
+        // v1.16.0: Diagnostisches Introspection-Endpoint fuer
+        // „Plugin-nicht-sichtbar"-Bugreports. Listet pro geladenem Plugin die
+        // DetectedGames-InstallDirs — bei einem Mismatch zwischen Sidebar-
+        // Kachel und Plugin-Match sofort erkennbar wo es haengt.
+        app.MapGet("/debug/plugin-games", () =>
+        {
+            var activator = hostServices.GetRequiredService<PluginActivator>();
+            var list = activator.Loaded.Select(l => new
+            {
+                pluginId = l.Manifest.Id,
+                version = l.Manifest.Version,
+                detectedGames = l.DetectedGames.Select(dg => new
+                {
+                    targetId = dg.Target.GameId,
+                    installDir = dg.InstallDir,
+                    steamAppId = dg.Target.SteamAppId,
+                    source = dg.Source.ToString(),
+                }).ToList(),
+            }).ToList();
+            return Results.Text(JsonSerializer.Serialize(list, Json), "application/json");
+        });
+
         // Catch-all Dispatch. Statisch registrierte Route auf WebApplication —
         // die eigentliche Plugin-Auswahl passiert zur Laufzeit gegen die
         // aktuell im Aktivator geladenen Plugins. Damit funktioniert auch

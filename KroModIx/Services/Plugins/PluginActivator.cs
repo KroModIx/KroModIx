@@ -36,6 +36,7 @@ public sealed class PluginActivator
     private readonly IHostShell _shell;
     private readonly IAiService _ai;
     private readonly INexusService _nexus;
+    private readonly IWorkshopService _workshop;
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -58,6 +59,7 @@ public sealed class PluginActivator
         IHostShell shell,
         IAiService ai,
         INexusService nexus,
+        IWorkshopService workshop,
         StatusProgressCoordinator progress,
         ManualGamesService manualGames)
     {
@@ -69,6 +71,7 @@ public sealed class PluginActivator
         _shell = shell;
         _ai = ai;
         _nexus = nexus;
+        _workshop = workshop;
         _progress = progress;
         _manualGames = manualGames;
     }
@@ -133,7 +136,7 @@ public sealed class PluginActivator
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
-                _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges);
+                _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);
@@ -158,6 +161,71 @@ public sealed class PluginActivator
                 manifest.Id, plugin.AssemblyPath);
             return null;
         }
+    }
+
+    /// <summary>v1.16.0: propagiert ein zur Laufzeit hinzugefuegtes Manual-Game
+    /// an alle geladenen Plugins, deren <see cref="GameTarget"/>s matched.
+    /// Baut das <see cref="DetectedGame"/> nach demselben Muster wie
+    /// <see cref="BuildDetectedGames"/> auf, fuegt es der LoadedPlugin-Liste
+    /// hinzu (damit spaeteres <c>GetTabContributions</c> das Game findet) und
+    /// ruft <c>IGameModPlugin.OnGameAddedAsync</c>. Ohne diesen Hook muss der
+    /// User nach jedem Manual-Add die App neu starten damit Plugins reagieren.</summary>
+    public async Task NotifyGameAddedAsync(DiscoveredGame game, CancellationToken ct = default)
+    {
+        LoadedPlugin[] snap;
+        lock (_lock) snap = _loaded.ToArray();
+        foreach (var loaded in snap)
+        {
+            var detected = TryBuildDetectedGameFor(loaded.Manifest, game);
+            if (detected is null) continue;
+            // LoadedPlugin.DetectedGames intern ist ein List<DetectedGame>
+            // (siehe BuildDetectedGames) — Cast fuers Inplace-Append.
+            if (loaded.DetectedGames is List<DetectedGame> list
+                && !list.Any(dg => string.Equals(dg.InstallDir, detected.InstallDir, StringComparison.OrdinalIgnoreCase)))
+            {
+                list.Add(detected);
+            }
+            try
+            {
+                await loaded.Plugin.OnGameAddedAsync(detected, ct).ConfigureAwait(false);
+                Log.Info("Plugin {Id}: OnGameAddedAsync fuer {Game} aufgerufen",
+                    loaded.Manifest.Id, detected.InstallDir);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Plugin {Id}.OnGameAddedAsync warf", loaded.Manifest.Id);
+            }
+        }
+        LoadedChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private DetectedGame? TryBuildDetectedGameFor(PluginManifest manifest, DiscoveredGame game)
+    {
+        GameTarget? target = null;
+        if (game.SteamAppId is int appId)
+            target = manifest.Targets.FirstOrDefault(t => t.SteamAppId == appId);
+        if (target is null && !string.IsNullOrWhiteSpace(game.Engine))
+            target = manifest.Targets.FirstOrDefault(t =>
+                !string.IsNullOrWhiteSpace(t.Engine)
+                && string.Equals(t.Engine, game.Engine, StringComparison.OrdinalIgnoreCase));
+        if (target is null) return null;
+
+        string? userDataDir = null;
+        string? protonPrefix = null;
+        RuntimeKind runtime = OperatingSystem.IsWindows() ? RuntimeKind.Native : RuntimeKind.Proton;
+        if (game.SteamAppId is int steamId && OperatingSystem.IsLinux())
+        {
+            protonPrefix = _steam.FindProtonPrefix(steamId);
+            userDataDir = _steam.FindProtonUserDocumentsDir(steamId);
+            if (protonPrefix is null) runtime = RuntimeKind.Native;
+        }
+        return new DetectedGame(
+            Target: target,
+            InstallDir: game.InstallDir,
+            UserDataDir: userDataDir,
+            ProtonPrefix: protonPrefix,
+            Runtime: runtime,
+            Source: game.Source == DiscoveredGameSource.Steam ? GameSource.Steam : GameSource.Manual);
     }
 
     public async Task ShutdownAllAsync()
