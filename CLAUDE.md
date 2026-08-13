@@ -80,24 +80,30 @@
 - RenPyAssist v0.12.0: KrosteMod Choice-Auto-Expand + Konditional-Cheats — Walkthrough zeigt `if`-Condition als `(K req: …)`-Tag, Cheat-Menu markiert Choice-Gate-Vars mit 🔓.
 - LS25 v1.13.0: Bulk-ZIP-Import — Ordner wählen, alle .zip darin werden sequenziell installiert (Progress-Scope im Host-Statusbar).
 
+**Host v1.17.0 + Grosse Uebersetzungs-Runde:**
+- Host v1.17.0: `IWorkshopService`-Contract (`workshop/content/<appId>/`-Discovery in allen SteamLibrary-Roots + optional `GetPublishedFileDetails`-Enrichment, default `NullWorkshopService`). `IGameModPlugin.OnGameAddedAsync` Default-Method + `PluginActivator.NotifyGameAddedAsync`: Manual-Add propagiert live an geladene Plugins, kein App-Neustart. `HostUpdateCheckLoopAsync` 24h-Timer + Toast bei neuer Host-Version. Sidebar-Suche matched jetzt auch PluginIndex-Kategorien. `/debug/plugin-games` REST-Endpoint fuer „Plugin nicht sichtbar"-Diagnose. Neues App-Icon `build_icon.py v2` (gestapelte Kroste-Gold-Cards + Stern-Akzent auf Dark-Gradient).
+- Cyberpunk v0.10.0: Update-Install-Button pro REDmod-Row (`⬆ vX.Y.Z`, nur wenn UpdateChecker eine neuere Nexus-Version erkennt), REDmod-Deploy-Trigger in der Toolbar (`redmod.exe deploy`, Windows-nativ), Client-side Kategorie-Filter im Katalog, Cover-Loading-Progress im Katalog-Header, Retrofit-Dialog (🔗 Nexus-Match zuweisen) fuer Alt-Mods ohne InstallManifest.
+- LS25 v1.14.0: DDS-Preview mit ffmpeg-Fallback (BC7 + exotische DXT-Kompressionen).
+- **DE+EN-Uebersetzungs-Retrofit** analog Cyberpunk-Muster (Strings.T-Helper) in vier Plugins parallel via Sub-Agents:
+  - LS25 v1.15.0 (128 Keys)
+  - Icarus v1.16.0 (164 Keys)
+  - Satisfactory v0.6.0 (106 Keys)
+  - RenPyAssist v0.14.0 (218 Keys)
+
 ## Roadmap
 
 Der Kern-Manager + alle Game-Plugins + alle Erweiterungen der letzten
 Iteration sind fertig. Was jetzt kommen könnte:
 
-- **Steam-Workshop-Sync für LS25/Icarus/Satisfactory**: workshop-content-
-  Scan pro Library-Root + Metadata-Enrichment via Steam Web API. Wäre ein
-  Contract-Level-Feature (`IHostServices.GetWorkshopContent(appId)`), kein
-  Plugin-lokales Hack.
-- **PluginIndex-Kategorien in der Sidebar**: aktuell nur im InstallCard.
-  Bei > 10 Plugins wäre eine Genre-Filter-Facette in der Sidebar-Suche
-  sinnvoll.
-- **Auto-Update-Notifier für Host-Self-Update**: HostUpdateService checkt
-  aktuell nur bei App-Start. Ein 24h-Timer im Hintergrund + Toast-Hint
-  wäre nice.
-- **DDS-Preview auf Linux stabilisieren**: LS25 nutzt Pfim → BC7-Format
-  scheitert bei einigen Mods. ffmpeg als Fallback (kann DDS lesen) oder
-  ein zweiter DDS-Decoder-NuGet.
+- **Workshop-Consumer-Ports fuer LS25/Icarus/Satisfactory**: der Host-
+  Contract `IHostServices.Workshop` steht in v1.17.0. Die drei Plugins
+  brauchen jetzt jeweils einen Workshop-Tab (analog dem NexusView-Muster:
+  DiscoverAsync + EnrichAsync + Cover-Load).
+- **Sprachabhaengige AI-Prompts in LS25/Icarus/Satisfactory**: die KI-
+  Zusammenfassungs-Prompts sind aktuell hart DE-kodiert (Sub-Agenten
+  haben sie bewusst nicht mit-uebersetzt weil das das KI-Verhalten
+  aendern wuerde). Fix: sprachabhaengige Prompts via Strings.T("ai.prompt.summary_system") etc.
+- Sonst nichts Grosses offen.
 
 Alles Punkte ohne fixe Reihenfolge — nach Bedarf.
 
