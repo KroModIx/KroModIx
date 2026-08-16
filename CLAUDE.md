@@ -90,6 +90,18 @@
   - Satisfactory v0.6.0 (106 Keys)
   - RenPyAssist v0.14.0 (218 Keys)
 
+**Host v1.18.0 + Zentraler Image-Decoder-Baukasten:**
+- Host v1.18.0: `IImageDecoder`-Contract (`_host.Images.DecodeAsync(bytes|stream|path)`) mit Format-Chain (PNG/JPEG/BMP/GIF nativ + WebP/AVIF/DDS/HEIC via ffmpeg-Convert), Magic-Byte-Detection statisch testbar. Bitmap-Instantiation IMMER auf `Dispatcher.UIThread` (Skia hat Thread-Affinity). `NullImageDecoder`-Default fuer Hosts < v1.18. 26 grüne Tests im `KroModIx.Tests`-Projekt (Format-Detection + Empty/Null-Edge-Cases + Cover-Sanity-Check gegen HTML-Login-Wall).
+- **Getrieben durch DSP-Cover-Bug**: 4 fehlgeschlagene Fix-Anlaeufe v0.2.1-v0.2.2 (Plugin-lokales WebP-Convert, static row-cache, UI-Thread-Bitmap-Load, IsVisible-Toggle) haben den Bug nicht geloest. DSP v0.3.0 auf `_host.Images` migriert = Bug live gefixt, per Screenshot-Test verifiziert.
+- **5 Plugin-Migrationen** (Cross-Cutting-Concern-Bereinigung, parallel via Sub-Agents):
+  - DSP v0.3.0 — Cover-Bug LIVE gefixt
+  - Cyberpunk v0.11.0 — 5 Bitmap-Ctor-Stellen migriert inkl. ScreenshotViewer
+  - Icarus v1.18.0 — 4 ViewModels + PreviewCoverCache
+  - LS25 v1.17.0 — 4 ViewModels + `ModPreviewService` (parallele Bytes-API)
+  - Satisfactory v0.8.0 — FicsitCoverLoader; **SixLabors.ImageSharp komplett entfernt** (~2 MB Bundle-Ersparnis)
+  - RenPyAssist v0.15.0 — 6 Bitmap-Ctor-Stellen; animierter GIF-Pfad `IGifSource` unberuehrt
+- **DSP-BepInEx-Bootstrap 4-fach-Iteration** (v0.3.0→v0.3.3): (1) Fehlerhafter Asset-Filter `Unity.IL2CPP` statt v5-Mono, (2) `System.Text.Json`-Deserializer matchte kein snake_case (`tag_name`→`TagName`), (3) GitHub-Anonymous-Rate-Limit 60/h war schon durch, (4) Hartcoded CDN-Fallback-URL statt zweitem API-Call. Alle vier Fallen jetzt im Skill `references/pitfalls.md#github-api-im-plugin` dokumentiert.
+
 ## Roadmap
 
 Nach Lars' Steam-Library-Sweep (2026-08-16) identifizierte
