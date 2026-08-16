@@ -92,20 +92,56 @@
 
 ## Roadmap
 
-Der Kern-Manager + alle Game-Plugins + alle Erweiterungen der letzten
-Iteration sind fertig. Was jetzt kommen könnte:
+Nach Lars' Steam-Library-Sweep (2026-08-16) identifizierte
+Kandidaten für neue Plugins. Bereits abgedeckt: Cyberpunk 2077, LS25,
+Icarus, Satisfactory, RenPyAssist. Neue Kandidaten priorisiert nach
+Community-Grösse, Mod-Loader-Reife und Aufwand.
 
-- **Workshop-Consumer-Ports fuer LS25/Icarus/Satisfactory**: der Host-
-  Contract `IHostServices.Workshop` steht in v1.17.0. Die drei Plugins
-  brauchen jetzt jeweils einen Workshop-Tab (analog dem NexusView-Muster:
-  DiscoverAsync + EnrichAsync + Cover-Load).
-- **Sprachabhaengige AI-Prompts in LS25/Icarus/Satisfactory**: die KI-
-  Zusammenfassungs-Prompts sind aktuell hart DE-kodiert (Sub-Agenten
-  haben sie bewusst nicht mit-uebersetzt weil das das KI-Verhalten
-  aendern wuerde). Fix: sprachabhaengige Prompts via Strings.T("ai.prompt.summary_system") etc.
-- Sonst nichts Grosses offen.
+### Tier 1 — Starke Kandidaten (Nexus-Baukasten wiederverwendbar)
 
-Alles Punkte ohne fixe Reihenfolge — nach Bedarf.
+- **v1.18: Dyson Sphere Program** (AppId 1366540, Repo `KroModIx.Plugin.DysonSphereProgram`)
+  BepInEx-Loader (`BepInEx/plugins/*.dll`), ~500 Nexus-Mods aktiv, klarer
+  Ordner-Scan. Muster nahezu identisch zu Cyberpunk — Fork-und-Anpass.
+- **v1.19: Schedule I** (AppId 3164500, Repo `KroModIx.Plugin.ScheduleI`)
+  MelonLoader-Loader (`Mods/*.dll` bei IL2CPP), ~1200 Nexus-Mods, sehr
+  aktive Discord-Modding-Szene, trending. Muster wie DSP.
+- **v1.20: 7 Days to Die** (AppId 251570, Repo `KroModIx.Plugin.SevenDaysToDie`)
+  Direktes `Mods/<ModName>/ModInfo.xml`-Loading, XML+DLL kombiniert,
+  riesige Nexus-Präsenz. Vanilla-Loader (kein Extra-Framework).
+
+### Tier 2 — Workshop-Consumers (trivial dank v1.17-Contract)
+
+Jeweils nur ein `WorkshopViewModel` analog Icarus v1.17.
+
+- **v1.21: shapez 2** (AppId 2162800, Repo `KroModIx.Plugin.Shapez2`)
+- **v1.22: Captain of Industry** (AppId 1594320, Repo `KroModIx.Plugin.CaptainOfIndustry`)
+- **v1.23: Going Medieval** (AppId 1029780, Repo `KroModIx.Plugin.GoingMedieval`)
+- **v1.24: Workers & Resources: Soviet Republic** (AppId 784150, Repo `KroModIx.Plugin.SovietRepublic`)
+
+### Tier 3 — Beobachten
+
+- **Space Engineers 2** (AppId 1133870) — Early Access, offizieller Mod-
+  Support noch nicht final. Warten bis SDK stabil.
+- **Diablo II: Resurrected** (AppId 2536520) — MPQ-Modding komplex,
+  PlugY-basiert, braucht eigenen Framework-Wrapper.
+- **Vampires: Bloodlord Rising** (AppId 2191500) — Unreal-Nischenspiel,
+  kaum Community.
+
+### Nicht empfohlen
+
+Belts of Iron, Enshrouded, Everwind, FOUNDRY, Mineral Mining Simulator,
+StarRupture, Survival: Fountain of Youth, Tempest Rising, ZeroSpace
+(alle Early Access / kein Mod-Ökosystem) · Batman Arkham Knight
+(`.pak`-only, komplex, Legacy) · C&C Zero Hour (Retro, kaum aktiv) ·
+OpenTTD (eigenes BaNaNaS-System).
+
+### Nachlese (nach jeder Plugin-Runde)
+
+- **Sprachabhängige AI-Prompts**: neue Plugins gleich sprachabhängig
+  bauen (`Strings.T("ai.prompt.summary_system")`), nicht später retrofitten.
+- **Workshop-Consumer-Ports für LS25/Icarus/Satisfactory**: Icarus hat
+  bereits einen (v1.17.0). LS25 & Satisfactory brauchen keinen (nutzen
+  GIANTS ModHub bzw. ficsit.app). Erledigt.
 
 ## Referenz
 
