@@ -150,6 +150,11 @@ public partial class App : Application
             return new KroModIx.Services.Steam.HostWorkshopServiceImpl(library, http);
         });
 
+        // v1.18: Zentraler Bild-Decoder — nimmt beliebige Bild-Bytes
+        // (WebP/AVIF/DDS/PNG/JPEG/...) und liefert Avalonia-Bitmap.
+        // ffmpeg-Convert-Fallback fuer non-native Formate.
+        services.AddSingleton<IImageDecoder, KroModIx.Services.Images.HostImageDecoderImpl>();
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

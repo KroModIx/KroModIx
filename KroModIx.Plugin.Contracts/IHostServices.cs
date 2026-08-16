@@ -55,6 +55,14 @@ public interface IHostServices
     /// <see cref="NullWorkshopService.Instance"/>.</summary>
     IWorkshopService Workshop => NullWorkshopService.Instance;
 
+    /// <summary>Zentraler Bild-Decoder-Baukasten (v1.18.0+). Nimmt beliebige
+    /// Bild-Bytes/Streams/Files und gibt eine Avalonia-<see cref="Avalonia.Media.Imaging.Bitmap"/>
+    /// zurueck — inklusive Format-Convert-Chain (WebP/AVIF/DDS via ffmpeg).
+    /// Loest das plugin-uebergreifende Problem dass Cover-Downloads oft
+    /// in Nicht-Avalonia-Formaten kommen. Bei aelteren Hosts default =
+    /// <see cref="NullImageDecoder.Instance"/> (nur native Formate).</summary>
+    IImageDecoder Images => NullImageDecoder.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
