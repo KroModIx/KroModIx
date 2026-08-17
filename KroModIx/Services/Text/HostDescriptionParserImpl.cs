@@ -113,16 +113,25 @@ public sealed class HostDescriptionParserImpl : IDescriptionParser
             RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
     // ==== Kroste-CSS fuer HtmlPanel ====
-
+    //
+    // v1.21.2: universeller `* { color: … }` — HtmlRenderer bekommt den
+    // HTML-String OHNE `<html><body>`-Wrap (Nexus liefert nur Body-Fragmente).
+    // Body-Selektor greift dann nicht, Text erbt Default-Foreground des
+    // Panels (schwarz auf dunklem Card-Background → unsichtbar, User sah
+    // nur die blauen Links). Universeller Selektor + zusaetzlicher HTML-
+    // Wrap in CreateRichView fixt das.
     private const string KrosteBaseCss = @"
-        body { color: #E5E7EB; font-family: 'Inter', 'Segoe UI', sans-serif;
-               font-size: 14px; line-height: 1.55; margin: 0; padding: 0; }
+        * { color: #E5E7EB; }
+        body, html, div, p, span, li, td, th, dt, dd
+             { color: #E5E7EB; font-family: 'Inter', 'Segoe UI', sans-serif;
+               font-size: 14px; line-height: 1.55; }
+        body { margin: 0; padding: 0; background: transparent; }
         p    { margin: 0 0 10px 0; }
-        h1, h2, h3 { color: #E0B14C; margin: 12px 0 6px 0; font-weight: 600; }
+        h1, h2, h3, h4, h5, h6 { color: #E0B14C; margin: 12px 0 6px 0; font-weight: 600; }
         h1 { font-size: 18px; }
         h2 { font-size: 16px; }
         h3 { font-size: 14px; }
-        strong, b { font-weight: 600; }
+        strong, b { font-weight: 600; color: #FFFFFF; }
         em, i { font-style: italic; }
         a    { color: #66C0F4; text-decoration: none; }
         a:hover { text-decoration: underline; }
@@ -312,9 +321,16 @@ public sealed class HostDescriptionParserImpl : IDescriptionParser
 
         try
         {
+            // v1.21.2: HTML immer in <html><body> wrappen. Nexus liefert
+            // rohe Body-Fragmente (nur <div>/<p>-Zeug), ohne diesen Wrap
+            // greift der body-CSS-Selektor nicht und der User sieht nur
+            // die Elemente die eine explizite Color haben (Links etc.).
+            var wrappedHtml = html.Contains("<html", StringComparison.OrdinalIgnoreCase)
+                ? html
+                : $"<html><body>{html}</body></html>";
             var panel = new HtmlPanel
             {
-                Text = html,
+                Text = wrappedHtml,
                 BaseStylesheet = KrosteBaseCss,
                 IsSelectionEnabled = true,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
