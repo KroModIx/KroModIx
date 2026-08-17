@@ -1155,6 +1155,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (owner is not null) window.ShowDialog(owner); else window.Show();
     }
 
+    /// <summary>v1.24.0: Konflikt-Fenster pro Spiel — findet Dateien die
+    /// mehrere installierte Mods beanspruchen. Ruft <see cref="IConflictScanner"/>
+    /// der wiederum alle geladenen Plugins die <see cref="IConflictSource"/>
+    /// implementieren nach ihrer File-Karte fragt.</summary>
+    [RelayCommand]
+    private void OpenConflicts(GameEntry? entry)
+    {
+        if (entry is null) return;
+        var scanner = _services.GetRequiredService<IConflictScanner>();
+        var vm = new ConflictsViewModel(scanner, entry.Key, entry.DisplayName);
+        var owner = MainWindow();
+        var window = new ConflictsWindow { DataContext = vm };
+        if (owner is not null) window.ShowDialog(owner); else window.Show();
+    }
+
     /// <summary>v1.23.0: Backup-Fenster pro Spiel — aggregiert Snapshots
     /// aus allen geladenen Plugins fuer diese GameKey. Restore/Delete
     /// direkt im Fenster; Snapshot-Creation macht das jeweilige Plugin.</summary>

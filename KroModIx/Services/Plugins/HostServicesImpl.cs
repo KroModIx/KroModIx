@@ -38,7 +38,8 @@ public sealed class HostServicesImpl : IHostServices
         IWorkshopService? workshop = null,
         IImageDecoder? images = null,
         IDescriptionParser? descriptions = null,
-        IBackupService? backup = null)
+        IBackupService? backup = null,
+        IConflictScanner? conflicts = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -53,6 +54,7 @@ public sealed class HostServicesImpl : IHostServices
         Images = images ?? NullImageDecoder.Instance;
         Descriptions = descriptions ?? NullDescriptionParser.Instance;
         Backup = backup ?? NullBackupService.Instance;
+        Conflicts = conflicts ?? NullConflictScanner.Instance;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
         _updateBadges = updateBadges;
@@ -79,6 +81,7 @@ public sealed class HostServicesImpl : IHostServices
     public IImageDecoder Images { get; }
     public IDescriptionParser Descriptions { get; }
     public IBackupService Backup { get; }
+    public IConflictScanner Conflicts { get; }
 
     public HttpClient CreateHttpClient(string? subsystem = null)
     {

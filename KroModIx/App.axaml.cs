@@ -164,6 +164,10 @@ public partial class App : Application
         // via Host-UI. Singleton weil er Cross-Plugin und Cross-Spiel arbeitet.
         services.AddSingleton<IBackupService, KroModIx.Services.Backup.HostBackupServiceImpl>();
 
+        // v1.24.0: Konflikt-Scanner — findet Files die von mehr als einem Mod
+        // beansprucht werden. Plugins implementieren IConflictSource optional.
+        services.AddSingleton<IConflictScanner, KroModIx.Services.Conflicts.HostConflictScannerImpl>();
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

@@ -199,6 +199,9 @@
                                             <MenuItem Header="🗄  Backups verwalten…"
                                                       Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).OpenBackupsCommand}"
                                                       CommandParameter="{Binding}" />
+                                            <MenuItem Header="⚠  Konflikte pruefen…"
+                                                      Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).OpenConflictsCommand}"
+                                                      CommandParameter="{Binding}" />
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <StackPanel Spacing="6">

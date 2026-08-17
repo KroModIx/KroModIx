@@ -79,6 +79,13 @@ public interface IHostServices
     /// Bei aelteren Hosts default = <see cref="NullBackupService.Instance"/>.</summary>
     IBackupService Backup => NullBackupService.Instance;
 
+    /// <summary>Zentraler Konflikt-Scanner (v1.24.0+). Findet Dateien, die
+    /// von mehr als einem installierten Mod beansprucht werden (klassisches
+    /// „welcher Mod ueberschreibt hier?"). Plugins liefern ihre File-Karte
+    /// via <see cref="IConflictSource"/>. Bei aelteren Hosts default =
+    /// <see cref="NullConflictScanner.Instance"/>.</summary>
+    IConflictScanner Conflicts => NullConflictScanner.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);

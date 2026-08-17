@@ -1,0 +1,60 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:KroModIx.Views"
+        xmlns:controls="using:KroModIx.Controls"
+        xmlns:vm="using:KroModIx.ViewModels"
+        x:Class="KroModIx.Views.ConflictsWindow"
+        x:DataType="vm:ConflictsViewModel"
+        Width="820" Height="600" MinWidth="580" MinHeight="400"
+        WindowStartupLocation="CenterOwner"
+        Title="Konflikte"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{Binding GameHeader}" />
+
+        <Border Padding="20">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,14">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Classes="accent" Content="🔄  Neu scannen"
+                                Command="{Binding ScanCommand}"
+                                IsEnabled="{Binding !Busy}" />
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Classes="secondary" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ConflictRow">
+                                <Border Classes="card" Margin="0,0,0,10" Padding="14">
+                                    <StackPanel Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border CornerRadius="10" Padding="8,2"
+                                                    Background="{DynamicResource KrosteAccentSoftBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource KrosteSecondaryTextBrush}">
+                                                    <Run Text="{Binding OwnerCount}" />
+                                                    <Run Text="x" />
+                                                </TextBlock>
+                                            </Border>
+                                            <TextBlock Text="{Binding RelativePath}"
+                                                       FontWeight="SemiBold" FontFamily="Consolas,monospace"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding OwnersLabel}"
+                                                   Classes="muted" FontSize="11"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</views:ChromeWindow>
