@@ -107,6 +107,9 @@
 - **DSP v0.5.0**: Nexus-Mod-Detail-Dialog (780x640, mit Cover, Meta-Row, KI-Panel, Scrollable-Description). `NexusModDetailViewModel` lädt via `_nexus.GetModDetailAsync(GameSlug, ModId)`, HTML→Text-Parser strippt Tags + decodiert Entities. `SummarizeCommand` nutzt `_host.Ai.CompleteAsync` mit sprachabhängigem Prompt via `Strings.T("ai.prompt.summary_system")`. Cover-Enrichment via `CoverCache.GetOrDownloadBytesAsync` + `_host.Images.DecodeAsync`. Details-Button (🔍) in der Nexus-Row zwischen Download und "Open Nexus".
 - **LS25 v1.18.0**: Pfim + SkiaSharp **komplett aus dem Plugin-Bundle raus** (~15 MB Ersparnis inkl. nativer libs, Total-Bundle 640 KB). `DdsToPngConverter.cs` gelöscht. `ModDescReader.PreviewPngBytes` → `PreviewBytes` (roh, kann PNG/JPG oder DDS sein); `TryExtractPreview` liefert DDS-Bytes 1:1. `ModPreviewService` nimmt jetzt `IImageDecoder` im Ctor — bei DDS wird `_host.Images.DecodeAsync` gerufen und die Avalonia-Bitmap via `Bitmap.Save(Stream, PngBitmapEncoderOptions.Default)` als PNG in den Cache persistiert. PNG/JPG landen direkt (unverändert). Damit ist LS25 auch für den zentralen Image-Baukasten voll auf `_host.Images` konsolidiert.
 
+**Schedule I v0.1.0 (2026-08-17):**
+- Neues Plugin `KroModIx.Plugin.ScheduleI` — MelonLoader-basiert (IL2CPP-Game), 1:1 DSP-Muster geklont und adaptiert. Fakten-Recherche: Nexus-Slug `schedule1` (curl-verifiziert, `scheduleone`/`schedulei` geben 403/404), Executable `Schedule I.exe` mit Space, MelonLoader-Bootstrap via `MelonLoader.x64.zip` vom LavaGang-GitHub-Release (Fallback pinned auf v0.7.3 gegen 60/h-Anonymous-Rate-Limit). MelonLoader-Semantik-Unterschiede zu BepInEx bewusst umgesetzt: `Mods/*.dll` flat statt `BepInEx/plugins/{Name}/`, kein Ordner-Layout, `version.dll`-Marker im Game-Root statt `BepInEx/core/BepInEx.dll`. Alle 5 DSP-Kernprinzipien greifen (Nexus-Katalog + Detail-Dialog mit KI + Downloads-Enricher + InstallManifest + Row-Konsistenz mit Cover/Details/Doppelklick). 11 Tests gruen (Parser Dash + Space + Non-Nexus, Scanner Flat-Only + Marker-Check). PluginIndex-Eintrag registriert.
+
 **DSP v0.6.0 + Skill-Verschaerfung Row-Interaction (2026-08-17):**
 - **DSP v0.6.0**: Row-Konsistenz in allen drei Tabs — Downloads + Installiert bekommen jetzt Cover (140×90 aus Nexus-Katalog), Autor/Version/Summary + Details-Button + Doppelklick. Neue Services: `DspNexusRowEnricher` (SemaphoreSlim(4)-throttled Nexus-GetModDetailAsync-Batch fuer eine Liste `IDspEnrichableRow`), `DspNexusDetailLauncher` (shared Owner-Lookup+Show fuer alle drei Tabs), `NexusModDetailViewModel` mit neuem ModId-only-Ctor (fuer Downloads/Installed ohne NexusRow). Downloads-ModId aus `NexusFileNameParser`, Installed-ModId aus `DspInstallManifestStore` (v0.4-Persistenz zahlt sich hier aus). `ListBox.DoubleTapped`-Handler pro Tab, Details-Button `IsEnabled` an `HasNexusMatch` — manuell reinkopierte Dateien ohne ModId bleiben passiv.
 - **Skill-Update `KroModIx-Plugin`**: Kernprinzip 6 verschaerft (Cover + Details-Button + Doppelklick in allen drei Tabs sind MUST-HAVE, kein Nice-to-have); neuer **Kernprinzip 10 „Row-Interaction in ALLEN Tabs"** mit den fuenf Pflicht-Bausteinen (Shared-Launcher, ModId-only-Ctor, `ShowDetailCommand`, Details-Button mit `HasNexusMatch`-Bindung, `DoubleTapped`-Handler), ModId-Herkunft je Tab, Enricher-Pattern mit `I<Plugin>EnrichableRow`, Refresh-Trigger mit `CancellationTokenSource`-Cycling. Description-Frontmatter ergaenzt damit der Skill bei „Row/Detail/Doppelklick in Plugin"-Kontexten getriggert wird. Kanonische Referenzen sind Cyberpunk v0.8.3+ und DSP v0.6.0+.
@@ -123,9 +126,10 @@ Community-Grösse, Mod-Loader-Reife und Aufwand.
 - **v1.18: Dyson Sphere Program** (AppId 1366540, Repo `KroModIx.Plugin.DysonSphereProgram`)
   BepInEx-Loader (`BepInEx/plugins/*.dll`), ~500 Nexus-Mods aktiv, klarer
   Ordner-Scan. Muster nahezu identisch zu Cyberpunk — Fork-und-Anpass.
-- **v1.19: Schedule I** (AppId 3164500, Repo `KroModIx.Plugin.ScheduleI`)
-  MelonLoader-Loader (`Mods/*.dll` bei IL2CPP), ~1200 Nexus-Mods, sehr
-  aktive Discord-Modding-Szene, trending. Muster wie DSP.
+- ~~**v1.19: Schedule I**~~ **✓ erledigt** — `KroModIx.Plugin.ScheduleI`
+  v0.1.0 released. MelonLoader-Loader statt BepInEx, ansonsten 1:1
+  DSP-Muster (Nexus-Katalog + Detail-Dialog + Downloads + IUpdateNotifier +
+  Row-Enricher). Nexus-Slug `schedule1`, AppId 3164500, IL2CPP.
 - **v1.20: 7 Days to Die** (AppId 251570, Repo `KroModIx.Plugin.SevenDaysToDie`)
   Direktes `Mods/<ModName>/ModInfo.xml`-Loading, XML+DLL kombiniert,
   riesige Nexus-Präsenz. Vanilla-Loader (kein Extra-Framework).
