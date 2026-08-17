@@ -25,6 +25,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     private readonly PluginRegistryScanner _scanner;
     private readonly PluginActivator _activator;
     private readonly PluginUninstaller _uninstaller;
+    private readonly PluginIndexService _pluginIndex;
     private readonly IDialogService _dialogs;
 
     public PluginUpdatesViewModel(
@@ -32,12 +33,14 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         PluginRegistryScanner scanner,
         PluginActivator activator,
         PluginUninstaller uninstaller,
+        PluginIndexService pluginIndex,
         IDialogService dialogs)
     {
         _updates = updates;
         _scanner = scanner;
         _activator = activator;
         _uninstaller = uninstaller;
+        _pluginIndex = pluginIndex;
         _dialogs = dialogs;
         RefreshUpdates();
         RefreshInstalled();
@@ -177,8 +180,15 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     private async Task CheckNowAsync()
     {
         StatusMessage = "Prüfe …";
+        // v1.19.1: PluginIndex zwangs-refreshen — sonst sieht der User neue
+        // Plugins im Katalog erst nach Cache-TTL (frueher 24h, jetzt 6h).
+        // Der Klick auf „Jetzt pruefen" ist genau der Moment wo der User
+        // erwartet dass die Sidebar/Install-Card frische Kandidaten zeigt.
+        var freshIndex = await _pluginIndex.RefreshAsync();
         int n = await _updates.CheckAllAsync();
-        StatusMessage = n == 0 ? "Keine Updates verfügbar." : $"{n} Update(s) verfügbar.";
+        StatusMessage = n == 0
+            ? $"Keine Updates verfügbar. Katalog: {freshIndex.Plugins.Count} Plugin(s)."
+            : $"{n} Update(s) verfügbar. Katalog: {freshIndex.Plugins.Count} Plugin(s).";
     }
 
     [RelayCommand]

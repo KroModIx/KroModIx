@@ -89,6 +89,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
 
+        // v1.19.1: PluginIndex kann sich zur Laufzeit aendern (Background-
+        // Refresh beim App-Start, expliziter „Jetzt pruefen"-Klick).
+        // Sterne + Install-Card sofort mitziehen — sonst muesste der User
+        // den App-Neustart abwarten.
+        _pluginIndex.IndexRefreshed += (_, _) => Dispatcher.UIThread.Post(() =>
+            _ = LoadPluginIndexAsync(CancellationToken.None));
+
         // v1.16.0: Manual-Add zur Laufzeit → Sidebar-Kachel sofort einfuegen +
         // geladene Plugins per OnGameAddedAsync benachrichtigen, damit sich
         // Watcher/Registry ohne App-Neustart aufs neue Spiel ausrichten. Muss
