@@ -69,12 +69,17 @@ public sealed partial class InstallCardViewModel : ViewModelBase
         StatusMessage = "Lade …";
         try
         {
-            var discovered = await _installer.InstallLatestAsync(_entry).ConfigureAwait(true);
-            if (discovered is null)
+            var result = await _installer.InstallLatestAsync(_entry).ConfigureAwait(true);
+            if (!result.Success || result.Plugin is null)
             {
-                StatusMessage = "Download fehlgeschlagen — siehe Log.";
+                // v1.19.2: konkrete Fehler-Message statt „siehe Log" —
+                // der User sieht z.B. „GitHub-API HTTP 403 und Redirect-
+                // Fallback lieferte keinen Tag. Tipp: GITHUB_TOKEN als
+                // Env-Var setzen (5000/h statt 60/h) oder 1h warten."
+                StatusMessage = result.ErrorMessage ?? "Download fehlgeschlagen — siehe Log.";
                 return;
             }
+            var discovered = result.Plugin;
 
             // Live-Aktivierung (ohne App-Restart). PlanSingle MUSS die aktuelle
             // Games-Liste bekommen, sonst wird das Plugin ohne DetectedGames
