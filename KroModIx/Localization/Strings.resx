@@ -39,6 +39,17 @@
   <data name="About_BuyMeACoffee" xml:space="preserve"><value>Buy me a coffee</value></data>
   <data name="About_OpenLogFolder" xml:space="preserve"><value>Open log folder</value></data>
   <data name="About_Description" xml:space="preserve"><value>One mod manager for all your games. Steam-aware, cross-platform, extensible via plugins.</value></data>
+  <data name="About_InstallUpdate" xml:space="preserve"><value>⬇ Install update</value></data>
+  <data name="About_OpenReleasePage" xml:space="preserve"><value>Open release page</value></data>
+  <data name="About_UpdateReady" xml:space="preserve"><value>Version {0} is ready to install ({1}). The app will close and restart automatically after the update.</value></data>
+  <data name="About_UpdateNoAsset" xml:space="preserve"><value>Version {0} is available, but no matching asset for this platform is published. Please install manually from the release page.</value></data>
+  <data name="About_InstallConfirmMsg" xml:space="preserve"><value>Download and install version {0} now?
+The app will close after the download to apply the update, and restart automatically.
+
+Asset: {1}</value></data>
+  <data name="About_UpdateDownloading" xml:space="preserve"><value>Downloading update …</value></data>
+  <data name="About_UpdateApplying" xml:space="preserve"><value>Applying update, restarting …</value></data>
+  <data name="About_UpdateFailed" xml:space="preserve"><value>Update failed:</value></data>
 
   <!-- Status -->
   <data name="Status_Ready" xml:space="preserve"><value>Ready.</value></data>

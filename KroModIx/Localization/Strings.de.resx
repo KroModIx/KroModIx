@@ -34,6 +34,17 @@
   <data name="About_BuyMeACoffee" xml:space="preserve"><value>Buy me a coffee</value></data>
   <data name="About_OpenLogFolder" xml:space="preserve"><value>Log-Ordner öffnen</value></data>
   <data name="About_Description" xml:space="preserve"><value>Ein Mod-Manager für alle deine Spiele. Steam-fähig, plattformübergreifend, mit Plugins erweiterbar.</value></data>
+  <data name="About_InstallUpdate" xml:space="preserve"><value>⬇ Update installieren</value></data>
+  <data name="About_OpenReleasePage" xml:space="preserve"><value>Release-Seite öffnen</value></data>
+  <data name="About_UpdateReady" xml:space="preserve"><value>Version {0} ist bereit zum Installieren ({1}). Die App schließt sich nach dem Update automatisch und startet neu.</value></data>
+  <data name="About_UpdateNoAsset" xml:space="preserve"><value>Version {0} ist verfügbar, aber für diese Plattform ist kein passendes Asset veröffentlicht. Bitte manuell von der Release-Seite installieren.</value></data>
+  <data name="About_InstallConfirmMsg" xml:space="preserve"><value>Version {0} jetzt herunterladen und installieren?
+Die App schließt sich nach dem Download, um das Update anzuwenden, und startet automatisch neu.
+
+Asset: {1}</value></data>
+  <data name="About_UpdateDownloading" xml:space="preserve"><value>Update wird geladen …</value></data>
+  <data name="About_UpdateApplying" xml:space="preserve"><value>Update wird angewendet, Neustart …</value></data>
+  <data name="About_UpdateFailed" xml:space="preserve"><value>Update fehlgeschlagen:</value></data>
 
   <data name="Status_Ready" xml:space="preserve"><value>Bereit.</value></data>
 </root>

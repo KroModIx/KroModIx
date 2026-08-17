@@ -4,9 +4,9 @@
         xmlns:controls="using:KroModIx.Controls"
         xmlns:loc="using:KroModIx.Localization"
         x:Class="KroModIx.Views.AboutWindow"
-        Width="440" SizeToContent="Height"
+        Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
-        MinWidth="380" MinHeight="320"
+        MinWidth="400" MinHeight="360"
         Title="{loc:Tr Window_About}"
         Background="{DynamicResource KrosteBackgroundBrush}">
     <DockPanel>
@@ -24,6 +24,33 @@
                 <Button x:Name="UpdateButton" Classes="accent" Content="{loc:Tr About_CheckForUpdate}" />
                 <TextBlock x:Name="UpdateResult" VerticalAlignment="Center" Classes="secondary" />
             </StackPanel>
+
+            <!-- Install-Panel: nur sichtbar wenn Update verfügbar UND Asset für Plattform da. -->
+            <Border x:Name="UpdateInstallPanel"
+                    IsVisible="False"
+                    Classes="card"
+                    Padding="12"
+                    Background="{DynamicResource KrosteSurfaceBrush}">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="UpdateAssetLabel" Classes="secondary" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="InstallUpdateButton"
+                                Classes="accent"
+                                Content="{loc:Tr About_InstallUpdate}" />
+                        <Button x:Name="OpenReleasePageButton"
+                                Classes="ghost"
+                                Content="{loc:Tr About_OpenReleasePage}" />
+                    </StackPanel>
+                    <ProgressBar x:Name="UpdateProgress"
+                                 IsVisible="False"
+                                 Minimum="0" Maximum="1"
+                                 Height="4" />
+                    <TextBlock x:Name="UpdateProgressLabel"
+                               IsVisible="False"
+                               Classes="muted"
+                               FontSize="11" />
+                </StackPanel>
+            </Border>
 
             <StackPanel Orientation="Horizontal" Spacing="10">
                 <Button x:Name="GithubButton" Content="{loc:Tr About_Website}" />
