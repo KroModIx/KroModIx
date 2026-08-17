@@ -27,7 +27,7 @@
     <!-- Tests: xunit.v3 (nicht das alte xunit), FluentAssertions gepinnt < 8 (Xceed) -->
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="FluentAssertions" Version="[7.2.2,8.0.0)" />
 
     <!-- v1.21: HTML-Rendering fuer Mod-Beschreibungen (siehe
