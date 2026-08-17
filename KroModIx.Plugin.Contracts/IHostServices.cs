@@ -72,6 +72,13 @@ public interface IHostServices
     /// (Passthrough — der User sieht raw BBCode).</summary>
     IDescriptionParser Descriptions => NullDescriptionParser.Instance;
 
+    /// <summary>Zentraler Backup-Baukasten (v1.23.0+). Snapshot der Mod-
+    /// Verzeichnisse vor riskanten Aktionen (Install/Update/Uninstall) —
+    /// gepackt als ZIP unter <c>~/.local/share/KroModIx/backups/&lt;pluginId&gt;/</c>.
+    /// Kein Auto-Rollback (User waehlt manuell im Host-Backup-Fenster).
+    /// Bei aelteren Hosts default = <see cref="NullBackupService.Instance"/>.</summary>
+    IBackupService Backup => NullBackupService.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);

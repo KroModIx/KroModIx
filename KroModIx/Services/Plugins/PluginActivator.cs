@@ -39,6 +39,7 @@ public sealed class PluginActivator
     private readonly IWorkshopService _workshop;
     private readonly IImageDecoder _images;
     private readonly IDescriptionParser _descriptions;
+    private readonly IBackupService _backup;
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -64,6 +65,7 @@ public sealed class PluginActivator
         IWorkshopService workshop,
         IImageDecoder images,
         IDescriptionParser descriptions,
+        IBackupService backup,
         StatusProgressCoordinator progress,
         ManualGamesService manualGames)
     {
@@ -78,6 +80,7 @@ public sealed class PluginActivator
         _workshop = workshop;
         _images = images;
         _descriptions = descriptions;
+        _backup = backup;
         _progress = progress;
         _manualGames = manualGames;
     }
@@ -143,7 +146,7 @@ public sealed class PluginActivator
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
                 _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop, _images,
-                _descriptions);
+                _descriptions, _backup);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

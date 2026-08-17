@@ -160,6 +160,10 @@ public partial class App : Application
         // Regex-Chains — Bug-Fixes an einer Stelle greifen ueberall.
         services.AddSingleton<IDescriptionParser, KroModIx.Services.Text.HostDescriptionParserImpl>();
 
+        // v1.23.0: Backup-Baukasten — Snapshot vor Install, Restore vom User
+        // via Host-UI. Singleton weil er Cross-Plugin und Cross-Spiel arbeitet.
+        services.AddSingleton<IBackupService, KroModIx.Services.Backup.HostBackupServiceImpl>();
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

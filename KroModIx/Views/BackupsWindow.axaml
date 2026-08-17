@@ -1,0 +1,63 @@
+<views:ChromeWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:KroModIx.Views"
+        xmlns:controls="using:KroModIx.Controls"
+        xmlns:vm="using:KroModIx.ViewModels"
+        x:Class="KroModIx.Views.BackupsWindow"
+        x:DataType="vm:BackupsViewModel"
+        Width="760" Height="580" MinWidth="560" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Title="Backups"
+        Background="{DynamicResource KrosteBackgroundBrush}">
+    <DockPanel>
+        <controls:TitleBar DockPanel.Dock="Top" Title="{Binding GameHeader}" />
+
+        <Border Padding="20">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,14">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Classes="accent" Content="🔄  Aktualisieren"
+                                Command="{Binding RefreshCommand}"
+                                IsEnabled="{Binding !Busy}" />
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Classes="secondary" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                               Text="Snapshots werden von Plugins vor Install/Update automatisch angelegt. Beim Restore wird der aktuelle Ordner-Zustand als .pre-restore-YYYYMMDDHHMMSS/ daneben gesichert, damit du bei versehentlichem Restore zurueck kannst." />
+                </StackPanel>
+
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BackupRow">
+                                <Border Classes="card" Margin="0,0,0,10" Padding="14">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding DisplayLabel}"
+                                                       FontWeight="SemiBold" FontSize="14" />
+                                            <TextBlock Text="{Binding SubLine}"
+                                                       Classes="muted" FontSize="11" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Classes="accent"
+                                                Content="↩  Restore"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding $parent[ItemsControl].((vm:BackupsViewModel)DataContext).RestoreCommand}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Grid.Column="2"
+                                                Classes="danger"
+                                                Content="🗑  Loeschen"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding $parent[ItemsControl].((vm:BackupsViewModel)DataContext).DeleteCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</views:ChromeWindow>

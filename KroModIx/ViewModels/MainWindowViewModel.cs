@@ -1155,6 +1155,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (owner is not null) window.ShowDialog(owner); else window.Show();
     }
 
+    /// <summary>v1.23.0: Backup-Fenster pro Spiel — aggregiert Snapshots
+    /// aus allen geladenen Plugins fuer diese GameKey. Restore/Delete
+    /// direkt im Fenster; Snapshot-Creation macht das jeweilige Plugin.</summary>
+    [RelayCommand]
+    private void OpenBackups(GameEntry? entry)
+    {
+        if (entry is null) return;
+        var backup = _services.GetRequiredService<IBackupService>();
+        var vm = new BackupsViewModel(backup, _pluginActivator,
+            gameKey: entry.Key, gameName: entry.DisplayName);
+        var owner = MainWindow();
+        var window = new BackupsWindow { DataContext = vm };
+        if (owner is not null) window.ShowDialog(owner); else window.Show();
+    }
+
     /// <summary>v1.22.0: Aggregierte Uebersicht aller Spiele mit
     /// ausstehenden Mod-Updates — Ersatz fuer den bisher nicht-klickbaren
     /// Header-TextBlock. Klick auf eine Row selektiert das Spiel in der

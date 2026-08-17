@@ -195,6 +195,10 @@
                                             <MenuItem Header="🗑  Aus KroModIx entfernen"
                                                       Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).RemoveGameCommand}"
                                                       CommandParameter="{Binding}" />
+                                            <Separator />
+                                            <MenuItem Header="🗄  Backups verwalten…"
+                                                      Command="{Binding $parent[views:ChromeWindow].((vm:MainWindowViewModel)DataContext).OpenBackupsCommand}"
+                                                      CommandParameter="{Binding}" />
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <StackPanel Spacing="6">

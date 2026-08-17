@@ -86,6 +86,20 @@ public static class AppPaths
         }
     }
 
+    /// <summary>Backup-Wurzel fuer <see cref="Plugin.Contracts.IBackupService"/> (v1.23.0+).
+    /// Snapshots liegen unter <c>&lt;BackupsRoot&gt;/&lt;pluginId&gt;/&lt;timestamp&gt;.zip</c>
+    /// (plus <c>.json</c>-Metadatei). StateRoot statt CacheRoot — Backups
+    /// duerfen bei Cache-Wipe NICHT verloren gehen.</summary>
+    public static string BackupsRoot
+    {
+        get
+        {
+            var dir = Path.Combine(StateRoot, "backups");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+    }
+
     /// <summary>Update-Arbeitsverzeichnis für Self-Update (NIE AppContext.BaseDirectory —
     /// AppImage-Squashfs ist read-only, siehe RenPack/LS-ModManager UpdateService).</summary>
     public static string UpdateWorkDir

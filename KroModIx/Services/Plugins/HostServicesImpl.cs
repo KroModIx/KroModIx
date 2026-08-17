@@ -37,7 +37,8 @@ public sealed class HostServicesImpl : IHostServices
         GameUpdateBadgeService? updateBadges = null,
         IWorkshopService? workshop = null,
         IImageDecoder? images = null,
-        IDescriptionParser? descriptions = null)
+        IDescriptionParser? descriptions = null,
+        IBackupService? backup = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -51,6 +52,7 @@ public sealed class HostServicesImpl : IHostServices
         Workshop = workshop ?? NullWorkshopService.Instance;
         Images = images ?? NullImageDecoder.Instance;
         Descriptions = descriptions ?? NullDescriptionParser.Instance;
+        Backup = backup ?? NullBackupService.Instance;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
         _updateBadges = updateBadges;
@@ -76,6 +78,7 @@ public sealed class HostServicesImpl : IHostServices
     public IWorkshopService Workshop { get; }
     public IImageDecoder Images { get; }
     public IDescriptionParser Descriptions { get; }
+    public IBackupService Backup { get; }
 
     public HttpClient CreateHttpClient(string? subsystem = null)
     {
