@@ -102,6 +102,11 @@
   - RenPyAssist v0.15.0 — 6 Bitmap-Ctor-Stellen; animierter GIF-Pfad `IGifSource` unberuehrt
 - **DSP-BepInEx-Bootstrap 4-fach-Iteration** (v0.3.0→v0.3.3): (1) Fehlerhafter Asset-Filter `Unity.IL2CPP` statt v5-Mono, (2) `System.Text.Json`-Deserializer matchte kein snake_case (`tag_name`→`TagName`), (3) GitHub-Anonymous-Rate-Limit 60/h war schon durch, (4) Hartcoded CDN-Fallback-URL statt zweitem API-Call. Alle vier Fallen jetzt im Skill `references/pitfalls.md#github-api-im-plugin` dokumentiert.
 
+**DSP v0.4 + v0.5 + LS25 v1.18.0 Nachlese (2026-08-17):**
+- **DSP v0.4.0**: `IUpdateNotifier` — `DspInstallManifestStore` persistiert pro installierter BepInEx-Plugin-DLL ein JSON-Manifest mit `NexusModId`+`NexusVersion`+`OriginalFilename` in `plugin-data/install-manifests/`. `NexusFileNameParser` extrahiert Mod-ID + Version + Name aus Nexus-CDN-Filenames (analog Cyberpunk-Pattern). `DspUpdateChecker` iteriert die Manifests, matcht gegen den Nexus-Katalog und meldet echte Versions-Deltas per `GameUpdateInfo` als grünen ↑-Badge auf der DSP-Kachel. Auto-Check 15s nach Init + Re-Check auf jedes `ModInstalled`-Event.
+- **DSP v0.5.0**: Nexus-Mod-Detail-Dialog (780x640, mit Cover, Meta-Row, KI-Panel, Scrollable-Description). `NexusModDetailViewModel` lädt via `_nexus.GetModDetailAsync(GameSlug, ModId)`, HTML→Text-Parser strippt Tags + decodiert Entities. `SummarizeCommand` nutzt `_host.Ai.CompleteAsync` mit sprachabhängigem Prompt via `Strings.T("ai.prompt.summary_system")`. Cover-Enrichment via `CoverCache.GetOrDownloadBytesAsync` + `_host.Images.DecodeAsync`. Details-Button (🔍) in der Nexus-Row zwischen Download und "Open Nexus".
+- **LS25 v1.18.0**: Pfim + SkiaSharp **komplett aus dem Plugin-Bundle raus** (~15 MB Ersparnis inkl. nativer libs, Total-Bundle 640 KB). `DdsToPngConverter.cs` gelöscht. `ModDescReader.PreviewPngBytes` → `PreviewBytes` (roh, kann PNG/JPG oder DDS sein); `TryExtractPreview` liefert DDS-Bytes 1:1. `ModPreviewService` nimmt jetzt `IImageDecoder` im Ctor — bei DDS wird `_host.Images.DecodeAsync` gerufen und die Avalonia-Bitmap via `Bitmap.Save(Stream, PngBitmapEncoderOptions.Default)` als PNG in den Cache persistiert. PNG/JPG landen direkt (unverändert). Damit ist LS25 auch für den zentralen Image-Baukasten voll auf `_host.Images` konsolidiert.
+
 ## Roadmap
 
 Nach Lars' Steam-Library-Sweep (2026-08-16) identifizierte
