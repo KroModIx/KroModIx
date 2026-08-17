@@ -22,6 +22,9 @@ public class SteamGameFilterTests
     [InlineData(2300320, "Farming Simulator 25")]
     [InlineData(526870,  "Satisfactory")]
     [InlineData(526871,  "SomeProtonThing")] // "Proton" nicht als Prefix (kein Leerzeichen)
+    [InlineData(3164500, "Schedule I")] // Regression: v1.18 hatte 3164500 faelschlich als "Proton 10.0 (vermutlich)"
+    [InlineData(1366540, "Dyson Sphere Program")]
+    [InlineData(1091500, "Cyberpunk 2077")]
     public void IsTool_Should_NotFlag_RealGames(int appId, string name)
     {
         SteamGameFilter.IsTool(appId, name).Should().BeFalse();

@@ -34,7 +34,13 @@ public static class SteamGameFilter
         2230260, // Proton 8.0
         2348590, // Proton 9.0
         2805730, // Proton 9.0-Update
-        3164500, // Proton 10.0 (vermutlich)
+        // WICHTIG: keine AppIds "auf Verdacht" hier eintragen. In v1.18 stand
+        // hier 3164500 als "Proton 10.0 (vermutlich)" — real ist das aber
+        // "Schedule I" (TVGS), was fuer Nutzer heisst: das Spiel wird
+        // aus der Sidebar ausgeblendet und das ScheduleI-Plugin wird nie
+        // aktiviert. Fuer neue Proton-Versionen reicht der Namens-Praefix-
+        // Fallback (siehe LooksLikeTool) — der matcht "Proton " zuverlaessig.
+        // Real belegte Ids nur nach steamdb.info-Verifikation ergaenzen.
     };
 
     public static bool IsTool(int appId, string name)
