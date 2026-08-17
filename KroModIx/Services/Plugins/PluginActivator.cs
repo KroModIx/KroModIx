@@ -38,6 +38,7 @@ public sealed class PluginActivator
     private readonly INexusService _nexus;
     private readonly IWorkshopService _workshop;
     private readonly IImageDecoder _images;
+    private readonly IDescriptionParser _descriptions;
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -62,6 +63,7 @@ public sealed class PluginActivator
         INexusService nexus,
         IWorkshopService workshop,
         IImageDecoder images,
+        IDescriptionParser descriptions,
         StatusProgressCoordinator progress,
         ManualGamesService manualGames)
     {
@@ -75,6 +77,7 @@ public sealed class PluginActivator
         _nexus = nexus;
         _workshop = workshop;
         _images = images;
+        _descriptions = descriptions;
         _progress = progress;
         _manualGames = manualGames;
     }
@@ -139,7 +142,8 @@ public sealed class PluginActivator
             var instance = (IGameModPlugin)Activator.CreateInstance(entryType)!;
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
-                _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop, _images);
+                _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop, _images,
+                _descriptions);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

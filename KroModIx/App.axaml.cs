@@ -155,6 +155,11 @@ public partial class App : Application
         // ffmpeg-Convert-Fallback fuer non-native Formate.
         services.AddSingleton<IImageDecoder, KroModIx.Services.Images.HostImageDecoderImpl>();
 
+        // v1.20: Zentraler Beschreibungs-Parser fuer Mod-Descriptions
+        // (HTML+BBCode). Alle Nexus-Plugins nutzen ihn statt eigener
+        // Regex-Chains — Bug-Fixes an einer Stelle greifen ueberall.
+        services.AddSingleton<IDescriptionParser, KroModIx.Services.Text.HostDescriptionParserImpl>();
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();

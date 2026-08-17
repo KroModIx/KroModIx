@@ -63,6 +63,15 @@ public interface IHostServices
     /// <see cref="NullImageDecoder.Instance"/> (nur native Formate).</summary>
     IImageDecoder Images => NullImageDecoder.Instance;
 
+    /// <summary>Zentraler Beschreibungs-Parser (v1.19.0+, Contracts v1.19.0).
+    /// Wandelt HTML+BBCode-Mix aus Mod-Descriptions in lesbaren Plain-Text
+    /// (Container-Tags gestrippt, Inline-Bilder gedroppt) und extrahiert
+    /// alle Bild-URLs fuer Screenshot-Galerien. Analog <see cref="Images"/> —
+    /// Cross-Cutting-Concern-Baukasten, gemeinsame Bug-Fixes an einer Stelle.
+    /// Bei aelteren Hosts default = <see cref="NullDescriptionParser.Instance"/>
+    /// (Passthrough — der User sieht raw BBCode).</summary>
+    IDescriptionParser Descriptions => NullDescriptionParser.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
