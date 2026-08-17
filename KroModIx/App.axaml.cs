@@ -43,6 +43,10 @@ public partial class App : Application
         // nach der Composition.
         Services.GetRequiredService<PluginActivator>().UpdateBadges =
             Services.GetRequiredService<GameUpdateBadgeService>();
+        // v1.24.1: analog UpdateBadges — Conflicts-Scanner braucht selbst
+        // den PluginActivator (Loaded-Liste), sonst Circular-Dep.
+        Services.GetRequiredService<PluginActivator>().Conflicts =
+            Services.GetRequiredService<IConflictScanner>();
 
         var settings = Services.GetRequiredService<AppSettingsService>();
         LocalizationService.Instance.SetCulture(settings.Current.UiCulture);
