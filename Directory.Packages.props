@@ -29,5 +29,15 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageVersion Include="FluentAssertions" Version="[7.2.2,8.0.0)" />
+
+    <!-- v1.21: HTML-Rendering fuer Mod-Beschreibungen (siehe
+         IDescriptionParser.CreateRichView). BBCode → HTML macht der
+         Host-eigene Regex-Konverter (CodeKicker.BBCode 5.0 ist nur
+         .NET Framework 4.x — NU1701 waere ein Blocker); die Regex ist
+         ohnehin schon da (aus ToPlainText), wir schreiben halt HTML
+         statt Text raus. HtmlRenderer rendert dann als Avalonia-Control
+         mit Bold/Links/Bildern. Nur im Host — Plugins konsumieren via
+         _host.Descriptions. -->
+    <PackageVersion Include="Avalonia.HtmlRenderer" Version="12.0.0" />
   </ItemGroup>
 </Project>

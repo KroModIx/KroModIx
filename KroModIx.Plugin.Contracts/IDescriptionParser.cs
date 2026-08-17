@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Avalonia.Controls;
 
 namespace KroModIx.Plugin.Contracts;
 
@@ -22,7 +23,11 @@ public interface IDescriptionParser
     /// dropped [img …]URL[/img] (Inline-Bilder wuerden im scrollbaren
     /// TextBlock als roher Link-Text erscheinen), reduziert [url=..]Text[/url]
     /// auf Text. HTML: strippt Tags, dekodiert Entities, normalisiert
-    /// Whitespace. Leerer Input → leerer Output.</summary>
+    /// Whitespace. Leerer Input → leerer Output.
+    ///
+    /// <para>Weiter fuer AI-Prompts (Kein-Markup als Input) und Katalog-
+    /// Row-Summaries (Ellipsis-truncated). Fuer Rich-Rendering im Detail-
+    /// Dialog: <see cref="CreateRichView(string)"/>.</para></summary>
     string ToPlainText(string html);
 
     /// <summary>Extrahiert alle Inline-Bild-URLs aus einem HTML+BBCode-Blob.
@@ -32,6 +37,25 @@ public interface IDescriptionParser
     /// <c>&lt;img src="URL"&gt;</c> werden beide erfasst.
     /// Rueckgabe in Vorkommens-Reihenfolge; leerer Input → leere Liste.</summary>
     IReadOnlyList<InlineImage> ExtractImages(string html);
+
+    /// <summary>Konvertiert BBCode+HTML-Mix zu reinem HTML — die BBCode-Tags
+    /// werden zu ihren HTML-Aequivalenten aufgeloest (<c>[b]</c>→<c>&lt;strong&gt;</c>,
+    /// <c>[url=..]X[/url]</c>→<c>&lt;a href="..."&gt;X&lt;/a&gt;</c>, <c>[img]</c>→<c>&lt;img&gt;</c>,
+    /// <c>[color=..]X[/color]</c>→<c>&lt;span style="color:.."&gt;X&lt;/span&gt;</c>, etc.).
+    /// HTML-Tags im Input bleiben unveraendert. Fuer Rendering via
+    /// <see cref="CreateRichView(string)"/>.
+    /// Contracts v1.21+ (aeltere Hosts liefern via NullDescriptionParser
+    /// den Input 1:1 zurueck).</summary>
+    string ToHtml(string bbcodeOrHtml);
+
+    /// <summary>Rendert HTML als Avalonia-Control (via Avalonia.HtmlRenderer).
+    /// Ergebnis: ein <c>HtmlPanel</c> mit angewendeter Kroste-Palette-CSS,
+    /// klickbare Links (via <see cref="IHostShell.OpenExternalUrl"/>),
+    /// Bilder werden von HtmlRenderer geladen (Plugin sollte darauf achten
+    /// dass die URLs oeffentlich abrufbar sind — Nexus-CDN funktioniert).
+    /// Bei leerem Input: leeres <see cref="TextBlock"/>.
+    /// Contracts v1.21+.</summary>
+    Control CreateRichView(string html);
 }
 
 /// <summary>Ein Inline-Bild aus einer Mod-Description. Nur URL ist Pflicht —

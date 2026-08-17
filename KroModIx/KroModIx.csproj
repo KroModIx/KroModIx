@@ -40,6 +40,11 @@
          mit — separate PackageReferences würden NU1510-Fehler auslösen. -->
     <PackageReference Include="NLog" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+
+    <!-- v1.21: HTML-Rendering fuer Mod-Beschreibungen. BBCode-Convert
+         macht der Host-eigene Regex (CodeKicker.BBCode 5.0 ist nur
+         .NET Framework, NU1701-Blocker). -->
+    <PackageReference Include="Avalonia.HtmlRenderer" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">

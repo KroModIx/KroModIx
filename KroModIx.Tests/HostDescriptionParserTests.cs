@@ -154,4 +154,65 @@ public class HostDescriptionParserTests
     {
         P.ExtractImages(input).Should().BeEmpty();
     }
+
+    // ---- ToHtml (v1.21) ----
+
+    [Theory]
+    [InlineData("[b]bold[/b]", "<strong>bold</strong>")]
+    [InlineData("[i]it[/i]", "<em>it</em>")]
+    [InlineData("[u]ul[/u]", "<u>ul</u>")]
+    [InlineData("[center]x[/center]", "<div class=\"center\">x</div>")]
+    [InlineData("[right]x[/right]", "<div class=\"right\">x</div>")]
+    public void ToHtml_ContainerTags_MapToHtml(string input, string expected)
+    {
+        P.ToHtml(input).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ToHtml_Url_MapsToAnchor()
+    {
+        P.ToHtml("[url=https://foo.example]click[/url]")
+            .Should().Be("<a href=\"https://foo.example\">click</a>");
+    }
+
+    [Fact]
+    public void ToHtml_Img_MapsToImgTag()
+    {
+        var html = P.ToHtml("[img height=200]https://media.example/a.png[/img]");
+        html.Should().Contain("<img src=\"https://media.example/a.png\"");
+        html.Should().Contain("max-height:200px");
+    }
+
+    [Fact]
+    public void ToHtml_Color_MapsToInlineStyle()
+    {
+        P.ToHtml("[color=#ff0000]red[/color]")
+            .Should().Contain("<span style=\"color:#ff0000\">red</span>");
+    }
+
+    [Fact]
+    public void ToHtml_List_MapsToUlLi()
+    {
+        var html = P.ToHtml("[list][*]First[*]Second[/list]");
+        html.Should().Contain("<ul>");
+        html.Should().Contain("<li>First</li>");
+        html.Should().Contain("<li>Second</li>");
+        html.Should().Contain("</ul>");
+    }
+
+    [Fact]
+    public void ToHtml_HtmlPassesThrough()
+    {
+        // Reine HTML-Inputs (viele Nexus-Descriptions kommen direkt in HTML)
+        // bleiben unveraendert erhalten. [b]<br> im gemischten Input wird
+        // trotzdem korrekt konvertiert.
+        P.ToHtml("<p>hi</p>").Should().Contain("<p>hi</p>");
+    }
+
+    [Fact]
+    public void ToHtml_EmptyOrNull_ReturnsEmpty()
+    {
+        P.ToHtml("").Should().Be("");
+        P.ToHtml(null!).Should().Be("");
+    }
 }
