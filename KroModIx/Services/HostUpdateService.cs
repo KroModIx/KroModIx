@@ -49,30 +49,101 @@ public sealed class HostUpdateService
         string url = $"https://api.github.com/repos/{Owner}/{Repo}/releases/latest";
         Log.Info("Update-Check gegen {Url}", url);
 
+        string? latestTag = null;
+        string? releaseUrl = null;
+        string? assetUrl = null;
+        string? assetName = null;
+
         try
         {
             using var http = BuildHttpClient(timeoutSeconds: 15);
             var release = await http.GetFromJsonAsync<GithubRelease>(url, ct).ConfigureAwait(false);
-            string? latestTag = release?.TagName?.TrimStart('v');
-            string current = StripMetadata(CurrentVersion);
-
-            bool available = latestTag is not null
-                && Version.TryParse(StripMetadata(latestTag), out var latest)
-                && Version.TryParse(current, out var cur)
-                && latest > cur;
-
+            latestTag = release?.TagName?.TrimStart('v');
+            releaseUrl = release?.HtmlUrl;
             var asset = release is not null ? SelectAsset(release) : null;
-            _cached = new UpdateCheckResult(
-                available, CurrentVersion, latestTag, release?.HtmlUrl,
-                asset?.BrowserDownloadUrl, asset?.Name);
-            Log.Info("Update-Check fertig ({Ms} ms): aktuell={Cur}, neuste={Latest}, verfuegbar={Avail}, asset={Asset}",
-                sw.ElapsedMilliseconds, current, latestTag, available, asset?.Name);
-            return _cached;
+            assetUrl = asset?.BrowserDownloadUrl;
+            assetName = asset?.Name;
         }
         catch (Exception ex)
         {
-            Log.Warn(ex, "Update-Check fehlgeschlagen");
-            return new UpdateCheckResult(false, CurrentVersion, null, null, null, null);
+            Log.Warn(ex, "Update-Check API-Weg fehlgeschlagen — versuche Redirect-Chase");
+            // v1.19.4: Rate-Limit-Fallback via Redirect-Chase (kein API-Call).
+            // Analog PluginInstaller v1.19.2 + PluginUpdateService v1.19.3.
+            var chased = await TryChaseLatestAsync(ct).ConfigureAwait(false);
+            if (chased is not null)
+            {
+                latestTag = chased.Value.Tag;
+                releaseUrl = chased.Value.ReleaseUrl;
+                assetUrl = chased.Value.AssetUrl;
+                assetName = chased.Value.AssetName;
+            }
+        }
+
+        string current = StripMetadata(CurrentVersion);
+        bool available = latestTag is not null
+            && Version.TryParse(StripMetadata(latestTag), out var latest)
+            && Version.TryParse(current, out var cur)
+            && latest > cur;
+
+        _cached = new UpdateCheckResult(
+            available, CurrentVersion, latestTag, releaseUrl, assetUrl, assetName);
+        Log.Info("Update-Check fertig ({Ms} ms): aktuell={Cur}, neuste={Latest}, verfuegbar={Avail}, asset={Asset}",
+            sw.ElapsedMilliseconds, current, latestTag, available, assetName);
+        return _cached;
+    }
+
+    /// <summary>v1.19.4 Rate-Limit-Fallback: ruft <c>github.com/{Owner}/{Repo}/releases/latest</c>
+    /// ohne AutoRedirect. Der 302-Location-Header enthaelt <c>/tag/vX.Y.Z</c>;
+    /// daraus wird das Konventions-Asset gebaut. KEIN API-Call, kein
+    /// Rate-Limit. Bei fehlender/exotischer Plattform bleibt AssetUrl null,
+    /// der User bekommt dann nur den Release-Seiten-Link statt Self-Update-
+    /// Button (siehe AboutWindow-Panel).</summary>
+    private static async Task<(string Tag, string ReleaseUrl, string? AssetUrl, string? AssetName)?>
+        TryChaseLatestAsync(CancellationToken ct)
+    {
+        try
+        {
+            var handler = new HttpClientHandler
+            {
+                Proxy = WebRequest.DefaultWebProxy,
+                DefaultProxyCredentials = CredentialCache.DefaultCredentials,
+                AllowAutoRedirect = false,
+            };
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd($"{ExeName}-UpdateCheck");
+
+            var latestUrl = $"https://github.com/{Owner}/{Repo}/releases/latest";
+            using var resp = await http.GetAsync(latestUrl, ct).ConfigureAwait(false);
+            var loc = resp.Headers.Location?.ToString() ?? "";
+            var idx = loc.LastIndexOf("/tag/", StringComparison.Ordinal);
+            if (idx < 0) { Log.Debug("Redirect-Chase: Location ohne /tag/-Segment: {Loc}", loc); return null; }
+            var tag = loc[(idx + "/tag/".Length)..].TrimEnd('/');
+            var version = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag[1..] : tag;
+
+            // Konventions-Asset-Namen fuer den Host (Release-Workflow-Naming,
+            // verifiziert via gh api repos/KroModIx/KroModIx/releases/latest):
+            //   KroModIx-{ver}-win-x64.zip
+            //   KroModIx-{ver}-linux-x64.tar.gz
+            //   KroModIx-{ver}-x86_64.AppImage
+            // Windows/AppImage bevorzugt (Self-Update-Support). Linux-tar.gz
+            // ist Fallback wenn AppImage nicht existiert (kann bei manchen
+            // Distros/Bazzite bevorzugt sein).
+            string? assetName = null, assetUrl = null;
+            if (OperatingSystem.IsWindows())
+                assetName = $"KroModIx-{version}-win-x64.zip";
+            else if (OperatingSystem.IsLinux())
+                assetName = $"KroModIx-{version}-x86_64.AppImage";
+            if (assetName is not null)
+                assetUrl = $"https://github.com/{Owner}/{Repo}/releases/download/{tag}/{assetName}";
+
+            var releaseUrl = $"https://github.com/{Owner}/{Repo}/releases/tag/{tag}";
+            Log.Info("Redirect-Chase erfolgreich: Tag={Tag}, Asset={Asset}", tag, assetName ?? "<keins>");
+            return (version, releaseUrl, assetUrl, assetName);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Redirect-Chase-Fallback fehlgeschlagen");
+            return null;
         }
     }
 
