@@ -39,16 +39,18 @@
                             IsVisible="{Binding HasAiChip}"
                             Command="{Binding OpenSettingsCommand}"
                             ToolTip.Tip="{Binding AiChipTooltip}" />
-                    <!-- v1.13: Mod-Updates-Badge im Header — zeigt Anzahl Spiele
-                         die einen grünen ↑-Sidebar-Badge haben. Klick scrollt in
-                         der Sidebar zum ersten Update-Spiel (via Filter). -->
-                    <TextBlock Classes="accent secondary"
-                               Text="{Binding TotalGamesWithUpdates, StringFormat='🎮 {0} Mod-Updates'}"
-                               IsVisible="{Binding HasGamesWithUpdates}"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               Margin="0,0,12,0"
-                               ToolTip.Tip="Spiele mit ausstehenden Mod-Updates (siehe grüner ↑ auf der Sidebar-Kachel)" />
+                    <!-- v1.22.0: Mod-Updates-Header — Klick oeffnet die
+                         aggregierte Uebersicht ModUpdatesOverviewWindow mit
+                         allen Spielen, die einen gruenen ↑-Sidebar-Badge
+                         tragen (Ersatz fuer den bis v1.21 nicht-klickbaren
+                         TextBlock). -->
+                    <Button Name="ModUpdatesHeaderButton"
+                            Classes="ghost"
+                            Content="{Binding TotalGamesWithUpdates, StringFormat='🎮 {0} Mod-Updates'}"
+                            IsVisible="{Binding HasGamesWithUpdates}"
+                            Command="{Binding OpenModUpdatesOverviewCommand}"
+                            Margin="0,0,12,0"
+                            ToolTip.Tip="Uebersicht aller Spiele mit ausstehenden Mod-Updates" />
                     <!-- Update-Badge: accent-Style wenn Plugin-Updates verfügbar,
                          sonst ghost mit „Plugins verwalten" — gleicher Command,
                          öffnet den Plugin-Manager (Updates + installierte Plugins). -->

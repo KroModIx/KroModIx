@@ -89,6 +89,16 @@ public sealed class PluginUpdateService
         get { lock (_lock) return _available.ToList(); }
     }
 
+    /// <summary>v1.22.0: Cache-Lookup fuer das Plugin-Health-Dashboard. Liefert
+    /// den letzten bekannten Release-Stand und wann er zuletzt aus GitHub
+    /// geholt wurde. Null wenn der Update-Service dieses Plugin noch nie
+    /// geprueft hat (frischer App-Start ohne Netz oder brandneu installiert).</summary>
+    public CachedRelease? TryGetCachedRelease(string pluginId)
+    {
+        lock (_lock)
+            return _cache.TryGetValue(pluginId, out var c) ? c : null;
+    }
+
     /// <summary>Prüft alle aktuell geladenen Plugins. Rückgabe: Anzahl gefundener Updates.
     /// Serialisiert parallele Aufrufe via SemaphoreSlim — der zweite Caller sieht
     /// dasselbe Ergebnis wie der erste (kein doppeltes Netz-Fetching, keine

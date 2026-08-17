@@ -1155,6 +1155,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (owner is not null) window.ShowDialog(owner); else window.Show();
     }
 
+    /// <summary>v1.22.0: Aggregierte Uebersicht aller Spiele mit
+    /// ausstehenden Mod-Updates — Ersatz fuer den bisher nicht-klickbaren
+    /// Header-TextBlock. Klick auf eine Row selektiert das Spiel in der
+    /// Sidebar und schliesst das Fenster.</summary>
+    [RelayCommand]
+    private void OpenModUpdatesOverview()
+    {
+        var owner = MainWindow();
+        var window = new ModUpdatesOverviewWindow();
+        var vm = new ModUpdatesOverviewViewModel(
+            _allGames.Where(g => g.HasUpdates),
+            g => { SelectedGame = g; },
+            () => window.Close());
+        window.DataContext = vm;
+        if (owner is not null) window.ShowDialog(owner); else window.Show();
+    }
+
     [RelayCommand]
     private async Task AddGameAsync()
     {

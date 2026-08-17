@@ -27,6 +27,13 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     public IReadOnlyList<AiProviderPreset> OpenAiCompatiblePresets { get; }
     public IReadOnlyList<VramOption> VramOptions { get; }
 
+    /// <summary>v1.22.0: Plugin-Health-Dashboard fuer den gleichnamigen Tab.
+    /// Lazy — VM erzeugt sich beim ersten Property-Access aus der DI, damit
+    /// Nutzer die den Tab nicht oeffnen keinen Bundle-Scan-Overhead haben.</summary>
+    private PluginHealthViewModel? _pluginHealth;
+    public PluginHealthViewModel PluginHealth =>
+        _pluginHealth ??= _services.GetRequiredService<PluginHealthViewModel>();
+
     public ObservableCollection<string> InstalledOllamaModels { get; } = new();
     public ObservableCollection<OllamaModelRowViewModel> RecommendedOllamaModels { get; } = new();
 

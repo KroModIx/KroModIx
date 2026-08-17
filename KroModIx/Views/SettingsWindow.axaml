@@ -435,6 +435,81 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- v1.22.0: Plugin-Health-Dashboard — Read-only-Uebersicht ueber
+                 geladene Plugins mit Version, Bundle-Groesse, letztem
+                 Update-Check-Zeitstempel. Fuer Diagnose ohne Log-Wuehlerei. -->
+            <TabItem Name="SettingsTabPluginHealth" Header="🩺  Plugin-Health"
+                     DataContext="{Binding PluginHealth}">
+                <ScrollViewer>
+                    <Border Padding="24">
+                        <StackPanel Spacing="14">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button Classes="accent" Content="🔄  Aktualisieren"
+                                        Command="{Binding RefreshCommand}" />
+                                <TextBlock Text="{Binding Summary}"
+                                           Classes="secondary"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PluginHealthRow">
+                                        <Border Classes="card" Margin="0,0,0,10" Padding="14">
+                                            <StackPanel Spacing="6">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="14" />
+                                                    <Border CornerRadius="10" Padding="8,1"
+                                                            Background="{DynamicResource KrosteAccentSoftBrush}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource KrosteSecondaryTextBrush}">
+                                                            <Run Text="v" />
+                                                            <Run Text="{Binding Version}" />
+                                                        </TextBlock>
+                                                    </Border>
+                                                    <Border CornerRadius="10" Padding="8,1"
+                                                            Background="{DynamicResource KrosteSurfaceAltBrush}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding InstallSource}"
+                                                                   FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource KrosteSecondaryTextBrush}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Id}" Classes="muted" FontSize="11" />
+                                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,4,0,0">
+                                                    <StackPanel Grid.Column="0" Spacing="2">
+                                                        <TextBlock Text="ZIELSPIELE" Classes="muted" FontSize="10" />
+                                                        <TextBlock Text="{Binding TargetGamesCount}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock Text="BUNDLE-GROESSE" Classes="muted" FontSize="10" />
+                                                        <TextBlock>
+                                                            <Run Text="{Binding BundleSizeLabel}" />
+                                                            <Run Text=" (" />
+                                                            <Run Text="{Binding BundleFileCount}" />
+                                                            <Run Text=" Dateien)" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Spacing="2">
+                                                        <TextBlock Text="MIN. HOST-VERSION" Classes="muted" FontSize="10" />
+                                                        <TextBlock Text="{Binding MinHostVersion}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Text="{Binding UpdateCheckLabel}"
+                                                           Classes="secondary" FontSize="11"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,6,0,0" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </views:ChromeWindow>

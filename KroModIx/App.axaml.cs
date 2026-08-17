@@ -164,6 +164,7 @@ public partial class App : Application
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<SettingsWindowViewModel>();
         services.AddTransient<PluginUpdatesViewModel>();
+        services.AddTransient<PluginHealthViewModel>();
 
         return services.BuildServiceProvider();
     }
