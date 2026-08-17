@@ -118,6 +118,18 @@ public sealed class PluginUpdateService
         if (!string.IsNullOrWhiteSpace(ghToken))
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ghToken);
 
+        // v1.19.3: Separater HttpClient fuer Redirect-Chase-Fallback bei 403.
+        // AllowAutoRedirect=false, damit wir den 302-Location-Header selbst
+        // lesen koennen — kein API-Call, kein Rate-Limit.
+        var redirectHandler = new HttpClientHandler
+        {
+            Proxy = WebRequest.DefaultWebProxy,
+            DefaultProxyCredentials = CredentialCache.DefaultCredentials,
+            AllowAutoRedirect = false,
+        };
+        using var redirectHttp = new HttpClient(redirectHandler) { Timeout = TimeSpan.FromSeconds(15) };
+        redirectHttp.DefaultRequestHeaders.UserAgent.ParseAdd("KroModIx-PluginUpdateCheck");
+
         int freshFetched = 0, cacheFallback = 0;
         bool rateLimited = false;
         foreach (var lp in loaded)
@@ -127,43 +139,57 @@ public sealed class PluginUpdateService
                            || string.IsNullOrWhiteSpace(us.Repo))
                 continue;
 
-            // Bei Rate-Limit-Treffer nicht weiter Requests feuern — wir würden
-            // nur weitere 403er einsammeln. Nachfolgende Plugins nutzen ihren
-            // Cache-Eintrag.
-            if (rateLimited)
-            {
-                cacheFallback++;
-                continue;
-            }
-
             try
             {
-                var url = $"https://api.github.com/repos/{us.Repo}/releases/latest";
-                var release = await http.GetFromJsonAsync<GhRelease>(url, ct).ConfigureAwait(false);
-                var latestTag = release?.TagName?.TrimStart('v');
-                if (string.IsNullOrWhiteSpace(latestTag)) continue;
-
-                var asset = release!.Assets?.FirstOrDefault(a =>
-                    a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
-                lock (_lock)
+                if (!rateLimited)
                 {
-                    _cache[lp.Manifest.Id] = new CachedRelease(
-                        LatestTag: latestTag,
-                        AssetUrl: asset?.BrowserDownloadUrl,
-                        AssetName: asset?.Name,
-                        ReleaseUrl: release.HtmlUrl,
-                        CheckedAtUtc: DateTime.UtcNow);
+                    var url = $"https://api.github.com/repos/{us.Repo}/releases/latest";
+                    var release = await http.GetFromJsonAsync<GhRelease>(url, ct).ConfigureAwait(false);
+                    var latestTag = release?.TagName?.TrimStart('v');
+                    if (string.IsNullOrWhiteSpace(latestTag)) continue;
+
+                    var asset = release!.Assets?.FirstOrDefault(a =>
+                        a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
+                    lock (_lock)
+                    {
+                        _cache[lp.Manifest.Id] = new CachedRelease(
+                            LatestTag: latestTag,
+                            AssetUrl: asset?.BrowserDownloadUrl,
+                            AssetName: asset?.Name,
+                            ReleaseUrl: release.HtmlUrl,
+                            CheckedAtUtc: DateTime.UtcNow);
+                    }
+                    freshFetched++;
+                    continue;
                 }
-                freshFetched++;
+
+                // Rate-Limit-Fallback via Redirect-Chase — kein API-Call.
+                var chased = await TryRedirectChaseAsync(redirectHttp, us.Repo!, ct)
+                    .ConfigureAwait(false);
+                if (chased is not null)
+                {
+                    lock (_lock) { _cache[lp.Manifest.Id] = chased; }
+                    freshFetched++;
+                }
+                else cacheFallback++;
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden
                 && (ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
                  || ex.Message.Contains("API rate", StringComparison.OrdinalIgnoreCase)))
             {
-                Log.Warn("GitHub-API-Rate-Limit erreicht (60 req/h unauthenticated) — nutze " +
-                    "gecachte Update-Info. Optional GITHUB_TOKEN als Env-Var setzen (5000 req/h).");
+                Log.Warn("GitHub-API-Rate-Limit erreicht (60 req/h unauthenticated) — schalte " +
+                    "auf Redirect-Chase-Fallback um (kein API-Call). Optional GITHUB_TOKEN " +
+                    "als Env-Var setzen (5000 req/h).");
                 rateLimited = true;
-                cacheFallback++;
+                // Fuer diesen Plugin gleich den Redirect-Chase-Weg versuchen.
+                var chased = await TryRedirectChaseAsync(redirectHttp, us.Repo!, ct)
+                    .ConfigureAwait(false);
+                if (chased is not null)
+                {
+                    lock (_lock) { _cache[lp.Manifest.Id] = chased; }
+                    freshFetched++;
+                }
+                else cacheFallback++;
             }
             catch (Exception ex)
             {
@@ -349,6 +375,51 @@ public sealed class PluginUpdateService
         int dash = s.IndexOf('-'); if (dash >= 0) s = s[..dash];
         int plus = s.IndexOf('+'); if (plus >= 0) s = s[..plus];
         return Version.TryParse(s, out v!);
+    }
+
+    /// <summary>v1.19.3 Rate-Limit-Fallback: ruft <c>github.com/{Repo}/releases/latest</c>
+    /// ohne AutoRedirect und liest den Tag aus dem Location-Header
+    /// (<c>/tag/vX.Y.Z</c>). Baut daraus die Konventions-CDN-URL
+    /// <c>/releases/download/{tag}/{RepoBase}-{version}.zip</c> (Naming-Schema
+    /// des Kroste-Plugin-Release-Workflows). KEIN API-Call, kein Rate-Limit.
+    /// Analog PluginInstaller v1.19.2. Rueckgabe null wenn Redirect-Chase
+    /// fehlschlaegt (kein 302 oder Location ohne /tag/-Segment).</summary>
+    private static async Task<CachedRelease?> TryRedirectChaseAsync(
+        HttpClient http, string repo, CancellationToken ct)
+    {
+        try
+        {
+            var latestUrl = $"https://github.com/{repo}/releases/latest";
+            using var resp = await http.GetAsync(latestUrl, ct).ConfigureAwait(false);
+            var loc = resp.Headers.Location?.ToString() ?? "";
+            var idx = loc.LastIndexOf("/tag/", StringComparison.Ordinal);
+            if (idx < 0)
+            {
+                Log.Debug("Redirect-Chase: Location ohne /tag/-Segment: {Loc}", loc);
+                return null;
+            }
+            var tag = loc[(idx + "/tag/".Length)..].TrimEnd('/');
+            var version = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag[1..] : tag;
+
+            var slashIdx = repo.LastIndexOf('/');
+            var repoBase = slashIdx >= 0 ? repo[(slashIdx + 1)..] : repo;
+            var assetName = $"{repoBase}-{version}.zip";
+            var assetUrl = $"https://github.com/{repo}/releases/download/{tag}/{assetName}";
+            var releaseUrl = $"https://github.com/{repo}/releases/tag/{tag}";
+
+            Log.Info("Redirect-Chase erfolgreich fuer {Repo}: Tag={Tag}", repo, tag);
+            return new CachedRelease(
+                LatestTag: version,
+                AssetUrl: assetUrl,
+                AssetName: assetName,
+                ReleaseUrl: releaseUrl,
+                CheckedAtUtc: DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Redirect-Chase-Fallback fuer {Repo} fehlgeschlagen", repo);
+            return null;
+        }
     }
 
     private sealed class GhRelease
