@@ -77,6 +77,41 @@ public class HostDescriptionParserTests
         P.ToPlainText("A &amp; B &lt;3").Should().Be("A & B <3");
     }
 
+    // ---- Regression: [*]-Listen-BBCode wurde in v1.20.0 nicht gestrippt
+    // (User-Screenshot: „[*]Install MelonLoader for Schedule I. [/*]"). ----
+
+    [Fact]
+    public void ToPlainText_ListItem_BecomesBulletLine()
+    {
+        var input = "[*]Install MelonLoader for Schedule I. [/*]";
+        var result = P.ToPlainText(input);
+        result.Should().NotContain("[");
+        result.Should().NotContain("]");
+        result.Should().Contain("Install MelonLoader for Schedule I.");
+        result.Should().Contain("•");
+    }
+
+    [Fact]
+    public void ToPlainText_MultipleListItems_EachBecomesBullet()
+    {
+        var input = "[*]First[/*] [*]Second[/*] [*]Third[/*]";
+        var result = P.ToPlainText(input);
+        result.Should().NotContain("[");
+        result.Should().NotContain("]");
+        // 3 Bullets
+        var bulletCount = 0;
+        foreach (var ch in result) if (ch == '•') bulletCount++;
+        bulletCount.Should().Be(3);
+    }
+
+    [Fact]
+    public void ToPlainText_UnknownStandaloneTag_IsStripped()
+    {
+        // z.B. [hr], [*], [some_unknown_thing]
+        P.ToPlainText("before [hr] after").Should().Be("before  after");
+        P.ToPlainText("x [some_unknown] y").Should().Be("x  y");
+    }
+
     // ---- ExtractImages ----
 
     [Fact]

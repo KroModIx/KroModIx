@@ -33,7 +33,13 @@ public sealed class HostDescriptionParserImpl : IDescriptionParser
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex BbLine = new(@"\[line\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbBr = new(@"\[br\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex BbStandaloneTag = new(@"\[/?[a-zA-Z][^\]]*\]", RegexOptions.Compiled);
+    // Standalone-BBCode: alles zwischen [ und ], egal ob Buchstabe oder Sonderzeichen.
+    // Frueher matchte nur [a-zA-Z], das liess [*] und [/*] durchrutschen — im UI
+    // erschien roher „[*]Install …[/*]"-Listen-BBCode (User-Screenshot v1.20.0).
+    private static readonly Regex BbStandaloneTag = new(@"\[/?[^\[\]\n]{1,32}\]", RegexOptions.Compiled);
+    // [*] als Standalone-Liste-Item wird zu Bullet + Content-Continuation.
+    private static readonly Regex BbListItem = new(@"\[\*\]\s*", RegexOptions.Compiled);
+    private static readonly Regex BbListItemClose = new(@"\[/\*\]", RegexOptions.Compiled);
 
     private static readonly Regex TrailingSpacesBeforeNewline = new(@"[ \t]+\n", RegexOptions.Compiled);
     private static readonly Regex MultiBlankLines = new(@"\n{3,}", RegexOptions.Compiled);
@@ -79,6 +85,12 @@ public sealed class HostDescriptionParserImpl : IDescriptionParser
         s = BbUrlBare.Replace(s, "$1");
         s = BbLine.Replace(s, "\n― ― ― ― ― ― ― ― ― ―\n");
         s = BbBr.Replace(s, "\n");
+
+        // [*] Item → „•  Item" auf eigener Zeile. [/*] (falls vorhanden) weg.
+        // Muss VOR dem Standalone-Tag-Kill laufen, sonst wird [*] geschluckt
+        // ohne Bullet zu setzen.
+        s = BbListItemClose.Replace(s, "");
+        s = BbListItem.Replace(s, "\n•  ");
 
         foreach (var tag in ContainerTags)
         {
