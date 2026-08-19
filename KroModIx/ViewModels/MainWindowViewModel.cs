@@ -87,7 +87,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _notifications.Notified += (_, e) => Dispatcher.UIThread.Post(() =>
             EnqueueToast(e.Message, e.Level));
 
-        _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPluginStates);
+        _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            RefreshPluginStates();
+            // v1.24.2: nach jedem Plugin-Load-Event einmal reconciliieren —
+            // fixt den Fall dass ein Manual-Game mit Engine schon in der
+            // Sidebar steht, das passende Plugin aber nachtraeglich geladen
+            // wurde (oder die manual-games.json extern editiert wurde) und
+            // dadurch NotifyGameAddedAsync nie fuer dieses Game gefeuert wurde.
+            _ = ReconcileEngineGamesAsync();
+        });
 
         // v1.19.1: PluginIndex kann sich zur Laufzeit aendern (Background-
         // Refresh beim App-Start, expliziter „Jetzt pruefen"-Klick).
@@ -927,6 +936,51 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // Eintrag automatisch weg und wird frisch aufgebaut.
     private readonly Dictionary<string, ObservableCollection<TabItem>> _pluginTabsCache = new();
 
+    /// <summary>v1.24.2: Sicherheitsnetz gegen den „kein Plugin verfuegbar"-
+    /// False-Negative-Fall bei Manual-Games mit Engine-Match. Prueft fuer
+    /// jedes Manual-Game mit <see cref="DiscoveredGame.Engine"/> ob ein
+    /// geladenes Plugin es schon in seiner DetectedGames-Liste hat. Wenn
+    /// nicht (z.B. weil manual-games.json extern editiert wurde, oder das
+    /// Plugin per Live-Install nachgeladen wurde nachdem der Add lief), wird
+    /// <c>NotifyGameAddedAsync</c> nachtraeglich gefeuert — das Plugin ist
+    /// dadurch synchron.
+    ///
+    /// <para>Trigger: LoadedChanged (Plugin gerade geladen) + einmal beim
+    /// SelectedGame-Wechsel wenn das aktuelle Game kein Plugin-Match hat.
+    /// Idempotent — feuert nur wenn wirklich ein Delta besteht.</para></summary>
+    private async Task ReconcileEngineGamesAsync()
+    {
+        var loadedSnap = _pluginActivator.Loaded;
+        if (loadedSnap.Count == 0) return;
+        var candidates = _allGames
+            .Where(g => !string.IsNullOrWhiteSpace(g.Source.Engine)
+                        && g.Source.Source == Services.Games.DiscoveredGameSource.Manual)
+            .ToList();
+        foreach (var g in candidates)
+        {
+            var alreadyKnown = loadedSnap.Any(l => l.DetectedGames.Any(dg =>
+                string.Equals(dg.InstallDir, g.Source.InstallDir, StringComparison.OrdinalIgnoreCase)));
+            if (alreadyKnown) continue;
+
+            // Ist irgend ein geladenes Plugin von der Engine her ueberhaupt zustaendig?
+            var wouldMatch = loadedSnap.Any(l => l.Manifest.Targets.Any(t =>
+                !string.IsNullOrWhiteSpace(t.Engine)
+                && string.Equals(t.Engine, g.Source.Engine, StringComparison.OrdinalIgnoreCase)));
+            if (!wouldMatch) continue;
+
+            try
+            {
+                await _pluginActivator.NotifyGameAddedAsync(g.Source).ConfigureAwait(true);
+                Log.Info("Reconcile: NotifyGameAddedAsync fuer verwaistes Engine-Game {Name} ({Dir}) nachgefeuert",
+                    g.DisplayName, g.Source.InstallDir);
+            }
+            catch (Exception ex) { Log.Warn(ex, "Reconcile-Notify warf fuer {Dir}", g.Source.InstallDir); }
+        }
+        // Nach Notify: RenderContentForSelected re-triggern damit die
+        // Kachel-View jetzt die frischen DetectedGames sieht.
+        if (SelectedGame is not null) { _lastRenderKey = null; RenderContentForSelected(SelectedGame); }
+    }
+
     private void RenderContentForSelected(GameEntry entry)
     {
         var loaded = _pluginActivator.Loaded.FirstOrDefault(l => MatchesGame(l, entry));
@@ -975,6 +1029,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ShowContentPlaceholder = true;
             ContentPlaceholderText =
                 $"Für „{entry.DisplayName}“ ist kein Plugin verfügbar.";
+            // v1.24.2: Sicherheitsnetz — vielleicht hat ein geladenes Engine-
+            // Plugin dieses Manual-Game einfach noch nicht in seiner
+            // DetectedGames-Liste (siehe ReconcileEngineGamesAsync-Kommentar).
+            // Feuer den Reconcile einmal an und lass das Ergebnis das
+            // Re-Rendern uebernehmen. Idempotent — wenn nichts zu tun,
+            // bleibt der Placeholder stehen.
+            if (!string.IsNullOrWhiteSpace(entry.Source.Engine))
+                _ = ReconcileEngineGamesAsync();
             return;
         }
 
