@@ -30,7 +30,10 @@ public sealed record UpdateCheckResult(
 /// </summary>
 public sealed class HostUpdateService
 {
-    private const string Owner = "Kroste";
+    // Repo ist github.com/KroModIx/KroModIx (Org-Slug, nicht User-Slug!) —
+    // "Kroste/KroModIx" ergibt HTTP 404 und der Update-Check lief still
+    // ins Leere. Verifiziert via `gh api repos/KroModIx/KroModIx`.
+    private const string Owner = "KroModIx";
     private const string Repo = "KroModIx";
     // Namensschema des Assembly/Exe (weicht vom Repo-Slug ab).
     private const string ExeName = "KroModIx";
