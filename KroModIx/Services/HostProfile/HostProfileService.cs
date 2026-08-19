@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KroModIx.Services.Games;
 using KroModIx.Services.Plugins;
+using KroModIx.Services.Storage;
 using NLog;
 
 namespace KroModIx.Services.HostProfile;
@@ -74,23 +75,32 @@ public sealed class HostProfileService
 
     public void SaveToFile(HostProfile profile, string path)
     {
-        var tmp = path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(profile, JsonOpts));
-        File.Move(tmp, path, overwrite: true);
+        JsonFileStore.WriteAtomic(path, JsonSerializer.Serialize(profile, JsonOpts));
         Log.Info("Host-Profile exportiert: {P} ({Plugins} Plugins, {Games} Manual-Games)",
             path, profile.Plugins.Count, profile.ManualGames.Count);
     }
 
     public HostProfile? LoadFromFile(string path)
     {
-        try
-        {
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<HostProfile>(json, JsonOpts);
-        }
+        string json;
+        try { json = File.ReadAllText(path); }
         catch (Exception ex)
         {
-            Log.Warn(ex, "Host-Profile-Import fehlgeschlagen: {P}", path);
+            // IO-Fehler → null, aber KEIN Quarantine (User haette sonst
+            // sein Export-JSON auf einem USB-Stick verloren wenn's kurz
+            // klemmt).
+            Log.Warn(ex, "Host-Profile nicht lesbar (temporaer?): {P}", path);
+            return null;
+        }
+        try
+        {
+            return JsonSerializer.Deserialize<HostProfile>(json, JsonOpts);
+        }
+        catch (JsonException ex)
+        {
+            Log.Error(ex, "Host-Profile-JSON defekt: {P}", path);
+            // Import-File — kein Quarantine (der User will das File selbst
+            // reparieren, nicht dass wir es umbenennen).
             return null;
         }
     }

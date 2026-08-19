@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KroModIx.Services;
+using KroModIx.Services.Storage;
 using NLog;
 
 namespace KroModIx.Services.Games;
@@ -36,16 +37,26 @@ public sealed class GamesCacheService
 
     public IReadOnlyList<DiscoveredGame> Load()
     {
+        if (!File.Exists(_cacheFile)) return Array.Empty<DiscoveredGame>();
+        string json;
+        try { json = File.ReadAllText(_cacheFile); }
+        catch (Exception ex)
+        {
+            // IO-Fehler → leerer Fallback. Kein Overwrite beim naechsten
+            // Save (Cache wird durch Discovery eh neu befuellt — kein
+            // Risiko).
+            Log.Warn(ex, "Games-Cache nicht lesbar (temporaer?) — leerer Fallback");
+            return Array.Empty<DiscoveredGame>();
+        }
         try
         {
-            if (!File.Exists(_cacheFile)) return Array.Empty<DiscoveredGame>();
-            var json = File.ReadAllText(_cacheFile);
             var games = JsonSerializer.Deserialize<List<DiscoveredGame>>(json, JsonOptions);
             return games ?? new List<DiscoveredGame>();
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
-            Log.Warn(ex, "Games-Cache-Load fehlgeschlagen — starte mit leerer Liste");
+            Log.Error(ex, "Games-Cache-JSON defekt: {Path}", _cacheFile);
+            JsonFileStore.Quarantine(_cacheFile);
             return Array.Empty<DiscoveredGame>();
         }
     }
@@ -54,11 +65,7 @@ public sealed class GamesCacheService
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_cacheFile)!);
-            var tmp = _cacheFile + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(games, JsonOptions));
-            if (File.Exists(_cacheFile)) File.Delete(_cacheFile);
-            File.Move(tmp, _cacheFile);
+            JsonFileStore.WriteAtomic(_cacheFile, JsonSerializer.Serialize(games, JsonOptions));
             Log.Debug("Games-Cache gespeichert: {N} Einträge", games.Count);
         }
         catch (Exception ex)

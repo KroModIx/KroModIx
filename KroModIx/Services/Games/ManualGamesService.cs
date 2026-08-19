@@ -142,10 +142,7 @@ public sealed class ManualGamesService
     {
         try
         {
-            var json = JsonSerializer.Serialize(_games, JsonOpts);
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _path, overwrite: true);
+            Storage.JsonFileStore.WriteAtomic(_path, JsonSerializer.Serialize(_games, JsonOpts));
         }
         catch (Exception ex)
         {
@@ -156,24 +153,24 @@ public sealed class ManualGamesService
     private List<ManualGameEntry> Load()
     {
         if (!File.Exists(_path)) return new();
-        try
-        {
-            var json = File.ReadAllText(_path);
-            return JsonSerializer.Deserialize<List<ManualGameEntry>>(json, JsonOpts) ?? new();
-        }
+        string json;
+        try { json = File.ReadAllText(_path); }
         catch (Exception ex)
         {
-            var broken = _path + ".broken";
-            try
-            {
-                if (File.Exists(broken)) File.Delete(broken);
-                File.Move(_path, broken);
-                Log.Error(ex, "manual-games.json defekt — als .broken gesichert: {Path}", broken);
-            }
-            catch (Exception moveEx)
-            {
-                Log.Warn(moveEx, "Konnte defekte manual-games.json nicht als .broken sichern");
-            }
+            // IO-Fehler → NICHT quarantaenisieren (Inhalt ist ok, nur gerade
+            // nicht lesbar). Sonst wuerde ein NAS-Aussetzer beim naechsten
+            // Save das komplette Manual-Games-Verzeichnis wegwerfen.
+            Log.Warn(ex, "manual-games.json nicht lesbar (temporaer?) — leerer Fallback ohne Overwrite");
+            return new();
+        }
+        try
+        {
+            return JsonSerializer.Deserialize<List<ManualGameEntry>>(json, JsonOpts) ?? new();
+        }
+        catch (JsonException ex)
+        {
+            Log.Error(ex, "manual-games.json defekt: {Path}", _path);
+            Storage.JsonFileStore.Quarantine(_path);
             return new();
         }
     }

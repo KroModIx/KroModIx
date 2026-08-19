@@ -52,10 +52,19 @@ public sealed class PluginUpdateService
 
     private void LoadCache()
     {
+        if (!File.Exists(_cachePath)) return;
+        string json;
+        try { json = File.ReadAllText(_cachePath); }
+        catch (Exception ex)
+        {
+            // IO-Fehler → kein Overwrite beim naechsten Save. Der Cache
+            // wird durch die naechste API-Runde eh neu gefuellt, aber
+            // stumm die intakten Daten wegzuwerfen ist trotzdem falsch.
+            Log.Warn(ex, "Plugin-Update-Cache nicht lesbar (temporaer?) — leer");
+            return;
+        }
         try
         {
-            if (!File.Exists(_cachePath)) return;
-            var json = File.ReadAllText(_cachePath);
             var items = JsonSerializer.Deserialize<Dictionary<string, CachedRelease>>(json);
             if (items is null) return;
             lock (_lock)
@@ -65,7 +74,11 @@ public sealed class PluginUpdateService
             }
             Log.Debug("Plugin-Update-Cache geladen: {N} Eintrag/Einträge", items.Count);
         }
-        catch (Exception ex) { Log.Warn(ex, "Plugin-Update-Cache unlesbar — starte leer"); }
+        catch (JsonException ex)
+        {
+            Log.Error(ex, "Plugin-Update-Cache-JSON defekt: {Path}", _cachePath);
+            KroModIx.Services.Storage.JsonFileStore.Quarantine(_cachePath);
+        }
     }
 
     private void SaveCache()
@@ -74,10 +87,9 @@ public sealed class PluginUpdateService
         {
             Dictionary<string, CachedRelease> snapshot;
             lock (_lock) snapshot = new(_cache, StringComparer.OrdinalIgnoreCase);
-            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
-            var tmp = _cachePath + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _cachePath, overwrite: true);
+            var json = JsonSerializer.Serialize(snapshot,
+                new JsonSerializerOptions { WriteIndented = true });
+            KroModIx.Services.Storage.JsonFileStore.WriteAtomic(_cachePath, json);
         }
         catch (Exception ex) { Log.Warn(ex, "Plugin-Update-Cache-Save fehlgeschlagen"); }
     }
