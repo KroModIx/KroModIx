@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NLog;
@@ -28,6 +29,21 @@ public interface IHostServices
     /// (proxy-aware, wichtig für Arbeitslaptop mit Sophos) und default Timeouts.
     /// Plugins sollen NIE <c>new HttpClient()</c> nutzen.</summary>
     HttpClient CreateHttpClient(string? subsystem = null);
+
+    /// <summary>Proxy-konfigurierter Handler fuer die Faelle, in denen ein
+    /// Plugin den HttpClient selbst bauen MUSS — Cookie-Sessions
+    /// (Login-Flows) oder ein Custom-User-Agent, den die Gegenseite
+    /// erzwingt.
+    ///
+    /// <para>Ohne diesen Hook bleibt so einem Plugin nur
+    /// <c>new HttpClient(...)</c>, und damit faellt genau das weg, wofuer
+    /// <see cref="CreateHttpClient"/> existiert: das Proxy-Handling fuer den
+    /// verwalteten Arbeitslaptop (Sophos). Real passiert im Ren'Py-Plugin,
+    /// dessen f95zone-Client CookieContainer + Browser-UA braucht.</para>
+    ///
+    /// <para>Der Aufrufer besitzt den Handler und uebergibt ihn typisch
+    /// direkt an einen <see cref="HttpClient"/>, der ihn mitentsorgt.</para></summary>
+    HttpClientHandler CreateHttpClientHandler(CookieContainer? cookies = null);
 
     IDialogService Dialogs { get; }
     INotificationSink Notifications { get; }

@@ -83,13 +83,24 @@ public sealed class HostServicesImpl : IHostServices
     public IBackupService Backup { get; }
     public IConflictScanner Conflicts { get; }
 
-    public HttpClient CreateHttpClient(string? subsystem = null)
+    public HttpClientHandler CreateHttpClientHandler(CookieContainer? cookies = null)
     {
         var handler = new HttpClientHandler
         {
             Proxy = WebRequest.DefaultWebProxy,
             DefaultProxyCredentials = CredentialCache.DefaultCredentials,
         };
+        if (cookies is not null)
+        {
+            handler.CookieContainer = cookies;
+            handler.UseCookies = true;
+        }
+        return handler;
+    }
+
+    public HttpClient CreateHttpClient(string? subsystem = null)
+    {
+        var handler = CreateHttpClientHandler();
         var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
         var ua = string.IsNullOrEmpty(subsystem)
             ? $"KroModIx-Plugin-{_pluginId}"
