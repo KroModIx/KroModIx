@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
@@ -194,6 +195,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 or nameof(Localization.LocalizationService.CurrentIso))) return;
             Dispatcher.UIThread.Post(() =>
             {
+                foreach (var stale in _pluginTabsCache.Values) DisposeTabs(stale);
                 _pluginTabsCache.Clear();
                 _lastRenderKey = null;
                 if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
@@ -936,6 +938,36 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // Eintrag automatisch weg und wird frisch aufgebaut.
     private readonly Dictionary<string, ObservableCollection<TabItem>> _pluginTabsCache = new();
 
+    /// <summary>v1.24.4: Verworfene Plugin-Tabs aufraeumen. Ohne das bleibt
+    /// jede aus dem Cache geworfene Plugin-VM ewig am Leben, sobald sie sich
+    /// auf ein langlebiges Service-Event abonniert hat (Registry.Changed,
+    /// DownloadEventBus.ModInstalled) — der Event-Delegate haelt die
+    /// Referenz. Die toten VMs arbeiten sogar weiter: bei Ren'Py loest jede
+    /// Registry-Aenderung in JEDER Leiche Cover-Reload + KI-Beschreibungs-
+    /// Uebersetzung aus.
+    ///
+    /// <para>Mehrere Plugins (DSP, Schedule I, 7DTD, CoI) implementieren
+    /// dafuer laengst <see cref="IDisposable"/> auf ihren ViewModels — nur
+    /// hat der Host das nie aufgerufen. Fehler beim Dispose duerfen den
+    /// Tab-Rebuild nicht kippen, deshalb pro Tab gekapselt.</para></summary>
+    private static void DisposeTabs(IEnumerable<TabItem>? tabs)
+    {
+        if (tabs is null) return;
+        foreach (var tab in tabs)
+        {
+            try
+            {
+                if (tab.Content is StyledElement el && el.DataContext is IDisposable vm)
+                    vm.Dispose();
+                if (tab.Content is IDisposable disposableView) disposableView.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Dispose eines verworfenen Plugin-Tabs fehlgeschlagen: {Tab}", tab.Tag);
+            }
+        }
+    }
+
     /// <summary>v1.24.2: Sicherheitsnetz gegen den „kein Plugin verfuegbar"-
     /// False-Negative-Fall bei Manual-Games mit Engine-Match. Prueft fuer
     /// jedes Manual-Game mit <see cref="DiscoveredGame.Engine"/> ob ein
@@ -1099,7 +1131,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // waechst.
         var stalePrefix = entry.Key + "|";
         foreach (var k in _pluginTabsCache.Keys.Where(k => k.StartsWith(stalePrefix, StringComparison.Ordinal)).ToList())
-            _pluginTabsCache.Remove(k);
+        {
+            if (_pluginTabsCache.Remove(k, out var staleTabs)) DisposeTabs(staleTabs);
+        }
         _pluginTabsCache[currentKey] = tabs;
 
         PluginTabs = tabs;
