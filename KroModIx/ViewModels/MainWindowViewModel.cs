@@ -197,6 +197,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             {
                 foreach (var stale in _pluginTabsCache.Values) DisposeTabs(stale);
                 _pluginTabsCache.Clear();
+                _tabCacheOrder.Clear();
                 _lastRenderKey = null;
                 if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
             });
@@ -938,6 +939,41 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // Eintrag automatisch weg und wird frisch aufgebaut.
     private readonly Dictionary<string, ObservableCollection<TabItem>> _pluginTabsCache = new();
 
+    /// <summary>Zugriffsreihenfolge fuer <see cref="TrimTabCache"/> (aeltester
+    /// zuerst).</summary>
+    private readonly List<string> _tabCacheOrder = new();
+
+    /// <summary>Wie viele Spiele ihre Plugin-Tabs gleichzeitig im Cache
+    /// behalten. Vier deckt das reale Hin-und-Her-Wechseln ab, ohne dass der
+    /// Speicher unbegrenzt waechst.</summary>
+    private const int MaxCachedTabSets = 4;
+
+    /// <summary>v1.27.1: Der Tab-Cache war unbegrenzt. Jedes einmal
+    /// angeklickte Spiel liess seine Plugin-ViewModels dauerhaft am Leben —
+    /// mitsamt Katalog-Listen und allen dekodierten Cover-Bitmaps. Wer sich
+    /// durch seine Bibliothek klickt, sammelt so pro Spiel ein paar hundert MB
+    /// an, bis systemd-oomd den Prozess abschiesst (real beim Screenshot-Lauf
+    /// nach acht Spielen, u.a. mit dem 1537 Eintraege grossen
+    /// ficsit-Katalog).
+    ///
+    /// <para>Der Cache selbst bleibt sinnvoll: ohne ihn baut jeder
+    /// Spielwechsel die VMs neu und alle Cover laden erneut. Er braucht nur
+    /// eine Obergrenze — der aelteste Eintrag fliegt raus und wird sauber
+    /// disposed.</para></summary>
+    private void TrimTabCache()
+    {
+        while (_tabCacheOrder.Count > MaxCachedTabSets)
+        {
+            var oldest = _tabCacheOrder[0];
+            _tabCacheOrder.RemoveAt(0);
+            if (!_pluginTabsCache.Remove(oldest, out var evicted)) continue;
+            // Niemals die gerade sichtbaren Tabs wegwerfen.
+            if (ReferenceEquals(evicted, PluginTabs)) continue;
+            Log.Debug("Tab-Cache: aeltesten Eintrag verworfen ({Key})", oldest);
+            DisposeTabs(evicted);
+        }
+    }
+
     /// <summary>v1.24.4: Verworfene Plugin-Tabs aufraeumen. Ohne das bleibt
     /// jede aus dem Cache geworfene Plugin-VM ewig am Leben, sobald sie sich
     /// auf ein langlebiges Service-Event abonniert hat (Registry.Changed,
@@ -980,37 +1016,65 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <para>Trigger: LoadedChanged (Plugin gerade geladen) + einmal beim
     /// SelectedGame-Wechsel wenn das aktuelle Game kein Plugin-Match hat.
     /// Idempotent — feuert nur wenn wirklich ein Delta besteht.</para></summary>
+    /// <summary>v1.27.1: Re-Entrancy-Guard. Ohne ihn hat sich diese Methode
+    /// mit <see cref="RenderContentForSelected"/> gegenseitig aufgerufen, bis
+    /// der Stack voll war — siehe Kommentar am Re-Render unten.</summary>
+    private bool _reconcileRunning;
+
     private async Task ReconcileEngineGamesAsync()
     {
+        if (_reconcileRunning) return;
         var loadedSnap = _pluginActivator.Loaded;
         if (loadedSnap.Count == 0) return;
-        var candidates = _allGames
-            .Where(g => !string.IsNullOrWhiteSpace(g.Source.Engine)
-                        && g.Source.Source == Services.Games.DiscoveredGameSource.Manual)
-            .ToList();
-        foreach (var g in candidates)
+        _reconcileRunning = true;
+        try
         {
-            var alreadyKnown = loadedSnap.Any(l => l.DetectedGames.Any(dg =>
-                string.Equals(dg.InstallDir, g.Source.InstallDir, StringComparison.OrdinalIgnoreCase)));
-            if (alreadyKnown) continue;
-
-            // Ist irgend ein geladenes Plugin von der Engine her ueberhaupt zustaendig?
-            var wouldMatch = loadedSnap.Any(l => l.Manifest.Targets.Any(t =>
-                !string.IsNullOrWhiteSpace(t.Engine)
-                && string.Equals(t.Engine, g.Source.Engine, StringComparison.OrdinalIgnoreCase)));
-            if (!wouldMatch) continue;
-
-            try
+            var candidates = _allGames
+                .Where(g => !string.IsNullOrWhiteSpace(g.Source.Engine)
+                            && g.Source.Source == Services.Games.DiscoveredGameSource.Manual)
+                .ToList();
+            int notified = 0;
+            foreach (var g in candidates)
             {
-                await _pluginActivator.NotifyGameAddedAsync(g.Source).ConfigureAwait(true);
-                Log.Info("Reconcile: NotifyGameAddedAsync fuer verwaistes Engine-Game {Name} ({Dir}) nachgefeuert",
-                    g.DisplayName, g.Source.InstallDir);
+                var alreadyKnown = loadedSnap.Any(l => l.DetectedGames.Any(dg =>
+                    string.Equals(dg.InstallDir, g.Source.InstallDir, StringComparison.OrdinalIgnoreCase)));
+                if (alreadyKnown) continue;
+
+                // Ist irgend ein geladenes Plugin von der Engine her ueberhaupt zustaendig?
+                var wouldMatch = loadedSnap.Any(l => l.Manifest.Targets.Any(t =>
+                    !string.IsNullOrWhiteSpace(t.Engine)
+                    && string.Equals(t.Engine, g.Source.Engine, StringComparison.OrdinalIgnoreCase)));
+                if (!wouldMatch) continue;
+
+                try
+                {
+                    await _pluginActivator.NotifyGameAddedAsync(g.Source).ConfigureAwait(true);
+                    notified++;
+                    Log.Info("Reconcile: NotifyGameAddedAsync fuer verwaistes Engine-Game {Name} ({Dir}) nachgefeuert",
+                        g.DisplayName, g.Source.InstallDir);
+                }
+                catch (Exception ex) { Log.Warn(ex, "Reconcile-Notify warf fuer {Dir}", g.Source.InstallDir); }
             }
-            catch (Exception ex) { Log.Warn(ex, "Reconcile-Notify warf fuer {Dir}", g.Source.InstallDir); }
+
+            // Re-Render NUR wenn wirklich etwas nachgemeldet wurde.
+            //
+            // v1.27.1 (Absturz-Fix): vorher lief das unbedingt. Bei einem
+            // Manual-Game mit Engine, fuer das KEIN geladenes Plugin
+            // zustaendig ist, passiert in der Schleife nichts — kein await,
+            // also laeuft die Methode synchron durch bis hierher, setzt
+            // _lastRenderKey zurueck und ruft RenderContentForSelected. Das
+            // landet wieder im selben "kein Plugin"-Zweig, feuert Reconcile
+            // erneut … bis der Stack voll ist. Die App starb ~1,5 s nach dem
+            // Start mit "Stack overflow", sobald so eine Kachel als zuletzt
+            // gewaehltes Spiel wiederhergestellt wurde (real: Ren'Py-Kachel,
+            // Plugin nicht im Aktivierungs-Plan).
+            if (notified > 0 && SelectedGame is not null)
+            {
+                _lastRenderKey = null;
+                RenderContentForSelected(SelectedGame);
+            }
         }
-        // Nach Notify: RenderContentForSelected re-triggern damit die
-        // Kachel-View jetzt die frischen DetectedGames sieht.
-        if (SelectedGame is not null) { _lastRenderKey = null; RenderContentForSelected(SelectedGame); }
+        finally { _reconcileRunning = false; }
     }
 
     private void RenderContentForSelected(GameEntry entry)
@@ -1091,6 +1155,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // Detail-Caches) einen Wechsel zu einem anderen Game und zurueck.
         if (_pluginTabsCache.TryGetValue(currentKey, out var cached))
         {
+            _tabCacheOrder.Remove(currentKey);
+            _tabCacheOrder.Add(currentKey);
             PluginTabs = cached;
             ShowPluginTabs = cached.Count > 0;
             ShowContentPlaceholder = cached.Count == 0;
@@ -1132,9 +1198,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var stalePrefix = entry.Key + "|";
         foreach (var k in _pluginTabsCache.Keys.Where(k => k.StartsWith(stalePrefix, StringComparison.Ordinal)).ToList())
         {
-            if (_pluginTabsCache.Remove(k, out var staleTabs)) DisposeTabs(staleTabs);
+            if (_pluginTabsCache.Remove(k, out var staleTabs))
+            {
+                _tabCacheOrder.Remove(k);
+                DisposeTabs(staleTabs);
+            }
         }
         _pluginTabsCache[currentKey] = tabs;
+        _tabCacheOrder.Remove(currentKey);
+        _tabCacheOrder.Add(currentKey);
+        TrimTabCache();
 
         PluginTabs = tabs;
         ShowPluginTabs = tabs.Count > 0;
