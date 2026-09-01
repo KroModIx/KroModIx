@@ -10,6 +10,18 @@
 Ein Fenster, links deine Spiele, rechts der spielspezifische Mod-Manager.
 Kein Umschalten zwischen mehreren Tools mehr.
 
+## Screenshots
+
+Hauptfenster — links die Spiele-Sidebar, rechts die Tabs des Plugins für das
+gewählte Spiel (hier der Landwirtschafts-Simulator 25):
+
+![KroModIx mit dem LS25-Plugin im Installiert-Tab](docs/screenshot.png)
+
+Einstellungen — App-Sprache, Plugin-Verhalten, KI-Provider, REST-API,
+Nexus-API-Key und Plugin-Health in einem Fenster:
+
+![Einstellungsfenster von KroModIx](docs/settings.png)
+
 ## Warum KroModIx?
 
 Die meisten Mod-Manager sind Windows-only, closed-source oder brauchen Wine-
@@ -77,6 +89,17 @@ die Plugin-Tabs erscheinen.
 **Klick auf Spiel mit gefülltem Stern** → die Plugin-Tabs rendern im
 Content-Bereich (Katalog / Downloads / Installiert / Einstellungen — je
 nach Plugin).
+
+### Backups
+
+Plugins legen vor jedem Mod-Install einen Snapshot des betroffenen
+Spielverzeichnisses an. Über das **Kontextmenü einer Sidebar-Kachel →
+„Backups"** siehst du alle Snapshots zu diesem Spiel mit Datum, Anlass und
+Größe und kannst einen davon zurückspielen. Das Ziel-Verzeichnis wird dabei
+vorher nach `<ordner>.pre-restore/` umbenannt — auch der Restore hat also ein
+Netz. Aufbewahrt werden die letzten zehn Snapshots pro Spiel und Plugin,
+abgelegt unter `~/.local/share/KroModIx/backups/` bzw.
+`%LOCALAPPDATA%\KroModIx\backups\`.
 
 ## Verfügbare Plugins
 
