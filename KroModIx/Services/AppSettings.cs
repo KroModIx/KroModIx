@@ -68,6 +68,25 @@ public sealed class AppSettings
     /// Default aus — Plugin-Persistenz ist die vorsichtigere Wahl (der User
     /// deinstalliert vielleicht ein Spiel nur temporär).</summary>
     public bool PluginAutoCleanupOnGameUninstall { get; set; }
+
+    /// <summary>v1.28.1: Wenn true (Default), installiert der Host beim Start
+    /// automatisch jedes PluginIndex-Plugin nach, fuer das ein Spiel in der
+    /// Sidebar steht und das lokal fehlt. Das ist der Neuinstallations-Fall:
+    /// <c>~/.config/KroModIx/plugins/</c> ist leer, <c>manual-games.json</c>
+    /// und die Steam-Bibliothek sind aber noch da — ohne Auto-Install muesste
+    /// der User jede Kachel einzeln anklicken und „⬇ Installieren" druecken.
+    ///
+    /// <para>Was das NICHT tut: Plugins ohne passendes Spiel laden, oder ein
+    /// Plugin nachziehen das der User in der Plugin-Verwaltung deinstalliert
+    /// hat (das landet in <see cref="AutoInstallOptOutPluginIds"/>).</para></summary>
+    public bool PluginAutoInstallForMatchedGames { get; set; } = true;
+
+    /// <summary>Plugin-IDs die der Auto-Install NICHT nachziehen darf, weil der
+    /// User sie bewusst deinstalliert hat. Wird beim Uninstall in der Plugin-
+    /// Verwaltung gefuellt und bei einem manuellen Re-Install ueber die
+    /// Install-Karte wieder geleert — sonst waere „deinstallieren" beim
+    /// naechsten Start wirkungslos.</summary>
+    public List<string> AutoInstallOptOutPluginIds { get; set; } = new();
 }
 
 public sealed class WindowStateDto

@@ -44,6 +44,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly PluginInstaller _pluginInstaller;
     private readonly PluginUpdateService _pluginUpdates;
     private readonly PluginUninstaller _pluginUninstaller;
+    private readonly PluginAutoInstallService _pluginAutoInstall;
     private readonly GameUpdateBadgeService _updateBadges;
     private readonly NotificationSinkImpl _notifications;
     private readonly AppSettingsService _settings;
@@ -72,6 +73,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginInstaller = services.GetRequiredService<PluginInstaller>();
         _pluginUpdates = services.GetRequiredService<PluginUpdateService>();
         _pluginUninstaller = services.GetRequiredService<PluginUninstaller>();
+        _pluginAutoInstall = services.GetRequiredService<PluginAutoInstallService>();
         _updateBadges = services.GetRequiredService<GameUpdateBadgeService>();
         _notifications = services.GetRequiredService<NotificationSinkImpl>();
         _settings = services.GetRequiredService<AppSettingsService>();
@@ -495,6 +497,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     // beim nächsten Start ist es weg.
                     if (_settings.Current.PluginAutoCleanupOnGameUninstall)
                         _ = RunAutoCleanupAsync(fresh, removed, ct);
+
+                    // v1.28.1: neu aufgetauchte Spiele koennen ein Plugin
+                    // brauchen das lokal fehlt (frisch installiertes Steam-
+                    // Spiel, gemountete Platte). Der Service filtert selbst,
+                    // was schon da ist oder in dieser Session schon versucht
+                    // wurde — der Aufruf ist also billig wenn es nichts zu
+                    // tun gibt.
+                    if (added.Count > 0)
+                        _ = AutoInstallMissingPluginsAsync(ct);
                 }
                 else
                 {
@@ -525,10 +536,45 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 Log.Info("Plugin-Index in UI übernommen: {N} Plugin(s), Sterne aktualisiert",
                     idx.Plugins.Count);
             });
+            // v1.28.1: erst jetzt kann der Host wissen, welche Plugins zu den
+            // Sidebar-Spielen gehoeren — also hier die fehlenden nachziehen.
+            await Dispatcher.UIThread.InvokeAsync(() => AutoInstallMissingPluginsAsync(ct));
         }
         catch (Exception ex)
         {
             Log.Debug(ex, "Plugin-Index-Load fehlgeschlagen — nur installierte Sterne");
+        }
+    }
+
+    /// <summary>Laesst den <see cref="PluginAutoInstallService"/> alle Plugins
+    /// nachladen, fuer die ein Spiel in der Sidebar steht — der Fall „App neu
+    /// installiert, Spiele noch da, Plugin-Ordner leer". Laeuft still: nur bei
+    /// tatsaechlich installierten Plugins gibt es einen Toast, Fehler (offline,
+    /// GitHub-Rate-Limit) stehen im Log und werden pro Session nicht wiederholt.
+    /// Muss auf dem UI-Thread laufen — die Aktivierung baut Plugin-Tabs.</summary>
+    private async Task AutoInstallMissingPluginsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var games = _allGames.Select(g => g.Source).ToList();
+            var summary = await _pluginAutoInstall.RunAsync(_indexCache, games, ct)
+                .ConfigureAwait(true);
+            if (!summary.AnyInstalled) return;
+
+            RefreshPluginStates();
+            // Der Render-Cache haengt an PluginState + geladener Plugin-Id;
+            // beides hat sich gerade geaendert, also Karte→Tabs erzwingen.
+            _lastRenderKey = null;
+            if (SelectedGame is not null) RenderContentForSelected(SelectedGame);
+
+            EnqueueToast(
+                $"Automatisch nachinstalliert: {FormatGameList(summary.Installed)}",
+                NotificationLevel.Info);
+        }
+        catch (OperationCanceledException) { /* App faehrt runter */ }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Auto-Install der fehlenden Plugins schlug fehl");
         }
     }
 
@@ -601,6 +647,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var appIdsWithAvailablePlugin = _indexCache?.Plugins
             .SelectMany(p => p.SteamAppIds)
             .ToHashSet() ?? new HashSet<int>();
+        // v1.28.1: dasselbe fuer Engine-Games (Manual-Kacheln aus dem Ordner-
+        // Scan haben keine SteamAppId — ohne diese Menge blieben sie ewig auf
+        // PluginState.None und bekamen nie eine Install-Karte).
+        var enginesWithAvailablePlugin = PluginIndexMatcher.AvailableEngines(_indexCache);
 
         // v1.14.4: PluginState des SELECTED Games vor der Neuberechnung
         // merken. Nur wenn er sich aendert, muessen wir die Content-View
@@ -621,6 +671,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 continue;
             }
             if (g.Source.SteamAppId is int appId && appIdsWithAvailablePlugin.Contains(appId))
+            {
+                g.PluginState = PluginState.Available;
+                availableCount++;
+                continue;
+            }
+            if (!string.IsNullOrWhiteSpace(g.Source.Engine)
+                && enginesWithAvailablePlugin.Contains(g.Source.Engine))
             {
                 g.PluginState = PluginState.Available;
                 availableCount++;
@@ -847,13 +904,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Alle PluginIndex-Kategorien fuer ein Game (leere Sequenz wenn
-    /// kein Plugin im Index passt). Nutzt SteamAppId-Match; Manual-Games
-    /// haben aktuell keine PluginIndex-Zuordnung → immer leer.</summary>
+    /// kein Plugin im Index passt). SteamAppId-Match, ab v1.28.1 zusaetzlich
+    /// Engine-Match — damit sind die Kategorien auch fuer Ordner-Sammlungen
+    /// (Ren'Py &amp; Co.) durchsuchbar.</summary>
     private IEnumerable<string> CategoriesForGame(GameEntry g)
     {
         if (_indexCache is null) yield break;
-        if (g.Source.SteamAppId is not int appId) yield break;
-        foreach (var p in _indexCache.Plugins.Where(p => p.SteamAppIds.Contains(appId)))
+        foreach (var p in IndexEntriesFor(g))
             foreach (var c in p.Categories) yield return c;
     }
 
@@ -1107,6 +1164,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     gamesProvider: () => _allGames.Select(g => g.Source).ToList(),
                     onInstalledLive: async () =>
                     {
+                        // Manuell wieder installiert → der Auto-Install darf
+                        // dieses Plugin kuenftig auch wieder nachziehen.
+                        _pluginAutoInstall.ClearOptOut(indexEntry.Id);
                         RefreshPluginStates();
                         RenderContentForSelected(entry);
                         await Task.CompletedTask;
@@ -1240,11 +1300,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     private PluginIndexEntry? FindIndexEntryFor(GameEntry entry)
-    {
-        if (_indexCache is null) return null;
-        if (entry.Source.SteamAppId is not int appId) return null;
-        return _indexCache.Plugins.FirstOrDefault(p => p.SteamAppIds.Contains(appId));
-    }
+        => IndexEntriesFor(entry).FirstOrDefault();
+
+    /// <summary>Alle Index-Plugins die dieses Game bedienen: erst per
+    /// SteamAppId, dann per Engine-Slug. Der Engine-Weg ist der einzige fuer
+    /// Manual-Kacheln aus dem Ordner-Scan-Wizard (kein SteamAppId) — ohne ihn
+    /// bleibt fuer jedes Ren'Py-Spiel die Install-Karte aus.</summary>
+    private IEnumerable<PluginIndexEntry> IndexEntriesFor(GameEntry entry)
+        => PluginIndexMatcher.EntriesFor(_indexCache, entry.Source);
 
     [RelayCommand]
     private void OpenSettings()
@@ -1433,6 +1496,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ApplyFilterAndSort();
         if (newEntries.Count > 0) SelectedGame = newEntries[0];
         EnqueueToast($"🎮 {newEntries.Count} Spiel(e) importiert", NotificationLevel.Success);
+
+        // v1.28.1: Das passende Engine-Plugin fehlt nach einem frischen Setup
+        // schlicht — hier direkt nachziehen statt den User erst auf eine
+        // Install-Karte klicken zu lassen.
+        await AutoInstallMissingPluginsAsync(default);
     }
 
     /// <summary>Sidebar-Kontextmenü „🖼 Kachelbild ändern": öffnet File-Picker,

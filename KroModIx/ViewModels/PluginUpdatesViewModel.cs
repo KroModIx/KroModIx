@@ -27,6 +27,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     private readonly PluginUninstaller _uninstaller;
     private readonly PluginIndexService _pluginIndex;
     private readonly IDialogService _dialogs;
+    private readonly PluginAutoInstallService _autoInstall;
 
     public PluginUpdatesViewModel(
         PluginUpdateService updates,
@@ -34,7 +35,8 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         PluginActivator activator,
         PluginUninstaller uninstaller,
         PluginIndexService pluginIndex,
-        IDialogService dialogs)
+        IDialogService dialogs,
+        PluginAutoInstallService autoInstall)
     {
         _updates = updates;
         _scanner = scanner;
@@ -42,6 +44,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         _uninstaller = uninstaller;
         _pluginIndex = pluginIndex;
         _dialogs = dialogs;
+        _autoInstall = autoInstall;
         RefreshUpdates();
         RefreshInstalled();
         // UpdatesChanged feuert i.d.R. vom Background-Thread des Update-
@@ -227,6 +230,9 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         try
         {
             var result = _uninstaller.Uninstall(row.PluginId, deleteData: true, deleteCache: true);
+            // Ohne Opt-out wuerde der Auto-Install (v1.28.1) das Plugin beim
+            // naechsten Start wieder holen — „deinstallieren" waere wirkungslos.
+            if (result.PluginDirRemoved) _autoInstall.OptOut(row.PluginId);
             row.Status = result.PluginDirRemoved
                 ? "Deinstalliert (Neustart nötig)"
                 : "Plugin-Ordner konnte nicht gelöscht werden (siehe Log)";

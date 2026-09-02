@@ -30,6 +30,15 @@ public sealed class PluginIndexEntry
     [JsonPropertyName("steamAppIds")]
     public List<int> SteamAppIds { get; set; } = new();
 
+    /// <summary>v1.28.1: Engine-Slugs (z. B. <c>["renpy"]</c>) — das Index-
+    /// Gegenstueck zu <c>PluginManifest.Targets[].Engine</c>. Ordner-basierte
+    /// Sammlungen (Wizard „🎮 Ordner mit Spielen scannen") legen Manual-Games
+    /// OHNE SteamAppId an; ohne dieses Feld findet der Host kein Index-Plugin
+    /// fuer sie und zeigt statt der Install-Karte „kein Plugin verfuegbar".
+    /// Fehlt im Index-JSON → leere Liste, reines SteamAppId-Matching.</summary>
+    [JsonPropertyName("engines")]
+    public List<string> Engines { get; set; } = new();
+
     [JsonPropertyName("updateSource")]
     public PluginIndexUpdateSource? UpdateSource { get; set; }
 

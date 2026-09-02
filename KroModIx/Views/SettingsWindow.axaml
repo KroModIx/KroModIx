@@ -36,6 +36,12 @@
                             <TextBlock Text="PLUGIN-VERHALTEN" Classes="section-label" Margin="0,8,0,0" />
                             <Border Classes="card">
                                 <StackPanel Spacing="10">
+                                    <CheckBox Name="PluginAutoInstallCheckBox"
+                                              Content="Fehlende Plugins zu erkannten Spielen automatisch installieren"
+                                              IsChecked="{Binding PluginAutoInstallForMatchedGames, Mode=TwoWay}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Classes="muted"
+                                               Text="Standard an: Beim Start lädt KroModIx jedes Plugin nach, für das ein Spiel in der Sidebar steht und das lokal fehlt — der Fall „App neu installiert, Spiele noch da“. Es werden nur Plugins zu vorhandenen Spielen geholt, nie welche auf Vorrat. Ein Plugin, das du in der Plugin-Verwaltung deinstallierst, wird nicht wieder nachgezogen." />
+                                    <Separator Margin="0,4" />
                                     <CheckBox Name="PluginAutoCleanupCheckBox"
                                               Content="Plugins automatisch entfernen wenn kein Zielspiel mehr installiert ist"
                                               IsChecked="{Binding PluginAutoCleanupOnGameUninstall, Mode=TwoWay}" />

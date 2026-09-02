@@ -144,6 +144,7 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
 
     // Sidebar/Plugin-Verhalten
     [ObservableProperty] private bool _pluginAutoCleanupOnGameUninstall;
+    [ObservableProperty] private bool _pluginAutoInstallForMatchedGames = true;
 
     // REST-API-Sektion
     [ObservableProperty] private bool _apiEnabled;
@@ -213,6 +214,7 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
         ApiPort = settings.Current.ApiPort <= 0 ? 5100 : settings.Current.ApiPort;
         ApiBearerToken = settings.Current.ApiBearerToken ?? "";
         PluginAutoCleanupOnGameUninstall = settings.Current.PluginAutoCleanupOnGameUninstall;
+        PluginAutoInstallForMatchedGames = settings.Current.PluginAutoInstallForMatchedGames;
 
         // Cloud-Model-Options mit kuratierten Presets initial füllen —
         // Live-Modelle werden asynchron beim Öffnen bzw. Provider-Wechsel dazu-
@@ -260,6 +262,11 @@ public sealed partial class SettingsWindowViewModel : ViewModelBase
     partial void OnPluginAutoCleanupOnGameUninstallChanged(bool value)
     {
         _settings.Update(s => s.PluginAutoCleanupOnGameUninstall = value);
+    }
+
+    partial void OnPluginAutoInstallForMatchedGamesChanged(bool value)
+    {
+        _settings.Update(s => s.PluginAutoInstallForMatchedGames = value);
     }
 
     partial void OnSelectedOpenAiCompatiblePresetChanged(AiProviderPreset? value)

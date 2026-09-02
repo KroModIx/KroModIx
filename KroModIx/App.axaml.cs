@@ -116,6 +116,8 @@ public partial class App : Application
         services.AddSingleton<PluginInstaller>();
         services.AddSingleton<PluginUninstaller>();
         services.AddSingleton<PluginUpdateService>();
+        // v1.28.1: zieht fehlende Plugins zu erkannten Spielen automatisch nach.
+        services.AddSingleton<PluginAutoInstallService>();
         services.AddSingleton<GameUpdateBadgeService>();
         // v1.12: Host-Profile-Export/Import (Multi-Host-Setup).
         services.AddSingleton<KroModIx.Services.HostProfile.HostProfileService>();
