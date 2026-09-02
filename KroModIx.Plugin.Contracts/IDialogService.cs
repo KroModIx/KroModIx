@@ -17,6 +17,18 @@ public interface IDialogService
     /// <c>("Label", new[]{"*.zip","*.pak"})</c>.</summary>
     Task<string?> PickFileAsync(string title, params (string Label, string[] Patterns)[] filters);
 
+    /// <summary>Datei-Auswahl, die in <paramref name="startDirectory"/>
+    /// aufgeht (Contracts v1.28+).
+    ///
+    /// <para>Ohne Startverzeichnis oeffnet der Dialog dort, wo das System
+    /// zuletzt war — bei einem Plugin, das den passenden Ordner kennt
+    /// (Downloads-Ordner, Mods-Ordner des Spiels), ist das unnoetiges
+    /// Navigieren. Existiert der Pfad nicht oder kann die Plattform ihn nicht
+    /// aufloesen, verhaelt sich der Aufruf wie
+    /// <see cref="PickFileAsync"/>.</para></summary>
+    Task<string?> PickFileInAsync(string title, string? startDirectory,
+        params (string Label, string[] Patterns)[] filters);
+
     /// <summary>Ordner-Auswahl.</summary>
     Task<string?> PickFolderAsync(string title);
 }

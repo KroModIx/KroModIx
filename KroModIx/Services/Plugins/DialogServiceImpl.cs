@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -6,6 +7,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using KroModIx.Plugin.Contracts;
+using NLog;
 
 namespace KroModIx.Services.Plugins;
 
@@ -15,6 +17,8 @@ namespace KroModIx.Services.Plugins;
 /// </summary>
 public sealed class DialogServiceImpl : IDialogService
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private static Window? MainWindow =>
         (Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
@@ -71,7 +75,11 @@ public sealed class DialogServiceImpl : IDialogService
     public async Task ShowMessageAsync(string title, string message)
         => await ConfirmAsync(title, message, okLabel: "OK", cancelLabel: null);
 
-    public async Task<string?> PickFileAsync(string title, params (string Label, string[] Patterns)[] filters)
+    public Task<string?> PickFileAsync(string title, params (string Label, string[] Patterns)[] filters)
+        => PickFileInAsync(title, null, filters);
+
+    public async Task<string?> PickFileInAsync(string title, string? startDirectory,
+        params (string Label, string[] Patterns)[] filters)
     {
         return await Dispatcher.UIThread.InvokeAsync(async () =>
         {
@@ -85,6 +93,16 @@ public sealed class DialogServiceImpl : IDialogService
                     ? null
                     : filters.Select(f => new FilePickerFileType(f.Label) { Patterns = f.Patterns }).ToArray(),
             };
+            // Startverzeichnis ist ein Wunsch, kein Muss: existiert der Pfad
+            // nicht mehr oder kann die Plattform ihn nicht aufloesen (Portal
+            // ohne Zugriff, Netzlaufwerk weg), oeffnet der Dialog eben dort,
+            // wo er sonst aufgegangen waere. Ein Fehler waere hier absurd —
+            // der User will eine Datei waehlen, nicht einen Pfad debuggen.
+            if (!string.IsNullOrWhiteSpace(startDirectory) && Directory.Exists(startDirectory))
+            {
+                try { opts.SuggestedStartLocation = await owner.StorageProvider.TryGetFolderFromPathAsync(startDirectory); }
+                catch (Exception ex) { Log.Debug(ex, "Startverzeichnis {Dir} nicht aufloesbar", startDirectory); }
+            }
             var files = await owner.StorageProvider.OpenFilePickerAsync(opts);
             return files.Count == 0 ? null : files[0].TryGetLocalPath();
         });
