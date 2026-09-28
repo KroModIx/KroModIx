@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Der Schlüssel für Secrets hängt an einer Datei (28.09.2026)
+
+Übernommen aus KaetheronBot, wo derselbe Fehler Lars' gespeichertes Passwort gekostet hat:
+`SecretProtection` bildete den AES-Schlüssel aus `MachineName|UserName|kroste-modmanager`. Auf Bazzite
+ist `/etc/hostname` leer, systemd nimmt „bazzite", die FRITZ!Box setzt per DHCP „bazzite.fritz.box" - je
+nach Startzeitpunkt ein anderer Name, und danach ließ sich kein Secret mehr lesen („Padding is invalid").
+
+Jetzt liegt der Schlüssel als Datei (`geheim.key` im Konfigurationsordner, 0600, über
+`KROMODIX_SECRET_KEY` umlenkbar), neue Werte tragen `v2:`. Alte `v1:`-Werte werden mit allen plausiblen
+Namensformen probiert (kurz, mit Domäne, aus DNS, aus `/etc/hostname`) und beim Lesen auf `v2:` gehoben
+(`Renew`, aufgerufen im `NexusApiKeyStore`). Auf Windows war `v1:` schon DPAPI - dort ändert sich nichts.
+
+**Eine unlesbare Schlüsseldatei wirft**, statt still einen neuen Schlüssel zu nehmen: sonst wären alle
+gespeicherten Secrets auf einen Schlag unlesbar, und man sähe nur „Secret konnte nicht entschlüsselt
+werden". Und **keine Testklasse fasst `KROMODIX_SECRET_KEY` dauerhaft an** - xunit lässt Klassen parallel
+laufen; geprüft werden die reinen Funktionen (`KeyBytes`, `LegacyNames`).
+
 ## Grundlagen
 
 - **Was:** Übergeordneter Mod-Manager für Steam-Spiele unter Windows + Linux. Discovert installierte Spiele, lädt pro Spiel ein Game-Plugin (LS25, Icarus, Satisfactory, Cyberpunk 2077, Ren'Py, …), das die Mod-Verwaltung für dieses Spiel übernimmt.

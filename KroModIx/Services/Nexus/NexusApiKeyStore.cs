@@ -36,7 +36,18 @@ public sealed class NexusApiKeyStore
     {
         var encrypted = _settings.Current.NexusApiKeyProtected;
         if (string.IsNullOrEmpty(encrypted)) return string.Empty;
-        try { return _secrets.Unprotect(encrypted) ?? string.Empty; }
+        try
+        {
+            var klar = _secrets.Unprotect(encrypted) ?? string.Empty;
+            // Alte, am Rechnernamen hängende Werte einmal heben - sonst sind sie nach dem
+            // nächsten Namenswechsel weg (siehe SecretProtection)
+            if (klar.Length > 0 && encrypted.StartsWith("v1:", StringComparison.Ordinal)
+                && _secrets is SecretProtection sp && sp.Renew(encrypted) is { } neu && neu != encrypted)
+            {
+                _settings.Update(s => s.NexusApiKeyProtected = neu);
+            }
+            return klar;
+        }
         catch (Exception ex)
         {
             Log.Warn(ex, "NexusApiKeyStore: Unprotect fehlgeschlagen — Key wird als leer behandelt");
