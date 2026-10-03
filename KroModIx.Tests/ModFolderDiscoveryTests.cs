@@ -18,6 +18,25 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     public ModFolderDiscoveryTests() => Directory.CreateDirectory(_root);
     public void Dispose() { try { Directory.Delete(_root, true); } catch { } }
 
+    /// <summary>Vergleicht zwei Pfade so, wie das Dateisystem sie sieht.
+    /// Die zurueckgegebene Schreibweise ist plattformabhaengig: unter Linux
+    /// steht dort der echte Eintrag von der Platte, unter Windows (case-
+    /// insensitives FS) findet schon <c>Directory.Exists</c> den Ordner unter
+    /// der GESUCHTEN Schreibweise. Zugesichert ist „derselbe Ordner", nicht
+    /// „derselbe String" — genau das pruefen diese Tests.</summary>
+    private static void SamePath(string? actual, string expected)
+    {
+        actual.Should().NotBeNull();
+        Path.GetFullPath(actual!).TrimEnd(Path.DirectorySeparatorChar)
+            .Should().BeEquivalentTo(
+                Path.GetFullPath(expected).TrimEnd(Path.DirectorySeparatorChar));
+    }
+
+    private int SubDirCount(string rel)
+        => Directory.Exists(Path.Combine(_root, Path.Combine(rel.Split('/'))))
+            ? Directory.GetDirectories(Path.Combine(_root, Path.Combine(rel.Split('/')))).Length
+            : 0;
+
     private string Dir(string rel)
     {
         var p = Path.Combine(_root, Path.Combine(rel.Split('/')));
@@ -29,7 +48,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     public void Findet_den_exakt_geschriebenen_Pfad()
     {
         var expected = Dir("FactoryGame/Mods");
-        ModFolderDiscovery.Find(_root, "FactoryGame/Mods").Should().Be(expected);
+        SamePath(ModFolderDiscovery.Find(_root, "FactoryGame/Mods"), expected);
     }
 
     [Fact]
@@ -38,14 +57,14 @@ public sealed class ModFolderDiscoveryTests : IDisposable
         // Unter Linux der reale Fall: ein Loader legt „mods" an, das Plugin
         // sucht „Mods" — Directory.Exists sagt nein, das Spiel laedt sie aber.
         var expected = Dir("FactoryGame/mods");
-        ModFolderDiscovery.Find(_root, "FactoryGame/Mods").Should().Be(expected);
+        SamePath(ModFolderDiscovery.Find(_root, "FactoryGame/Mods"), expected);
     }
 
     [Fact]
     public void Loest_jedes_Segment_einzeln_auf()
     {
         var expected = Dir("factorygame/MODS");
-        ModFolderDiscovery.Find(_root, "FactoryGame/Mods").Should().Be(expected);
+        SamePath(ModFolderDiscovery.Find(_root, "FactoryGame/Mods"), expected);
     }
 
     [Fact]
@@ -53,8 +72,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     {
         var exact = Dir("Mods");
         Dir("mods2");                    // andere Namen stoeren nicht
-        var hit = ModFolderDiscovery.Find(_root, "Mods");
-        hit.Should().Be(exact);
+        SamePath(ModFolderDiscovery.Find(_root, "Mods"), exact);
     }
 
     [Fact]
@@ -69,7 +87,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     {
         var created = ModFolderDiscovery.FindOrCreate(_root, "FactoryGame/Mods", "Mods");
 
-        created.Should().Be(Path.Combine(_root, "FactoryGame", "Mods"));
+        SamePath(created, Path.Combine(_root, "FactoryGame", "Mods"));
         Directory.Exists(created!).Should().BeTrue();
     }
 
@@ -78,8 +96,10 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     {
         var existing = Dir("FactoryGame/mods");
 
-        ModFolderDiscovery.FindOrCreate(_root, "FactoryGame/Mods").Should().Be(existing);
-        Directory.Exists(Path.Combine(_root, "FactoryGame", "Mods")).Should().BeFalse();
+        SamePath(ModFolderDiscovery.FindOrCreate(_root, "FactoryGame/Mods"), existing);
+        // Die eigentliche Zusicherung, plattformunabhaengig: es ist KEIN
+        // zweiter Ordner daneben entstanden.
+        SubDirCount("FactoryGame").Should().Be(1);
     }
 
     [Fact]
@@ -89,7 +109,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
         // existiert irgendein Kandidat, wird NICHTS angelegt.
         var existing = Dir("Mods");
 
-        ModFolderDiscovery.FindOrCreate(_root, "FactoryGame/Mods", "Mods").Should().Be(existing);
+        SamePath(ModFolderDiscovery.FindOrCreate(_root, "FactoryGame/Mods", "Mods"), existing);
         Directory.Exists(Path.Combine(_root, "FactoryGame")).Should().BeFalse();
     }
 
@@ -102,7 +122,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
             "archive/pc/mod", "mods", "r6/scripts", "red4ext/plugins");
 
         hits.Should().HaveCount(2);
-        hits[0].Should().Be(archive);
+        SamePath(hits[0], archive);
     }
 
     [Fact]
@@ -116,7 +136,7 @@ public sealed class ModFolderDiscoveryTests : IDisposable
     public void Backslash_Schreibweise_wird_wie_Slash_behandelt()
     {
         var expected = Dir("archive/pc/mod");
-        ModFolderDiscovery.Find(_root, @"archive\pc\mod").Should().Be(expected);
+        SamePath(ModFolderDiscovery.Find(_root, @"archive\pc\mod"), expected);
     }
 
     [Fact]
