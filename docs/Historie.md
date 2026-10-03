@@ -6,6 +6,66 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.30.0 — drei Baukästen aus dem Icarus-Plugin in den Host (2026-10-03):**
+
+Die Gegenprobe zu Kernprinzip 4, diesmal mit Zahlen statt Gefühl. Gemessen am
+03.10.2026 über alle Plugin-Repos:
+
+- `ArchiveFactory.Open` nutzen **sechs** Plugins (Icarus, Cyberpunk 2077,
+  Dyson Sphere Program, Ren'PyAssist, Schedule I, 7 Days to Die).
+- **Drei** davon tragen eine eigene Kopie desselben Zip-Slip-Schutzes
+  (Icarus, DSP, Ren'PyAssist). Ein Sicherheitsschutz in drei Kopien ist genau
+  der Fall, bei dem ein Fund an einer Stelle an den anderen zwei vergessen
+  wird.
+
+Daraus drei neue Contracts-Baukästen (alle additiv, Contracts v1.30.0):
+
+- **`IHostServices.Archives`** (`IArchiveService`) — ZIP/RAR/7z listen und
+  zip-slip-sicher auspacken, mit `StripPrefix` für das verbreitete
+  Nexus-Layout und `Flatten` für Ziele, die nur eine Ebene lesen.
+  Formaterkennung über Magic-Bytes, nicht über die Endung: Download-Ordner
+  enthalten Dateien mit falscher Endung, und nach der Endung behandelt landen
+  sie unverändert im Spiel, wo sie niemand lesen kann — still. Der
+  Ausbruch-Schutz lehnt zusätzlich Laufwerksbuchstaben ab, weil `C:\…` unter
+  Linux nicht als absolut gilt und der Eintrag dort als Ordner namens `C:`
+  im Ziel landete (gefunden beim Testen der Icarus-Fassung).
+- **`IHostServices.UnrealPaks`** (`IUnrealPakService`) — Unreal-Paks der
+  UE4-Reihe lesen und schreiben. Portiert aus
+  [go-unrealpak](https://github.com/DonovanMods/go-unrealpak) (MIT, Donovan
+  C. Young), weil es zum **Schreiben** nichts von der Stange gibt (CUE4Parse
+  liest nur). Bewusst spielfrei: der Mount-Point kommt vom Aufrufer, die
+  Vorgabe ist die bloße UE4-Konvention `../../../`. Ein Baukasten, der
+  „Icarus" wüsste, wäre für Satisfactory falsch.
+- **`IHostServices.WinePrefix`** (`IWinePrefixService`) — DLL-Umleitungen im
+  Proton-Präfix. Mod-Loader für Unreal-Spiele hängen sich fast alle über eine
+  mitgelieferte System-DLL ein (UE4SS über `dwmapi.dll`); Proton bringt
+  dieselbe DLL mit und bevorzugt sie, der Loader wird also nie geladen — ohne
+  jedes Symptom außer Abwesenheit. Der Eintrag geht in die `user.reg` und
+  nicht in die Steam-Startoptionen: die stehen in Steams `localconfig.vdf`,
+  die ein laufender Steam-Client beim Beenden aus dem Speicher
+  zurückschreibt.
+
+**Neu an diesen drei: sie werfen, statt still nichts zu tun.** Die bisherigen
+Baukästen haben Null-Implementierungen, die folgenlos nichts tun — ein
+ausgefallener Snapshot oder nicht aufgelöstes BBCode ist unschön, aber
+harmlos. Diese drei **verändern Dateien im Spiel**: ein folgenlos
+„erfolgreicher" Install hätte nichts installiert, und der User sucht den
+Fehler im Spiel statt an der Host-Version. Lesende Abfragen antworten deshalb
+neutral (leer, `false`, `Unknown`), jede Aktion scheitert mit
+`HostFeatureUnavailableException`, die die nötige Host-Version nennt. Im
+Normalfall tritt sie nie auf — ein Plugin pinnt `minHostVersion`.
+
+**Gemessen gegen echte Daten** (Icarus-Spielwoche 252): 299 von 299 Einträgen
+der echten `Content/Data/data.pak` rekonstruiert, 42.274.800 Byte entpackt,
+52 ms; größte Tabelle 7.420.669 Byte. Dazu Paks, die ein fremdes Werkzeug
+geschrieben hat — der stärkere Beleg, weil er einen gemeinsamen Denkfehler
+von eigenem Leser und eigenem Schreiber ausschließt. Die Messung liegt als
+`RealUnrealPakTests` im Testprojekt und überspringt sich ohne Installation,
+statt den CI-Lauf rot zu färben (Pfad über `KROMODIX_TEST_PAK`
+überschreibbar).
+
+38 neue Tests, Suite bei 258.
+
 **Host v1.29.0 — `ModFolderDiscovery` als Baukasten, Plugins finden ihre Mod-Ordner selbst (2026-10-03):**
 - **Gemeldet:** Satisfactory, Cyberpunk & Co. finden ihre Mod-Ordner nicht mehr. Gemessen statt vermutet — die Ordner existieren schlicht nicht: `FactoryGame/Mods` fehlt, bei Cyberpunk fehlen alle fünf (`archive/pc/mod`, `mods`, `bin/x64/plugins/cyber_engine_tweaks/mods`, `r6/scripts`, `red4ext/plugins`), ebenso `Schedule I/Mods` und `Captain of Industry/Mods`. 7DTD (`Mods`, leer) und Icarus (`Icarus/Content/Paks/mods`, 2 Einträge) waren in Ordnung. Kein Case-Problem in diesem Fall: `find -ipath` fand keine abweichend geschriebene Variante.
 - **Ursache:** Mod-Ordner gehören nicht zur Vanilla-Installation. Sie entstehen durch den Mod-Loader oder die erste Mod und sind nach einer Neuinstallation weg (Spielordner zuletzt geändert am 2026-09-03). Jedes Plugin nagelte seinen Pfad mit einem `Path.Combine(game.InstallDir, "Mods")` fest: ein Kandidat, exakte Schreibweise, kein Ausweichpfad, kein Anlegen. Folge war eine Sackgasse — leere Liste, und installieren ging auch nicht, weil das Ziel fehlte.

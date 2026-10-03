@@ -39,7 +39,10 @@ public sealed class HostServicesImpl : IHostServices
         IImageDecoder? images = null,
         IDescriptionParser? descriptions = null,
         IBackupService? backup = null,
-        IConflictScanner? conflicts = null)
+        IConflictScanner? conflicts = null,
+        IArchiveService? archives = null,
+        IUnrealPakService? unrealPaks = null,
+        IWinePrefixService? winePrefix = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -55,6 +58,9 @@ public sealed class HostServicesImpl : IHostServices
         Descriptions = descriptions ?? NullDescriptionParser.Instance;
         Backup = backup ?? NullBackupService.Instance;
         Conflicts = conflicts ?? NullConflictScanner.Instance;
+        Archives = archives ?? NullArchiveService.Instance;
+        UnrealPaks = unrealPaks ?? NullUnrealPakService.Instance;
+        WinePrefix = winePrefix ?? NullWinePrefixService.Instance;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
         _updateBadges = updateBadges;
@@ -78,6 +84,9 @@ public sealed class HostServicesImpl : IHostServices
     public IAiService Ai { get; }
     public INexusService Nexus { get; }
     public IWorkshopService Workshop { get; }
+    public IArchiveService Archives { get; }
+    public IUnrealPakService UnrealPaks { get; }
+    public IWinePrefixService WinePrefix { get; }
     public IImageDecoder Images { get; }
     public IDescriptionParser Descriptions { get; }
     public IBackupService Backup { get; }

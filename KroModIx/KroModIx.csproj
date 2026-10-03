@@ -39,6 +39,7 @@
          kommen via FrameworkReference Microsoft.AspNetCore.App (siehe unten)
          mit — separate PackageReferences würden NU1510-Fehler auslösen. -->
     <PackageReference Include="NLog" />
+    <PackageReference Include="SharpCompress" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
 
     <!-- v1.21: HTML-Rendering fuer Mod-Beschreibungen. BBCode-Convert

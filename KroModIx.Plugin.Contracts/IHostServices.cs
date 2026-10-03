@@ -102,6 +102,27 @@ public interface IHostServices
     /// <see cref="NullConflictScanner.Instance"/>.</summary>
     IConflictScanner Conflicts => NullConflictScanner.Instance;
 
+    /// <summary>Zentraler Archiv-Baukasten (v1.30.0+). ZIP, RAR und 7z
+    /// lesen und zip-slip-sicher auspacken. Nachgemessen: sechs Plugins
+    /// oeffnen Archive, drei trugen eine eigene Kopie desselben
+    /// Ausbruch-Schutzes. Bei aelteren Hosts default =
+    /// <see cref="NullArchiveService.Instance"/> — lesende Abfragen
+    /// antworten neutral, jedes Auspacken scheitert laut.</summary>
+    IArchiveService Archives => NullArchiveService.Instance;
+
+    /// <summary>Zentraler Unreal-Pak-Baukasten (v1.30.0+). Paks der
+    /// UE4-Reihe lesen und schreiben — der Container ist Unreal, nicht ein
+    /// bestimmtes Spiel. Zum Schreiben gibt es nichts von der Stange
+    /// (CUE4Parse liest nur). Bei aelteren Hosts default =
+    /// <see cref="NullUnrealPakService.Instance"/>.</summary>
+    IUnrealPakService UnrealPaks => NullUnrealPakService.Instance;
+
+    /// <summary>Zentraler Wine-Praefix-Baukasten (v1.30.0+). Setzt
+    /// DLL-Umleitungen im Proton-Praefix eines Spiels — ohne die laedt ein
+    /// Mod-Loader wie UE4SS unter Linux stillschweigend nicht. Bei aelteren
+    /// Hosts default = <see cref="NullWinePrefixService.Instance"/>.</summary>
+    IWinePrefixService WinePrefix => NullWinePrefixService.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);

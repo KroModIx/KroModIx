@@ -17,6 +17,9 @@
 
     <!-- Logging -->
     <PackageVersion Include="NLog" Version="6.1.4" />
+    <!-- v1.30.0: ZIP/RAR/7z fuer IArchiveService. 1.0.0 ist Pflicht —
+         0.42 hat GHSA-6c8g-7p36-r338. -->
+    <PackageVersion Include="SharpCompress" Version="1.0.0" />
 
     <!-- DPAPI unter Windows (Cross-Platform-Paket, kein Windows-Zwang) -->
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />

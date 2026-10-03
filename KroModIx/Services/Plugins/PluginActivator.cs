@@ -40,6 +40,13 @@ public sealed class PluginActivator
     private readonly IImageDecoder _images;
     private readonly IDescriptionParser _descriptions;
     private readonly IBackupService _backup;
+    // v1.30.0: die drei neuen Baukaesten sind zustandslos und haben keine
+    // Abhaengigkeiten — sie brauchen also keinen Weg durch die DI-Kette.
+    // Hier angelegt statt im Container registriert, weil es nichts zu
+    // konfigurieren gibt und ein Durchreichen nur Zeilen kostet.
+    private readonly IArchiveService _archives = new Archive.HostArchiveServiceImpl();
+    private readonly IUnrealPakService _unrealPaks = new Pak.HostUnrealPakServiceImpl();
+    private readonly IWinePrefixService _winePrefix = new Wine.HostWinePrefixServiceImpl();
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -152,7 +159,8 @@ public sealed class PluginActivator
             var host = new HostServicesImpl(
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
                 _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop, _images,
-                _descriptions, _backup, Conflicts);
+                _descriptions, _backup, Conflicts,
+                _archives, _unrealPaks, _winePrefix);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

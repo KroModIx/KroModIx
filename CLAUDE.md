@@ -58,7 +58,7 @@ Release: `scripts/release.sh` (bzw. `release.ps1`) fragt die neue Version ab, pr
 
 **Spiel → Plugin-Matching** läuft ausschließlich über `PluginIndexMatcher`: SteamAppId **oder** Engine-Slug, case-insensitive. Manuell hinzugefügte Spiele haben keine AppId — wer nur auf `SteamAppId` matcht, verliert sie stillschweigend. `FindIndexEntryFor`, `CategoriesForGame` und der `PluginState.Available`-Sweep gehen alle über diese eine Stelle.
 
-**Host-Services** liegen thematisch gruppiert unter `KroModIx/Services/`: `Plugins/`, `Games/`, `Steam/`, `Nexus/`, `Backup/`, `Conflicts/`, `Images/`, `Api/`, `Ai/`, `Storage/`, `Text/`, `HostProfile/`.
+**Host-Services** liegen thematisch gruppiert unter `KroModIx/Services/`: `Plugins/`, `Games/`, `Steam/`, `Nexus/`, `Backup/`, `Conflicts/`, `Images/`, `Api/`, `Ai/`, `Storage/`, `Text/`, `HostProfile/`, `Archive/`, `Pak/`, `Wine/`.
 
 **Eingebaute REST-API** über Kestrel + Minimal-API. Bewusst als `FrameworkReference Microsoft.AspNetCore.App` eingebunden, nicht als PackageReference — das Runtime-Bundle steckt im .NET-10-SDK. Separate `Microsoft.Extensions.DependencyInjection`- oder `.Http`-PackageReferences lösen deshalb NU1510-Fehler aus; sie kommen über die FrameworkReference mit.
 
@@ -67,6 +67,7 @@ Release: `scripts/release.sh` (bzw. `release.ps1`) fragt die neue Version ab, pr
 ## Invarianten
 
 - **Contracts nur additiv erweitern.** Plugin-Repos konsumieren sie als NuGet-Package und pinnen `MinHostVersion`. Ein Breaking Change zwingt jedes Plugin zum Nachziehen.
+- **Baukästen, die Dateien im Spiel verändern, werfen statt still nichts zu tun.** `IArchiveService`, `IUnrealPakService` und `IWinePrefixService` (v1.30.0) haben Null-Implementierungen, deren lesende Abfragen neutral antworten, deren **Aktionen** aber mit `HostFeatureUnavailableException` scheitern. Die ältere Nachsicht (`NullBackupService` & Co. tun folgenlos nichts) wäre hier gefährlich: ein folgenlos „erfolgreicher" Install hätte nichts installiert, und der User sucht den Fehler im Spiel statt an der Host-Version. Bei neuen Baukästen danach entscheiden, ob ein Ausfall harmlos ist — nicht aus Gewohnheit no-op nehmen.
 - **Konflikt-Scan ist Pull, nicht Push.** Plugins liefern über `IConflictSource.GetOwnedFilesAsync` on demand, der Host cached nichts. Ein Plugin ohne dieses Interface fehlt in der Konflikt-Liste — das ist gewollt, kein Cross-Cutting-Zwang.
 - **Backups rollen nicht automatisch zurück.** Nach einem Snapshot kann der User bewusste Änderungen gemacht haben; ein blindes Rollback über die Snapshot-Grenze zerstört sie. Der Snapshot ist Sicherheitsnetz, die Auswahl trifft der User im UI.
 - **Host-Release und PluginIndex-Push gehören zusammen.** Neue Matching-Felder (etwa `engines`) wirken erst, wenn `KroModIx.PluginIndex/plugins.json` sie ebenfalls enthält.

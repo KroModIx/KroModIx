@@ -172,6 +172,9 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | Auto-Update-Notifier (v1.17.0) | ✅ | 24h-Timer im Hintergrund, bei neuer Host-Version ein Toast (kein Auto-Install — User klickt im About-Dialog) |
 | Debug-Endpoint `/debug/plugin-games` (v1.17.0) | ✅ | REST-API liefert pro geladenem Plugin die DetectedGames mit InstallDirs — schnelle Diagnose bei „Plugin nicht sichtbar"-Bugs |
 | Steam-Workshop-Baukasten (v1.17.0) | ✅ | `IHostServices.Workshop`-Contract: Discovery via `workshop/content/<appId>/` in allen Steam-Library-Roots + optional Web-API-Enrichment (`GetPublishedFileDetails`). LS25/Icarus/Satisfactory können einen einheitlichen Workshop-Tab bauen ohne Pfad-Discovery selbst zu machen. |
+| Archiv-Baukasten (v1.30.0) | ✅ | `IHostServices.Archives`: ZIP/RAR/7z listen und zip-slip-sicher auspacken, Formaterkennung über Magic-Bytes statt Endung. Vorher öffneten sechs Plugins Archive und drei trugen eine eigene Kopie desselben Ausbruch-Schutzes. |
+| Unreal-Pak-Baukasten (v1.30.0) | ✅ | `IHostServices.UnrealPaks`: Paks der UE4-Reihe lesen **und schreiben** — zum Schreiben gibt es nichts von der Stange. Spielfrei: der Mount-Point kommt vom Plugin. |
+| Wine-Präfix-Baukasten (v1.30.0) | ✅ | `IHostServices.WinePrefix`: DLL-Umleitungen im Proton-Präfix. Ohne die lädt ein Mod-Loader wie UE4SS unter Linux stillschweigend nicht — und zwar ohne jedes andere Symptom. |
 | App-Icon-Facelift (v1.17.0) | ✅ | `scripts/build_icon.py v2`: gestapelte Kroste-Gold-Cards + Stern-Akzent auf vertikalem Dark-Gradient — neu generiert (PNG 512×512 + ICO Multi-Res) |
 
 ## Entwicklung
