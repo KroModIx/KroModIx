@@ -237,8 +237,19 @@ public sealed class NullHostServiceTests
         svc.HasSupportedExtension("x.zip").Should().BeFalse();
         svc.DetectKind("x.zip").Should().Be(ArchiveKind.Unknown);
         svc.List("x.zip").Should().BeEmpty();
-        svc.TryResolveSafe("/root", "a.txt", out _).Should().BeFalse(
-            "ein ausgefallener Schutz muss „nicht sicher“ antworten, nicht „sicher“");
+        // Seit v1.32.0 rechnet auch diese Stelle richtig, statt pauschal
+        // abzulehnen: der Ausbruch-Schutz ist eine reine Rechnung
+        // (ArchivePathSafety) und fällt nicht mit dem Host aus. Das alte
+        // „im Zweifel nein" klang sicher, hieß aber für ein Plugin auf einem
+        // alten Host: jeder Pfad abgelehnt, nichts geschrieben, keine
+        // Meldung. Was wirklich einen Host braucht — das Auspacken — wirft
+        // weiter.
+        svc.TryResolveSafe("/root", "a.txt", out var ziel).Should().BeTrue();
+        ziel.Should().Be(Path.Combine(Path.GetFullPath("/root"), "a.txt"));
+        svc.TryResolveSafe("/root", "../ausbruch.txt", out _).Should().BeFalse();
+        svc.TryResolveSafe("/root", "/etc/passwd", out _).Should().BeFalse(
+            "ein absoluter Eintragsname enthält kein „..“ und ist genau der Ausbruch, "
+            + "der am Cyberpunk-Installer nachgewiesen wurde");
         ((Action)(() => svc.Extract("x.zip", "/ziel"))).Should()
             .Throw<HostFeatureUnavailableException>();
         ((Action)(() => svc.ExtractEntry("x.zip", "a", "/ziel/a"))).Should()

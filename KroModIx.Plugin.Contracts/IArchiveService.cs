@@ -53,12 +53,14 @@ public sealed record ArchiveExtractResult(
 /// <summary>Zentraler Archiv-Baukasten (v1.30.0+): ZIP, RAR und 7z lesen und
 /// sicher auspacken.
 ///
-/// <para><b>Warum im Host.</b> Nachgemessen am 03.10.2026: sechs Plugins
-/// öffnen Archive (Icarus, Cyberpunk 2077, Dyson Sphere Program,
-/// Ren'PyAssist, Schedule I, 7 Days to Die), und <b>drei</b> davon tragen
-/// eine eigene Kopie desselben Zip-Slip-Schutzes. Genau die Art von Code,
-/// bei der ein Fehler an einer Stelle gefunden und an den anderen zwei
-/// vergessen wird — und es ist ein Sicherheitsschutz.</para>
+/// <para><b>Warum im Host.</b> Nachgemessen am 03.10.2026, vom Verbraucher
+/// her statt über den Namen des Helfers: <b>neun</b> Plugins öffnen Archive,
+/// <b>sechs</b> tragen eine eigene Kopie des Zip-Slip-Schutzes, und bei
+/// <b>vier</b> davon hält diese Kopie nicht — sie prüft nur auf <c>..</c>.
+/// Genau die Art von Code, bei der ein Fehler an einer Stelle gefunden und
+/// an den anderen vergessen wird, und es ist ein Sicherheitsschutz. Der
+/// Ausbruch ist am Cyberpunk-Installer nachgewiesen, siehe
+/// <see cref="ArchivePathSafety"/>.</para>
 ///
 /// <para><b>Was dieser Baukasten NICHT tut:</b> er weiß nichts über
 /// Mod-Formate. Welcher Eintrag eines Archivs eine Mod ist und wohin sie
@@ -134,12 +136,17 @@ public sealed class NullArchiveService : IArchiveService
     public void ExtractEntry(string archivePath, string entryPath, string destinationFile)
         => throw new HostFeatureUnavailableException(Feature, MinHost);
 
-    /// <summary>Antwortet <c>false</c> — also „nicht sicher". Das ist die
-    /// richtige Richtung für einen ausgefallenen Schutz: ein Plugin, das
-    /// darauf hört, schreibt dann nichts.</summary>
+    /// <summary>Antwortet seit v1.32.0 <b>richtig</b> statt
+    /// <c>false</c> — über <see cref="ArchivePathSafety"/>.
+    ///
+    /// <para>Früher gab diese Stelle pauschal „nicht sicher" zurück, mit der
+    /// Begründung, das sei die sichere Richtung für einen ausgefallenen
+    /// Schutz. Das war falsch gedacht: der Schutz ist eine reine Rechnung
+    /// und fällt nie aus. Ein Plugin, das auf einem Host &lt; v1.30.0 seine
+    /// Zielpfade selbst zusammenbaut, bekam dadurch für <b>jeden</b> Pfad
+    /// ein Nein und schrieb gar nichts — kein Schutz, sondern ein
+    /// Totalausfall ohne Fehlermeldung. Auspacken scheitert weiter laut, das
+    /// ist der Teil, der wirklich einen Host braucht.</para></summary>
     public bool TryResolveSafe(string root, string relative, out string destination)
-    {
-        destination = "";
-        return false;
-    }
+        => ArchivePathSafety.TryResolve(root, relative, out destination);
 }

@@ -14,5 +14,10 @@
   <ItemGroup>
     <ProjectReference Include="../KroModIx/KroModIx.csproj" />
     <ProjectReference Include="../KroModIx.Plugin.Contracts/KroModIx.Plugin.Contracts.csproj" />
+    <!-- Das TestKit wird als NuGet-Paket an die Plugin-Repos ausgeliefert und
+         muss deshalb hier mitgeprueft werden — eine Attrappe, die anders
+         entscheidet als der Host, macht Plugin-Tests gruen und das Spiel
+         kaputt. -->
+    <ProjectReference Include="../KroModIx.Plugin.TestKit/KroModIx.Plugin.TestKit.csproj" />
   </ItemGroup>
 </Project>

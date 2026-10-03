@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KroModIx.Plugin.TestKit</RootNamespace>
+    <AssemblyName>KroModIx.Plugin.TestKit</AssemblyName>
+
+    <PackageId>KroModIx.Plugin.TestKit</PackageId>
+    <IsPackable>true</IsPackable>
+    <Title>KroModIx Plugin TestKit</Title>
+    <Description>Attrappen der Host-Baukästen für die Testprojekte der KroModIx-Game-Plugins.</Description>
+    <PackageProjectUrl>https://github.com/KroModIx/KroModIx</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>kromodix;modmanager;plugin;kroste;testing</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ProjectReference, damit die Versionen nie auseinanderlaufen: beide
+         Pakete kommen aus demselben Tag, MinVer vergibt dieselbe Nummer, und
+         `dotnet pack` traegt die Contracts hier als Paket-Abhaengigkeit ein. -->
+    <ProjectReference Include="..\KroModIx.Plugin.Contracts\KroModIx.Plugin.Contracts.csproj" />
+  </ItemGroup>
+</Project>

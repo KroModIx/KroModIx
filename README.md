@@ -176,6 +176,7 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | Unreal-Pak-Baukasten (v1.30.0) | ✅ | `IHostServices.UnrealPaks`: Paks der UE4-Reihe lesen **und schreiben** — zum Schreiben gibt es nichts von der Stange. Spielfrei: der Mount-Point kommt vom Plugin. |
 | Wine-Präfix-Baukasten (v1.30.0) | ✅ | `IHostServices.WinePrefix`: DLL-Umleitungen im Proton-Präfix. Ohne die lädt ein Mod-Loader wie UE4SS unter Linux stillschweigend nicht — und zwar ohne jedes andere Symptom. |
 | GitHub-Releases-Baukasten (v1.31.0) | ✅ | `IHostServices.GitHub`: neueste Ausgabe und ihre Dateien finden, mit **gemeinsamer** Raten-Sperre und einem Ausweichpfad ohne API-Aufruf. Vorher taten das sieben Stellen getrennt — und ihre Sperren-Erkennung war nachweislich toter Code. |
+| Ausbruch-Schutz als Funktion + TestKit (v1.32.0) | ✅ | `ArchivePathSafety` in den Contracts — Host, Attrappe und Plugin rechnen mit derselben Funktion statt mit neun Kopien. Dazu `KroModIx.Plugin.TestKit` mit den Attrappen der Baukästen für die Plugin-Testprojekte. |
 | App-Icon-Facelift (v1.17.0) | ✅ | `scripts/build_icon.py v2`: gestapelte Kroste-Gold-Cards + Stern-Akzent auf vertikalem Dark-Gradient — neu generiert (PNG 512×512 + ICO Multi-Res) |
 
 ## Entwicklung

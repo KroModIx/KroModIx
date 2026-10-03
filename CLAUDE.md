@@ -23,7 +23,7 @@ laufen; geprüft werden die reinen Funktionen (`KeyBytes`, `LegacyNames`).
 
 - **Was:** Übergeordneter Mod-Manager für Steam-Spiele unter Windows + Linux. Discovert installierte Spiele, lädt pro Spiel ein Game-Plugin (LS25, Icarus, Satisfactory, Cyberpunk 2077, Ren'Py, …), das die Mod-Verwaltung für dieses Spiel übernimmt.
 - **Stack:** C# / .NET 10 / Avalonia 12, CommunityToolkit.Mvvm, Microsoft.Extensions.DependencyInjection, NLog (mit Secret-Masking), xunit.v3 + FluentAssertions.
-- **Struktur:** Flach, kein `src/`. Drei Projekte — `KroModIx/` (Host-App), `KroModIx.Plugin.Contracts/` (NuGet-Package auf GitHub Packages, von den Plugin-Repos via `PackageReference` konsumiert), `KroModIx.Tests/`.
+- **Struktur:** Flach, kein `src/`. Vier Projekte — `KroModIx/` (Host-App), `KroModIx.Plugin.Contracts/` und `KroModIx.Plugin.TestKit/` (zwei NuGet-Packages auf GitHub Packages, von den Plugin-Repos via `PackageReference` konsumiert — das TestKit nur von deren Testprojekten), `KroModIx.Tests/`.
 - **Konventionen:** `.slnx` statt `.sln`, Central Package Management (`Directory.Packages.props` — Versionen **nie** im csproj), `TreatWarningsAsErrors`, `Nullable enable`, MinVer (Version kommt aus Git-Tags `v*`, nicht aus dem csproj).
 - **Repo:** `github.com/KroModIx/KroModIx`. Assembly, RootNamespace und Release-Asset-Prefix sind einheitlich `KroModIx`.
 - **Kommunikation:** Deutsch, „du". Lars entwirft, Claude implementiert.
@@ -66,6 +66,8 @@ Release: `scripts/release.sh` (bzw. `release.ps1`) fragt die neue Version ab, pr
 
 ## Invarianten
 
+- **Der Ausbruch-Schutz für Archiv-Pfade steht in `ArchivePathSafety` (Contracts), und nirgends sonst.** Host-Dienst, TestKit-Attrappe und Null-Implementierung delegieren alle dorthin; `AlleDreiStellenAntwortenGleich` hält das fest. Eine eigene Kopie ist nie gerechtfertigt — der gemessene Ausbruch über einen absoluten Eintragsnamen (siehe `docs/Historie.md`, v1.32.0) entstand genau so.
+- **Das TestKit wird ausgeliefert und gehört deshalb geprüft.** `KroModIx.Tests` referenziert es; eine Attrappe, die anders antwortet als der Host, macht acht Plugin-Suiten grün und das Spiel kaputt.
 - **Contracts nur additiv erweitern.** Plugin-Repos konsumieren sie als NuGet-Package und pinnen `MinHostVersion`. Ein Breaking Change zwingt jedes Plugin zum Nachziehen.
 - **Baukästen, die Dateien im Spiel verändern, werfen statt still nichts zu tun.** `IArchiveService`, `IUnrealPakService` und `IWinePrefixService` (v1.30.0) haben Null-Implementierungen, deren lesende Abfragen neutral antworten, deren **Aktionen** aber mit `HostFeatureUnavailableException` scheitern. Die ältere Nachsicht (`NullBackupService` & Co. tun folgenlos nichts) wäre hier gefährlich: ein folgenlos „erfolgreicher" Install hätte nichts installiert, und der User sucht den Fehler im Spiel statt an der Host-Version. Bei neuen Baukästen danach entscheiden, ob ein Ausfall harmlos ist — nicht aus Gewohnheit no-op nehmen.
 - **GitHub-Releases laufen über `IGitHubService`, nirgends sonst.** Eine zweite Instanz des Dienstes verfehlt den Zweck: die Raten-Sperre ist gemeinsamer Zustand (Singleton im Container, per Einspritzung in den `PluginActivator`). Und die Sperre wird an der **Antwort** erkannt (429, oder 403 mit `x-ratelimit-remaining: 0`), nie an der Meldung einer Ausnahme — `EnsureSuccessStatusCode` nimmt den Antworttext nicht mit, weshalb die frühere Prüfung über `ex.Message.Contains("rate limit")` an drei Stellen toter Code war.

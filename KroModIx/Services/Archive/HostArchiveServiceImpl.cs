@@ -121,29 +121,12 @@ public sealed class HostArchiveServiceImpl : IArchiveService
         WriteEntry(entry, destinationFile);
     }
 
+    /// <summary>Delegiert an <see cref="ArchivePathSafety"/> — der
+    /// Algorithmus liegt seit v1.32.0 in den Contracts, damit Host,
+    /// Test-Attrappen und Plugins, die Pfade selbst zusammenbauen, nicht
+    /// drei Kopien davon pflegen.</summary>
     public bool TryResolveSafe(string root, string relative, out string destination)
-    {
-        destination = "";
-        if (string.IsNullOrWhiteSpace(relative)) return false;
-        if (HasDriveLetter(relative)) return false;
-        var rel = relative.Replace('\\', Path.DirectorySeparatorChar)
-                          .Replace('/', Path.DirectorySeparatorChar);
-        if (Path.IsPathRooted(rel)) return false;
-        var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)
-                       + Path.DirectorySeparatorChar;
-        string full;
-        try { full = Path.GetFullPath(Path.Combine(rootFull, rel)); }
-        catch { return false; }
-        if (!full.StartsWith(rootFull, StringComparison.Ordinal)) return false;
-        destination = full;
-        return true;
-    }
-
-    /// <summary><c>C:\…</c> oder <c>C:/…</c> am Anfang — unabhängig davon,
-    /// was die laufende Plattform für absolut hält.</summary>
-    private static bool HasDriveLetter(string path)
-        => path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':'
-           && (path[2] == '\\' || path[2] == '/');
+        => ArchivePathSafety.TryResolve(root, relative, out destination);
 
     private static void WriteEntry(IArchiveEntry entry, string destination)
     {

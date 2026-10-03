@@ -6,6 +6,59 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.32.0 — der Ausbruch-Schutz als Funktion, und ein TestKit-Paket (2026-10-03):**
+
+Beim Umbau des ersten Plugin-Installers auf `IHostServices.Archives` stand
+die Frage im Weg: das Plugin-Testprojekt kennt nur die Contracts, nicht die
+Host-App. Also eine Attrappe — und damit eine **neunte** Kopie des
+Zip-Slip-Schutzes, in genau dem Projekt, das beweisen soll, dass der Schutz
+greift. Zwei Antworten darauf:
+
+- **`ArchivePathSafety` in den Contracts.** Der Schutz ist eine reine
+  Rechnung: kein Zustand, keine Abhängigkeit, keine laufende Anwendung.
+  Er hat im Host-Dienst nichts verloren. Jetzt rufen ihn alle drei Stellen
+  auf — `HostArchiveServiceImpl`, die Attrappe, und ein Plugin, das seine
+  Zielpfade selbst zusammenbaut. Ein Test hält das fest
+  (`AlleDreiStellenAntwortenGleich`): baut später jemand eine eigene Kopie
+  ein, fällt es hier auf und nicht in einem Plugin-Test, der grün bleibt.
+- **`KroModIx.Plugin.TestKit` als zweites Paket** aus demselben Tag:
+  `FakeArchiveService`, `FakeUnrealPakService`, `FakeGitHubService`. Sie
+  lagen schon im Icarus-Testprojekt; acht weitere Kopien davon wären
+  dieselbe Doppelung gewesen, die dieser Sprint abschafft. Das TestKit wird
+  ausgeliefert und deshalb wie Auslieferungs-Code geprüft (`TestKitFakeTests`).
+
+**Der Ausbruch ist jetzt gemessen, nicht hergeleitet.** Vorher stand in der
+Migrations-Liste nur, dass `Contains("..")` nicht reichen *kann*. Am
+Cyberpunk-Installer nachgefahren, mit einem ZIP, dessen zweiter Eintrag
+`/tmp/ausserhalb.txt` heißt:
+
+```
+MESSUNG: Install.Success = True, Dateien = 2
+MESSUNG: Datei ausserhalb des InstallDir vorhanden = True
+MESSUNG: Inhalt = UEBERNOMMEN
+```
+
+Der Eintragsname enthält kein `..`, kommt also durch den Test, und
+`Path.Combine(installDir, "/tmp/ausserhalb.txt")` gibt `/tmp/ausserhalb.txt`
+zurück — das Zielverzeichnis wird verworfen. Der Install meldete Erfolg.
+Dieselbe Lücke in SevenDaysToDie, CaptainOfIndustry und ScheduleI.
+
+**Dabei eine Fehlentscheidung von v1.30.0 zurückgenommen.**
+`NullArchiveService.TryResolveSafe` gab pauschal `false` zurück, begründet
+mit „das ist die sichere Richtung für einen ausgefallenen Schutz". Das war
+falsch gedacht: der Schutz fällt nicht aus, er rechnet. Für ein Plugin auf
+einem Host &lt; v1.30.0 hieß das: jeder Pfad abgelehnt, nichts geschrieben,
+keine Meldung — kein Schutz, sondern ein Totalausfall. Jetzt rechnet auch
+die Null-Implementierung richtig; was wirklich einen Host braucht, das
+Auspacken, wirft weiter.
+
+Die Laufwerksbuchstaben-Prüfung ist dabei strenger geworden: früher musste
+nach `C:` ein Trenner folgen, jetzt nicht mehr. `C:evil.dll` ist auf Windows
+laufwerks-relativ und löst gegen das aktuelle Verzeichnis von C: auf — also
+ebenfalls ein Ausbruch. Als Fall in der Tabelle.
+
+Suite bei 306.
+
 **Host v1.31.0 — GitHub-Releases als Baukasten, und ein toter Code-Pfad entdeckt (2026-10-03):**
 
 Der dritte Schritt der Konsolidierung. Gemessen über alle Repos: **sieben**
