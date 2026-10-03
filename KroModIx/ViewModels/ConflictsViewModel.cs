@@ -21,7 +21,7 @@ public sealed partial class ConflictsViewModel : ObservableObject
 
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _busy;
-    public string GameHeader => $"⚠  Konflikte fuer „{_gameName}\"";
+    public string GameHeader => $"⚠  Konflikte fuer „{_gameName}“";
 
     public ConflictsViewModel(IConflictScanner scanner, string gameKey, string gameName)
     {

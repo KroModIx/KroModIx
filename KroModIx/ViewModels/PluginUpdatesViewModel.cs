@@ -219,7 +219,7 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
 
         bool ok = await _dialogs.ConfirmAsync(
             "Plugin deinstallieren",
-            $"„{row.DisplayName}\" (v{row.Version}) wirklich deinstallieren?\n\n" +
+            $"„{row.DisplayName}“ (v{row.Version}) wirklich deinstallieren?\n\n" +
             "Der Plugin-Ordner sowie Cache und Config des Plugins werden gelöscht. " +
             "Die geladene Assembly bleibt bis zum App-Neustart im Prozess — " +
             "Plugin-Tabs verschwinden erst nach Neustart.",

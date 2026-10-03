@@ -25,7 +25,7 @@ public sealed partial class BackupsViewModel : ObservableObject
 
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _busy;
-    public string GameHeader => $"🗄  Backups fuer „{_gameName}\"";
+    public string GameHeader => $"🗄  Backups fuer „{_gameName}“";
 
     public BackupsViewModel(IBackupService backup, PluginActivator activator,
         string gameKey, string gameName)
@@ -75,7 +75,7 @@ public sealed partial class BackupsViewModel : ObservableObject
         {
             var ok = await _backup.RestoreSnapshotAsync(row.Snapshot.Id).ConfigureAwait(true);
             StatusMessage = ok
-                ? $"✅ „{row.Snapshot.Label}\" zurueckgespielt (vorheriger Zustand als .pre-restore- daneben gesichert)."
+                ? $"✅ „{row.Snapshot.Label}“ zurueckgespielt (vorheriger Zustand als .pre-restore- daneben gesichert)."
                 : $"❌ Restore fehlgeschlagen — Details im Log.";
         }
         finally { Busy = false; }
@@ -90,7 +90,7 @@ public sealed partial class BackupsViewModel : ObservableObject
         {
             var ok = await _backup.DeleteSnapshotAsync(row.Snapshot.Id).ConfigureAwait(true);
             if (ok) Rows.Remove(row);
-            StatusMessage = ok ? $"🗑 „{row.Snapshot.Label}\" geloescht."
+            StatusMessage = ok ? $"🗑 „{row.Snapshot.Label}“ geloescht."
                                : "❌ Loeschen fehlgeschlagen.";
         }
         finally { Busy = false; }
