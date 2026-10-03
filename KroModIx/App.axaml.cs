@@ -109,6 +109,10 @@ public partial class App : Application
         services.AddSingleton<NotificationSinkImpl>();
         services.AddSingleton<INotificationSink>(sp => sp.GetRequiredService<NotificationSinkImpl>());
         services.AddSingleton<StatusProgressCoordinator>();
+        // v1.31.0: EINE Instanz fuer alle Verbraucher — die Raten-Sperre
+        // der GitHub-API ist gemeinsamer Zustand.
+        services.AddSingleton<KroModIx.Plugin.Contracts.IGitHubService,
+            KroModIx.Services.GitHub.HostGitHubServiceImpl>();
         services.AddSingleton<PluginRegistryScanner>();
         services.AddSingleton<PluginActivationPlanner>();
         services.AddSingleton<PluginActivator>();

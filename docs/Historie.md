@@ -6,6 +6,62 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.31.0 — GitHub-Releases als Baukasten, und ein toter Code-Pfad entdeckt (2026-10-03):**
+
+Der dritte Schritt der Konsolidierung. Gemessen über alle Repos: **sieben**
+Stellen holten das neueste GitHub-Release selbst — dreimal im Host
+(`HostUpdateService`, `PluginUpdateService`, `PluginInstaller`) und viermal
+in Plugins (UE4SS-Bootstrap in Icarus, BepInEx in Dyson Sphere Program,
+MelonLoader in Schedule I, Update-Prüfung in Captain of Industry).
+
+- **`IHostServices.GitHub`** (`IGitHubService`) — neueste stabile Ausgabe,
+  Ausgabenliste, und `FindLatestAssetAsync` mit Prädikat auf den Dateinamen.
+  Dazu `BuildAssetUrl` für den Fall, dass nur der Tag bekannt ist.
+- **Zwei Wege, einer ohne Limit.** Erst die API; greift die Raten-Sperre,
+  schaltet der Dienst auf den Umleitungs-Pfad um (ein Aufruf von
+  `github.com/<repo>/releases/latest` ohne Folgen der Umleitung verrät den
+  Tag im `Location`-Kopf). Das Ergebnis trägt dann `FromRedirectChase` —
+  der Baukasten gibt nicht vor, eine Dateiliste zu haben, die er nicht
+  abrufen konnte.
+- **Die Sperre gilt für alle Aufrufer gemeinsam.** Das ist der eigentliche
+  Gewinn: vorher entdeckte jeder der sieben Verbraucher das Limit für sich
+  und verbrannte dabei eine Anfrage. Jetzt merkt der Dienst es einmal und
+  läuft 65 Minuten direkt über den Umleitungs-Pfad. Als Singleton im
+  Container und per Einspritzung in den `PluginActivator` — eine zweite
+  Instanz würde den Zweck verfehlen.
+- **Die Plugin-Bootstraps gewinnen mehr als eine Zeile.** Sie wichen bisher
+  auf eine *fest hinterlegte* URL aus, die mit jeder neuen Loader-Ausgabe
+  weiter veraltet. Der Umleitungs-Pfad liefert statt dessen immer den
+  aktuellen Tag.
+
+**Dabei einen toten Code-Pfad gefunden, mit Messung.** Alle drei
+Host-Stellen prüften die Raten-Sperre so:
+
+```csharp
+catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden
+    && ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+```
+
+Das kann **nie** zutreffen. `GetFromJsonAsync` ruft intern
+`EnsureSuccessStatusCode`, und dessen Ausnahme-Meldung lautet ausschließlich
+„Response status code does not indicate success: 403 (Forbidden)." — der
+Antworttext mit dem Hinweis auf das Limit steht nicht darin. Nachgemessen
+mit einem Attrappen-Handler. Die Sperre war also toter Code: jeder
+Verbraucher fragte bei jeder Prüfung die API, auch wenn das Limit längst
+erreicht war, und fiel dann still auf den Zwischenspeicher zurück.
+
+Der Baukasten prüft stattdessen die **Antwort**: 429, oder 403 zusammen mit
+`x-ratelimit-remaining: 0`. Ein 403 mit noch offenem Kontingent (fehlende
+Rechte, privates Repo) löst die Sperre bewusst nicht aus — sonst blockiert
+ein einzelnes Repo eine Stunde lang alle anderen. Beide Fälle als Test.
+
+Dazu eine HTTP-Nahtstelle (`Func<bool, HttpMessageHandler>`, nur intern):
+die beiden Wege und die Dateiauswahl sind genau die Logik, die hier
+schiefgehen kann, und ein Test, der dafür ins Netz greift, ist weder
+schnell noch verlässlich.
+
+18 neue Tests, Suite bei 276.
+
 **Host v1.30.0 — drei Baukästen aus dem Icarus-Plugin in den Host (2026-10-03):**
 
 Die Gegenprobe zu Kernprinzip 4, diesmal mit Zahlen statt Gefühl. Gemessen am

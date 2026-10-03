@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -11,6 +12,7 @@ using System.Runtime.Versioning;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using KroModIx.Plugin.Contracts;
 using NLog;
 
 namespace KroModIx.Services;
@@ -40,6 +42,13 @@ public sealed class HostUpdateService
 
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
+    private readonly IGitHubService _gitHub;
+
+    /// <param name="gitHub">v1.31.0: die Release-Suche kommt aus dem
+    /// Baukasten. Vorher trug diese Klasse eine eigene Kopie von API-Weg und
+    /// Umleitungs-Pfad — eine von sieben.</param>
+    public HostUpdateService(IGitHubService gitHub) => _gitHub = gitHub;
+
     private UpdateCheckResult? _cached;
 
     public string CurrentVersion { get; } = ReadInformationalVersion();
@@ -49,36 +58,35 @@ public sealed class HostUpdateService
         if (_cached is not null) return _cached;
 
         var sw = Stopwatch.StartNew();
-        string url = $"https://api.github.com/repos/{Owner}/{Repo}/releases/latest";
-        Log.Info("Update-Check gegen {Url}", url);
 
-        string? latestTag = null;
-        string? releaseUrl = null;
-        string? assetUrl = null;
-        string? assetName = null;
+        string? latestTag = null, releaseUrl = null, assetUrl = null, assetName = null;
 
-        try
+        var release = await _gitHub.GetLatestReleaseAsync($"{Owner}/{Repo}", ct)
+            .ConfigureAwait(false);
+        if (release is not null)
         {
-            using var http = BuildHttpClient(timeoutSeconds: 15);
-            var release = await http.GetFromJsonAsync<GithubRelease>(url, ct).ConfigureAwait(false);
-            latestTag = release?.TagName?.TrimStart('v');
-            releaseUrl = release?.HtmlUrl;
-            var asset = release is not null ? SelectAsset(release) : null;
-            assetUrl = asset?.BrowserDownloadUrl;
+            latestTag = release.Version;
+            releaseUrl = release.HtmlUrl;
+            var asset = SelectAsset(release.Assets);
+            assetUrl = asset?.DownloadUrl;
             assetName = asset?.Name;
-        }
-        catch (Exception ex)
-        {
-            Log.Warn(ex, "Update-Check API-Weg fehlgeschlagen — versuche Redirect-Chase");
-            // v1.19.4: Rate-Limit-Fallback via Redirect-Chase (kein API-Call).
-            // Analog PluginInstaller v1.19.2 + PluginUpdateService v1.19.3.
-            var chased = await TryChaseLatestAsync(ct).ConfigureAwait(false);
-            if (chased is not null)
+
+            // Kam die Ausgabe ueber den Umleitungs-Pfad (Raten-Sperre), gibt
+            // es keine Dateiliste. Dann den Namen aus der Konvention des
+            // eigenen Release-Workflows bilden — verifiziert gegen
+            // gh api repos/KroModIx/KroModIx/releases/latest:
+            //   KroModIx-{ver}-win-x64.zip
+            //   KroModIx-{ver}-x86_64.AppImage
+            //   KroModIx-{ver}-linux-x64.tar.gz
+            if (assetUrl is null && release.FromRedirectChase)
             {
-                latestTag = chased.Value.Tag;
-                releaseUrl = chased.Value.ReleaseUrl;
-                assetUrl = chased.Value.AssetUrl;
-                assetName = chased.Value.AssetName;
+                assetName = OperatingSystem.IsWindows()
+                    ? $"KroModIx-{release.Version}-win-x64.zip"
+                    : OperatingSystem.IsLinux()
+                        ? $"KroModIx-{release.Version}-x86_64.AppImage"
+                        : null;
+                if (assetName is not null)
+                    assetUrl = _gitHub.BuildAssetUrl($"{Owner}/{Repo}", release.Tag, assetName);
             }
         }
 
@@ -101,55 +109,6 @@ public sealed class HostUpdateService
     /// Rate-Limit. Bei fehlender/exotischer Plattform bleibt AssetUrl null,
     /// der User bekommt dann nur den Release-Seiten-Link statt Self-Update-
     /// Button (siehe AboutWindow-Panel).</summary>
-    private static async Task<(string Tag, string ReleaseUrl, string? AssetUrl, string? AssetName)?>
-        TryChaseLatestAsync(CancellationToken ct)
-    {
-        try
-        {
-            var handler = new HttpClientHandler
-            {
-                Proxy = WebRequest.DefaultWebProxy,
-                DefaultProxyCredentials = CredentialCache.DefaultCredentials,
-                AllowAutoRedirect = false,
-            };
-            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd($"{ExeName}-UpdateCheck");
-
-            var latestUrl = $"https://github.com/{Owner}/{Repo}/releases/latest";
-            using var resp = await http.GetAsync(latestUrl, ct).ConfigureAwait(false);
-            var loc = resp.Headers.Location?.ToString() ?? "";
-            var idx = loc.LastIndexOf("/tag/", StringComparison.Ordinal);
-            if (idx < 0) { Log.Debug("Redirect-Chase: Location ohne /tag/-Segment: {Loc}", loc); return null; }
-            var tag = loc[(idx + "/tag/".Length)..].TrimEnd('/');
-            var version = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag[1..] : tag;
-
-            // Konventions-Asset-Namen fuer den Host (Release-Workflow-Naming,
-            // verifiziert via gh api repos/KroModIx/KroModIx/releases/latest):
-            //   KroModIx-{ver}-win-x64.zip
-            //   KroModIx-{ver}-linux-x64.tar.gz
-            //   KroModIx-{ver}-x86_64.AppImage
-            // Windows/AppImage bevorzugt (Self-Update-Support). Linux-tar.gz
-            // ist Fallback wenn AppImage nicht existiert (kann bei manchen
-            // Distros/Bazzite bevorzugt sein).
-            string? assetName = null, assetUrl = null;
-            if (OperatingSystem.IsWindows())
-                assetName = $"KroModIx-{version}-win-x64.zip";
-            else if (OperatingSystem.IsLinux())
-                assetName = $"KroModIx-{version}-x86_64.AppImage";
-            if (assetName is not null)
-                assetUrl = $"https://github.com/{Owner}/{Repo}/releases/download/{tag}/{assetName}";
-
-            var releaseUrl = $"https://github.com/{Owner}/{Repo}/releases/tag/{tag}";
-            Log.Info("Redirect-Chase erfolgreich: Tag={Tag}, Asset={Asset}", tag, assetName ?? "<keins>");
-            return (version, releaseUrl, assetUrl, assetName);
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "Redirect-Chase-Fallback fehlgeschlagen");
-            return null;
-        }
-    }
-
     public async Task<string> DownloadAssetAsync(string url, string destinationPath,
         IProgress<double>? progress = null, CancellationToken ct = default)
     {
@@ -303,19 +262,22 @@ setsid {Escape(Path.Combine(baseDir, ExeName))} >/dev/null 2>&1 &
         return Path.Combine("/tmp", "modmanager-update.log");
     }
 
-    private static GithubAsset? SelectAsset(GithubRelease release)
+    /// <summary>Welche Release-Datei zu dieser Plattform passt. Windows:
+    /// das win-x64-ZIP. Linux: AppImage bevorzugt (Selbst-Update per
+    /// Datei-Austausch), tar.gz als Ausweichpfad.</summary>
+    private static GitHubAsset? SelectAsset(IReadOnlyList<GitHubAsset> assets)
     {
-        if (release.Assets is null || release.Assets.Count == 0) return null;
+        if (assets.Count == 0) return null;
         if (OperatingSystem.IsWindows())
-            return release.Assets.FirstOrDefault(a =>
-                a.Name?.Contains("win-x64", StringComparison.OrdinalIgnoreCase) == true
+            return assets.FirstOrDefault(a =>
+                a.Name.Contains("win-x64", StringComparison.OrdinalIgnoreCase)
                 && a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
         if (OperatingSystem.IsLinux())
         {
-            return release.Assets.FirstOrDefault(a =>
-                    a.Name?.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase) == true)
-                ?? release.Assets.FirstOrDefault(a =>
-                    a.Name?.Contains("linux-x64", StringComparison.OrdinalIgnoreCase) == true
+            return assets.FirstOrDefault(a =>
+                    a.Name.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase))
+                ?? assets.FirstOrDefault(a =>
+                    a.Name.Contains("linux-x64", StringComparison.OrdinalIgnoreCase)
                     && a.Name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase));
         }
         return null;
@@ -351,16 +313,5 @@ setsid {Escape(Path.Combine(baseDir, ExeName))} >/dev/null 2>&1 &
             ?? "0.0.0";
     }
 
-    private sealed class GithubRelease
-    {
-        [JsonPropertyName("tag_name")] public string? TagName { get; set; }
-        [JsonPropertyName("html_url")] public string? HtmlUrl { get; set; }
-        [JsonPropertyName("assets")] public List<GithubAsset>? Assets { get; set; }
-    }
 
-    private sealed class GithubAsset
-    {
-        [JsonPropertyName("name")] public string? Name { get; set; }
-        [JsonPropertyName("browser_download_url")] public string? BrowserDownloadUrl { get; set; }
-    }
 }

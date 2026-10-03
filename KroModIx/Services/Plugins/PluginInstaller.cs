@@ -35,6 +35,13 @@ public sealed class PluginInstaller
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
+    private readonly IGitHubService _gitHub;
+
+    /// <param name="gitHub">v1.31.0: die Release-Suche kommt aus dem
+    /// Baukasten. Vorher trug diese Klasse eine eigene Kopie von API-Weg und
+    /// Umleitungs-Pfad — eine von sieben.</param>
+    public PluginInstaller(IGitHubService gitHub) => _gitHub = gitHub;
+
     /// <summary>Sucht das neueste Release-ZIP im referenzierten GitHub-Repo,
     /// lädt es herunter und entpackt es in einen frischen Plugin-Ordner.</summary>
     public async Task<PluginInstallResult> InstallLatestAsync(
@@ -50,23 +57,34 @@ public sealed class PluginInstaller
 
         var repo = entry.UpdateSource.Repo;
         using var http = BuildHttpClient(timeoutSeconds: 60, allowAutoRedirect: true);
-        using var redirectHttp = BuildHttpClient(timeoutSeconds: 15, allowAutoRedirect: false);
 
-        // (1) API-Weg — nutzt GITHUB_TOKEN wenn gesetzt (5000/h).
-        var (downloadUrl, assetName, tag, apiError) =
-            await TryFindAssetViaApiAsync(http, repo, ct).ConfigureAwait(false);
+        // Der Baukasten geht selbst erst ueber die API und weicht bei
+        // Raten-Sperre auf den Umleitungs-Pfad aus.
+        var found = await _gitHub.FindLatestAssetAsync(repo,
+            name => name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase), ct)
+            .ConfigureAwait(false);
 
-        // (2) Fallback — Redirect-Chase (kein API-Call, kein Rate-Limit).
+        string? downloadUrl = found?.Asset.DownloadUrl;
+        string? assetName = found?.Asset.Name;
+        string? tag = found?.Release.Tag;
+        string? apiError = found is null ? "kein passendes ZIP-Asset gefunden" : null;
+
+        // Kam die Ausgabe ueber den Umleitungs-Pfad, gibt es keine
+        // Dateiliste — dann den Namen aus der Konvention des
+        // Kroste-Plugin-Release-Workflows bilden:
+        // <RepoBasename>-<version>.zip
         if (downloadUrl is null)
         {
-            Log.Info("Plugin-Install: API-Weg gescheitert ({Reason}) — versuche Redirect-Chase",
-                apiError);
-            var chased = await TryFindAssetViaRedirectAsync(redirectHttp, repo, ct).ConfigureAwait(false);
-            if (chased.Url is not null)
+            var release = await _gitHub.GetLatestReleaseAsync(repo, ct).ConfigureAwait(false);
+            if (release is not null)
             {
-                downloadUrl = chased.Url;
-                assetName = chased.AssetName;
-                tag = chased.Tag;
+                var slashIdx = repo.LastIndexOf('/');
+                var repoBase = slashIdx >= 0 ? repo[(slashIdx + 1)..] : repo;
+                assetName = $"{repoBase}-{release.Version}.zip";
+                downloadUrl = _gitHub.BuildAssetUrl(repo, release.Tag, assetName);
+                tag = release.Tag;
+                Log.Info("Plugin-Install: Asset-Name aus der Konvention gebildet ({Asset})",
+                    assetName);
             }
         }
 
@@ -135,83 +153,9 @@ public sealed class PluginInstaller
         }
     }
 
-    // ---- API-Weg ----
-
-    private async Task<(string? Url, string? AssetName, string? Tag, string? Error)>
-        TryFindAssetViaApiAsync(HttpClient http, string repo, CancellationToken ct)
-    {
-        var apiUrl = $"https://api.github.com/repos/{repo}/releases/latest";
-        Log.Info("Plugin-Install: API {Url}", apiUrl);
-        try
-        {
-            using var resp = await http.GetAsync(apiUrl, ct).ConfigureAwait(false);
-            if (!resp.IsSuccessStatusCode)
-                return (null, null, null, $"HTTP {(int)resp.StatusCode}");
-
-            var release = await resp.Content.ReadFromJsonAsync<GhRelease>(cancellationToken: ct)
-                .ConfigureAwait(false);
-            if (release?.Assets is null || release.Assets.Count == 0)
-                return (null, null, null, "Kein Release oder keine Assets");
-
-            var zip = release.Assets.FirstOrDefault(a =>
-                a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
-            if (zip?.BrowserDownloadUrl is null)
-                return (null, null, null, "Kein ZIP-Asset im Release");
-
-            return (zip.BrowserDownloadUrl, zip.Name, release.TagName, null);
-        }
-        catch (Exception ex)
-        {
-            return (null, null, null, ex.Message);
-        }
-    }
-
-    // ---- Redirect-Chase-Weg ----
-
-    /// <summary>Ruft <c>github.com/{Repo}/releases/latest</c> ohne
-    /// AutoRedirect und liest den Tag aus dem Location-Header:
-    /// <c>Location: /{Owner}/{Repo}/releases/tag/vX.Y.Z</c>. Kein API-Call,
-    /// kein Rate-Limit. Danach wird die konventions-basierte CDN-Download-URL
-    /// gebaut: <c>/releases/download/{tag}/{RepoBasename}-{version}.zip</c>
-    /// — der Kroste-Plugin-Release-Workflow packt das Asset mit exakt
-    /// diesem Namen.</summary>
-    private async Task<(string? Url, string? AssetName, string? Tag)>
-        TryFindAssetViaRedirectAsync(HttpClient http, string repo, CancellationToken ct)
-    {
-        var latestUrl = $"https://github.com/{repo}/releases/latest";
-        try
-        {
-            using var resp = await http.GetAsync(latestUrl, ct).ConfigureAwait(false);
-            // GitHub liefert 302 mit Location auf /releases/tag/vX.Y.Z.
-            var loc = resp.Headers.Location?.ToString() ?? "";
-            var idx = loc.LastIndexOf("/tag/", StringComparison.Ordinal);
-            if (idx < 0)
-            {
-                Log.Debug("Plugin-Install: Redirect-Location ohne /tag/-Segment: {Loc}", loc);
-                return (null, null, null);
-            }
-            var tag = loc[(idx + "/tag/".Length)..].TrimEnd('/');
-            var version = tag.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? tag[1..] : tag;
-
-            // Repo-Basename = alles nach dem letzten '/'. Fuer
-            // "KroModIx/KroModIx.Plugin.ScheduleI" → "KroModIx.Plugin.ScheduleI".
-            var slashIdx = repo.LastIndexOf('/');
-            var repoBase = slashIdx >= 0 ? repo[(slashIdx + 1)..] : repo;
-            var assetName = $"{repoBase}-{version}.zip";
-            var url = $"https://github.com/{repo}/releases/download/{tag}/{assetName}";
-            Log.Info("Plugin-Install: Redirect-Chase Tag={Tag}, Asset={Asset}", tag, assetName);
-            return (url, assetName, tag);
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "Plugin-Install: Redirect-Chase fehlgeschlagen");
-            return (null, null, null);
-        }
-    }
-
     // ---- Shared HttpClient-Setup ----
 
-    private static HttpClient BuildHttpClient(int timeoutSeconds, bool allowAutoRedirect)
+    private static HttpClient BuildHttpClient(int timeoutSeconds, bool allowAutoRedirect = true)
     {
         var handler = new HttpClientHandler
         {
@@ -239,18 +183,6 @@ public sealed class PluginInstaller
         return new string(chars.ToArray());
     }
 
-    private sealed class GhRelease
-    {
-        [JsonPropertyName("tag_name")] public string? TagName { get; set; }
-        [JsonPropertyName("html_url")] public string? HtmlUrl { get; set; }
-        [JsonPropertyName("assets")] public System.Collections.Generic.List<GhAsset>? Assets { get; set; }
-    }
-
-    private sealed class GhAsset
-    {
-        [JsonPropertyName("name")] public string? Name { get; set; }
-        [JsonPropertyName("browser_download_url")] public string? BrowserDownloadUrl { get; set; }
-    }
 }
 
 /// <summary>Ergebnis einer Plugin-Installation. <see cref="ErrorMessage"/> ist

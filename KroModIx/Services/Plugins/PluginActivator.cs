@@ -47,6 +47,13 @@ public sealed class PluginActivator
     private readonly IArchiveService _archives = new Archive.HostArchiveServiceImpl();
     private readonly IUnrealPakService _unrealPaks = new Pak.HostUnrealPakServiceImpl();
     private readonly IWinePrefixService _winePrefix = new Wine.HostWinePrefixServiceImpl();
+    /// <summary>v1.31.0: <b>eingespritzt, nicht selbst angelegt.</b> Die
+    /// Raten-Sperre der GitHub-API ist gemeinsamer Zustand — eine zweite
+    /// Instanz neben der aus dem Container wuerde das Limit getrennt
+    /// entdecken und damit den Zweck des Baukastens verfehlen. Die drei
+    /// anderen Baukaesten unten sind zustandslos und duerfen deshalb hier
+    /// entstehen.</summary>
+    private readonly IGitHubService _gitHub;
     private readonly StatusProgressCoordinator _progress;
     private readonly ManualGamesService _manualGames;
 
@@ -80,7 +87,8 @@ public sealed class PluginActivator
         IDescriptionParser descriptions,
         IBackupService backup,
         StatusProgressCoordinator progress,
-        ManualGamesService manualGames)
+        ManualGamesService manualGames,
+        IGitHubService gitHub)
     {
         _steam = steam;
         _secrets = secrets;
@@ -94,6 +102,7 @@ public sealed class PluginActivator
         _images = images;
         _descriptions = descriptions;
         _backup = backup;
+        _gitHub = gitHub;
         _progress = progress;
         _manualGames = manualGames;
     }
@@ -160,7 +169,7 @@ public sealed class PluginActivator
                 manifest.Id, _secrets, _dialogs, _notifications, _localization, _shell, _ai,
                 _nexus, title => _progress.Begin(title), _manualGames, UpdateBadges, _workshop, _images,
                 _descriptions, _backup, Conflicts,
-                _archives, _unrealPaks, _winePrefix);
+                _archives, _unrealPaks, _winePrefix, _gitHub);
 
             var detectedGames = BuildDetectedGames(decision);
             await instance.InitializeAsync(host, detectedGames, ct).ConfigureAwait(false);

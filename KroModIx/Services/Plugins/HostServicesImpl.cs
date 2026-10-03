@@ -42,7 +42,8 @@ public sealed class HostServicesImpl : IHostServices
         IConflictScanner? conflicts = null,
         IArchiveService? archives = null,
         IUnrealPakService? unrealPaks = null,
-        IWinePrefixService? winePrefix = null)
+        IWinePrefixService? winePrefix = null,
+        IGitHubService? gitHub = null)
     {
         _pluginId = pluginId;
         Logger = LogManager.GetLogger($"Plugin.{pluginId}");
@@ -61,6 +62,7 @@ public sealed class HostServicesImpl : IHostServices
         Archives = archives ?? NullArchiveService.Instance;
         UnrealPaks = unrealPaks ?? NullUnrealPakService.Instance;
         WinePrefix = winePrefix ?? NullWinePrefixService.Instance;
+        GitHub = gitHub ?? NullGitHubService.Instance;
         _progressFactory = progressFactory;
         _manualGames = manualGames;
         _updateBadges = updateBadges;
@@ -87,6 +89,7 @@ public sealed class HostServicesImpl : IHostServices
     public IArchiveService Archives { get; }
     public IUnrealPakService UnrealPaks { get; }
     public IWinePrefixService WinePrefix { get; }
+    public IGitHubService GitHub { get; }
     public IImageDecoder Images { get; }
     public IDescriptionParser Descriptions { get; }
     public IBackupService Backup { get; }

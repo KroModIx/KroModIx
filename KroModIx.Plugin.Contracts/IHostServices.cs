@@ -123,6 +123,15 @@ public interface IHostServices
     /// Hosts default = <see cref="NullWinePrefixService.Instance"/>.</summary>
     IWinePrefixService WinePrefix => NullWinePrefixService.Instance;
 
+    /// <summary>Zentraler GitHub-Releases-Baukasten (v1.31.0+). Neueste
+    /// Ausgabe eines Repos und ihre Dateien finden — mit gemeinsamer
+    /// Raten-Sperre und einem Ausweichpfad ohne API-Aufruf. Wer einen
+    /// Mod-Loader von GitHub holt (UE4SS, BepInEx, MelonLoader), nimmt das
+    /// hier statt einer fest hinterlegten URL, die veraltet. Bei aelteren
+    /// Hosts default = <see cref="NullGitHubService.Instance"/> (antwortet
+    /// leer — kein Update gefunden ist ein gueltiger Zustand).</summary>
+    IGitHubService GitHub => NullGitHubService.Instance;
+
     /// <summary>Startet einen benannten Progress-Scope (im Host-Statusbar sichtbar).
     /// Dispose beendet den Scope.</summary>
     IProgressScope BeginProgress(string title);
