@@ -6,6 +6,35 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.33.0 — `FakeHostServices` im TestKit (2026-10-03):**
+
+Beim ersten Plugin, dessen GitHub-Weg geprüft werden sollte, kam heraus,
+woran das bisher lag: `IHostServices` hat **zwölf** Pflichtglieder, und ein
+Plugin, das einen seiner Dienste gegen den Host testen will, musste sie alle
+selbst nachbauen. Der Preis dafür war, dass es keines tat — nachgemessen am
+03.10.2026 trug **kein einziges** Plugin-Repo eine `IHostServices`-Attrappe.
+Der GitHub-Weg des CoI-Update-Prüfers, der UE4SS-Bootstrap in Icarus,
+BepInEx in Dyson Sphere Program und MelonLoader in Schedule I waren
+durchweg ungetestet, obwohl in allen vier derselbe Fehler steckte: eine fest
+hinterlegte Ausweich-URL, die mit jeder neuen Loader-Ausgabe weiter
+veraltet.
+
+`FakeHostServices` im TestKit: alle Pflichtglieder harmlos belegt, die
+Baukästen als setzbare Eigenschaften, und `Notified` schreibt mit, was ein
+Plugin gemeldet hat — damit ein Test prüfen kann, dass ein Fehlschlag beim
+Nutzer ankommt und nicht nur im Protokoll landet.
+
+Zwei Voreinstellungen sind die ungefährliche Richtung und keine
+Nachlässigkeit: eine Rückfrage wird **abgelehnt** (ein Test, der
+versehentlich in einen Bestätigungsdialog läuft, bricht dort ab statt eine
+Löschung durchzuwinken), und die KI meldet sich als nicht erreichbar (das
+Plugin geht den Weg, den es auch beim Nutzer ohne eingerichteten Anbieter
+geht). Alles andere antwortet still statt zu werfen: ein Test soll an seiner
+Behauptung scheitern, nicht daran, dass das Plugin nebenbei eine Meldung
+anzeigen wollte.
+
+Suite bei 309.
+
 **Host v1.32.0 — der Ausbruch-Schutz als Funktion, und ein TestKit-Paket (2026-10-03):**
 
 Beim Umbau des ersten Plugin-Installers auf `IHostServices.Archives` stand

@@ -127,3 +127,70 @@ public class TestKitFakeTests
         Directory.Delete(tmp, true);
     }
 }
+
+/// <summary>Die <see cref="FakeHostServices"/> sind der Grund, dass vier
+/// Plugins ihren GitHub-Weg überhaupt testen können. Sie gehören damit
+/// selbst geprüft.</summary>
+public class FakeHostServicesTests
+{
+    [Fact]
+    public void AlleBaukaestenSindSetzbarUndVoreingestelltFolgenlos()
+    {
+        var host = new FakeHostServices();
+
+        host.Archives.Should().BeSameAs(NullArchiveService.Instance,
+            "voreingestellt die Null-Implementierung — ein Test, der Archive braucht, "
+            + "setzt sie bewusst");
+        host.GitHub.Should().BeSameAs(NullGitHubService.Instance);
+        host.UnrealPaks.Should().BeSameAs(NullUnrealPakService.Instance);
+
+        var gh = new FakeGitHubService();
+        host.GitHub = gh;
+        host.GitHub.Should().BeSameAs(gh);
+
+        Directory.Exists(host.PluginDataDir).Should().BeTrue("ein Plugin schreibt dort hinein");
+        Directory.Exists(host.PluginCacheDir).Should().BeTrue();
+    }
+
+    /// <summary>Was ein Plugin meldet, wird mitgeschrieben — sonst kann ein
+    /// Test nicht prüfen, dass ein Fehlschlag beim Nutzer ankommt und nicht
+    /// nur im Protokoll landet.</summary>
+    [Fact]
+    public void MeldungenWerdenMitgeschrieben()
+    {
+        var host = new FakeHostServices();
+        host.Notifications.Notify("UE4SS fehlt", NotificationLevel.Warning);
+        host.Notifications.Notify("fertig", NotificationLevel.Success);
+
+        host.Notified.Should().HaveCount(2);
+        host.Notified[0].Should().Be(("UE4SS fehlt", NotificationLevel.Warning));
+        host.Notified[1].Level.Should().Be(NotificationLevel.Success);
+    }
+
+    /// <summary>Zwei Voreinstellungen sind bewusst die ungefährliche
+    /// Richtung gewählt und keine Nachlässigkeit: eine Rückfrage wird
+    /// <b>abgelehnt</b>, damit ein Test, der versehentlich in einen
+    /// Bestätigungsdialog läuft, dort abbricht statt eine Löschung
+    /// durchzuwinken; und die KI meldet sich als nicht erreichbar, damit ein
+    /// Plugin den Weg geht, den es auch beim Nutzer ohne eingerichteten
+    /// Anbieter geht.</summary>
+    [Fact]
+    public async Task RueckfrageWirdAbgelehntUndKiMeldetSichAbwesend()
+    {
+        var host = new FakeHostServices();
+
+        (await host.Dialogs.ConfirmAsync("Löschen?", "Alle Mods entfernen?"))
+            .Should().BeFalse();
+        (await host.Dialogs.PickFileAsync("Datei wählen")).Should().BeNull();
+        (await host.Ai.IsAvailableAsync(TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+        host.Localization.CurrentIso.Should().Be("de");
+
+        // Nichts davon darf werfen — ein Test soll an seiner Behauptung
+        // scheitern, nicht daran, dass das Plugin nebenbei eine Meldung
+        // anzeigen oder einen Ordner oeffnen wollte.
+        host.Shell.OpenExternalUrl("https://example.invalid");
+        using (var p = host.BeginProgress("Test")) p.Report(0.5, "halb");
+        host.Secrets.Protect("geheim").Should().Be("geheim");
+    }
+}
