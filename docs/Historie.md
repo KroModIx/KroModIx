@@ -6,6 +6,51 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.34.0 — `ForeignManagerDetection`: ein Spielordner ist kein Alleinbesitz (2026-10-04):**
+
+Am 04.10.2026 hat ein Klick im Icarus-Plugin lmms zusammengeführtes
+Datentabellen-Pak aus `Content/Paks/mods/` entfernt — und damit lautlos die
+halbe Funktion einer gerade installierten Mod. Nicht kaputt, nur **weg**: die
+Quelle lag unversehrt in lmms Zwischenspeicher, nur der Verweis im Spielordner
+fehlte. Gesucht wurde der Fehler danach stundenlang im Spiel, in den
+Datentabellen und im Mod-Loader. Erst das eigene Protokoll hat es verraten:
+
+```
+19:34:27 INFO|PakInstallService|Icarus-Mod deinstalliert: .../zzz_LMM_Merged_P.pak
+19:34:31 INFO|GameLauncherService|Launch via Steam: steam://run/1149460
+```
+
+Das Icarus-Plugin hat das in v1.27.0 behoben. Nachgemessen über alle Repos
+war die Lage aber: **9 von 9 Plugins haben löschende Pfade, genau eines
+erkannte Verweise.** Also gehört die Erkennung dorthin, wo alle sie haben.
+
+**`ForeignManagerDetection` in die Contracts, nicht als Host-Dienst.** Wie
+`ArchivePathSafety` ist das Rechnung plus ein Blick ins Dateisystem: kein
+Zustand, keine Abhängigkeit, keine laufende Anwendung. Ein
+`IHostServices`-Glied hätte eine Null-Implementierung, eine Einspritzung und
+eine `minHostVersion`-Frage nach sich gezogen, ohne etwas zu gewinnen.
+
+- **Das Merkmal ist der Verweis, nicht der Name.** lmm legt seine Dateien als
+  Symlink in den Spielordner und hält sie im eigenen Zwischenspeicher; eine
+  von Hand hineinkopierte Mod ist eine gewöhnliche Datei. Damit trägt die
+  Erkennung auch für Manager, deren Namensschema niemand kennt. Dateien
+  **und** Ordner — manche Plugins verwalten Mod-Ordner.
+- **Der Besitzer kommt aus dem Ziel des Verweises** (`/lmm/`, `/r2modman/`,
+  `/vortex/`, …). Trifft kein Marker, bleibt die Angabe neutral: für die
+  Entscheidung „anfassen oder nicht" zählt, **dass** es fremd ist. Raten wäre
+  schlimmer als nicht wissen.
+- **Die Meldung braucht drei Angaben** — wer verwaltet, was verloren ginge, wo
+  man stattdessen hingreift. Das Fehlen genau dieser drei hat die Stunden
+  gekostet, deshalb liefert `Meldung()` sie und ein Test hält sie fest.
+- **Bekannte Grenze, benannt statt übersehen: Hardlinks fallen durch.** .NET
+  gibt die Zahl der Verweise auf eine Inode nicht heraus, und ein Hardlink ist
+  vom Original nicht zu unterscheiden. Werkzeuge, die hardlinken statt zu
+  verweisen, erwischt nur das Namensmuster.
+- **Ein Lesefehler deutet die Liste nicht um:** was nicht lesbar ist, gilt als
+  unser eigenes und verhält sich wie bisher.
+
+19 neue Tests, Suite bei 328.
+
 **Host v1.33.0 — `FakeHostServices` im TestKit (2026-10-03):**
 
 Beim ersten Plugin, dessen GitHub-Weg geprüft werden sollte, kam heraus,

@@ -178,6 +178,7 @@ Auth via `Authorization: Bearer <token>`. Doku im (privaten) Repo
 | GitHub-Releases-Baukasten (v1.31.0) | ✅ | `IHostServices.GitHub`: neueste Ausgabe und ihre Dateien finden, mit **gemeinsamer** Raten-Sperre und einem Ausweichpfad ohne API-Aufruf. Vorher taten das sieben Stellen getrennt — und ihre Sperren-Erkennung war nachweislich toter Code. |
 | Ausbruch-Schutz als Funktion + TestKit (v1.32.0) | ✅ | `ArchivePathSafety` in den Contracts — Host, Attrappe und Plugin rechnen mit derselben Funktion statt mit neun Kopien. Dazu `KroModIx.Plugin.TestKit` mit den Attrappen der Baukästen für die Plugin-Testprojekte. |
 | `FakeHostServices` im TestKit (v1.33.0) | ✅ | Zwölf Pflichtglieder von `IHostServices` harmlos belegt, die Baukästen setzbar. Vorher baute kein Plugin sie nach — und testete darum seinen GitHub-Weg nicht. |
+| Fremde Mod-Manager erkennen (v1.34.0) | ✅ | `ForeignManagerDetection` in den Contracts — was lmm, r2modman oder Vortex im Spielordner ausgeliefert hat, wird gelistet und nicht verändert. Vorher löschte ein Plugin so eine Datei auf Klick und sagte nichts dazu. |
 | App-Icon-Facelift (v1.17.0) | ✅ | `scripts/build_icon.py v2`: gestapelte Kroste-Gold-Cards + Stern-Akzent auf vertikalem Dark-Gradient — neu generiert (PNG 512×512 + ICO Multi-Res) |
 
 ## Entwicklung
