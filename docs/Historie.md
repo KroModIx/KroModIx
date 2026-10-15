@@ -6,6 +6,13 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.35.0 — Plugins dürfen Manual-Kacheln anlegen und abmelden (2026-10-15):**
+- **Anlass:** Ren'Py Assist soll ein Spiel aus einem Archiv selbst installieren und ein nicht mehr gespieltes wieder loswerden. Beides ging nicht: der Contract kannte nur `TrySetManualGameCover` und `TryRenameManualGame` — ein Plugin konnte eine Kachel ändern, aber keine erzeugen und keine entfernen.
+- **`IHostServices.TryAddManualGame(displayName, installDir, engine)`**: legt den Eintrag an, persistiert, blendet die Kachel sofort ein und meldet das Spiel über `OnGameAddedAsync` an alle passenden Plugins zurück — das aufrufende eingeschlossen. Lehnt ab, wenn der Ordner nicht existiert oder schon eine Kachel darauf zeigt; dieser Dedup gehört in den Host, nicht in jedes Plugin.
+- **`IHostServices.TryRemoveManualGame(installDir)`**: entfernt Eintrag, Cover-Override und Favoriten-Markierung. **Der Host fasst die Platte nicht an** — was dort gelöscht wird, entscheidet das Plugin, das die Ordnerstruktur seines Spiels kennt. Empfohlene Reihenfolge: erst löschen, dann abmelden; scheitert das Löschen, bleibt die Kachel stehen und der User sieht, dass etwas offen ist.
+- **`ManualGamesService.GameRemoved`** als Gegenstück zu `GameAdded`, plus Hörer in der Host-VM. Ohne das Event blieb eine vom Plugin abgemeldete Kachel bis zum nächsten Discovery-Refresh stehen und zeigte auf einen Ordner, den es nicht mehr gibt.
+- **2 neue Tests** (Event feuert mit dem entfernten Eintrag; feuert nicht bei unbekannter Id). Suite 330/330 gruen.
+
 **Host v1.34.0 — `ForeignManagerDetection`: ein Spielordner ist kein Alleinbesitz (2026-10-04):**
 
 Am 04.10.2026 hat ein Klick im Icarus-Plugin lmms zusammengeführtes

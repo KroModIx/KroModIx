@@ -56,4 +56,33 @@ public class ManualGamesServiceTests
         var svc2 = new ManualGamesService();
         svc2.All.Should().NotContain(g => g.Id == entry.Id);
     }
+
+    [Fact]
+    public void GameRemoved_feuert_mit_dem_entfernten_Eintrag()
+    {
+        // v1.35.0: ohne dieses Event blieb eine vom Plugin abgemeldete Kachel
+        // in der Sidebar stehen und zeigte auf einen Ordner, den es nicht mehr
+        // gibt — der Host erfuhr vom Remove erst beim naechsten Discovery-Lauf.
+        var svc = new ManualGamesService();
+        var entry = svc.Add("Zu entfernen", "/tmp/renpy-remove-test", engine: "renpy");
+
+        ManualGameEntry? fired = null;
+        svc.GameRemoved += (_, e) => fired = e;
+
+        Assert.True(svc.Remove(entry.Id));
+        Assert.NotNull(fired);
+        Assert.Equal(entry.Id, fired!.Id);
+        Assert.Equal("Zu entfernen", fired.DisplayName);
+    }
+
+    [Fact]
+    public void GameRemoved_feuert_nicht_bei_unbekannter_Id()
+    {
+        var svc = new ManualGamesService();
+        bool fired = false;
+        svc.GameRemoved += (_, _) => fired = true;
+
+        Assert.False(svc.Remove("gibtsnicht"));
+        Assert.False(fired);
+    }
 }

@@ -112,6 +112,30 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // geladene Plugins per OnGameAddedAsync benachrichtigen, damit sich
         // Watcher/Registry ohne App-Neustart aufs neue Spiel ausrichten. Muss
         // auf dem UI-Thread laufen weil _allGames + VisibleGames dort leben.
+        // v1.35.0: Gegenstueck zum GameAdded-Pfad. Ein Plugin kann ueber
+        // IHostServices.TryRemoveManualGame eine Kachel abmelden (Ren'Py
+        // Assist: „Spiel loeschen"); ohne diesen Hoerer blieb sie bis zum
+        // naechsten Discovery-Refresh stehen und zeigte auf einen Ordner,
+        // den es nicht mehr gibt.
+        _manual.GameRemoved += (_, entry) => Dispatcher.UIThread.Post(() =>
+        {
+            var key = $"manual:{entry.Id}";
+            var tile = _allGames.FirstOrDefault(g => g.Key == key);
+            if (tile is null) return;
+            _allGames.Remove(tile);
+            if (ReferenceEquals(SelectedGame, tile)) SelectedGame = null;
+            _settings.Update(set =>
+            {
+                set.FavoriteGameKeys?.Remove(key);
+                set.HiddenGameKeys?.Remove(key);
+                set.CustomGameCovers?.Remove(key);
+            });
+            ApplyFilterAndSort();
+            StatusText = $"'{entry.DisplayName}' entfernt.";
+            Log.Info("Sidebar-Kachel entfernt (vom Plugin abgemeldet): {Name} ({Key})",
+                entry.DisplayName, key);
+        });
+
         _manual.GameAdded += (_, entry) => Dispatcher.UIThread.Post(async () =>
         {
             var key = $"manual:{entry.Id}";

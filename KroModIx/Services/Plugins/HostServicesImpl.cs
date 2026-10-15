@@ -170,6 +170,50 @@ public sealed class HostServicesImpl : IHostServices
         return true;
     }
 
+    public bool TryAddManualGame(string displayName, string installDir, string? engine = null)
+    {
+        if (_manualGames is null) return false;
+        if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(installDir))
+            return false;
+        if (!Directory.Exists(installDir))
+        {
+            Logger.Warn("TryAddManualGame: {Dir} existiert nicht — abgelehnt", installDir);
+            return false;
+        }
+        // Doppelte Kacheln auf denselben Ordner waren in der Vergangenheit die
+        // Quelle verwaister Eintraege — der Dedup gehoert hierher, nicht ins
+        // aufrufende Plugin.
+        if (_manualGames.All.Any(g =>
+                string.Equals(g.InstallDir, installDir, StringComparison.OrdinalIgnoreCase)))
+        {
+            Logger.Warn("TryAddManualGame: auf {Dir} zeigt schon eine Kachel — abgelehnt", installDir);
+            return false;
+        }
+        // Add feuert GameAdded; die Host-VM haengt die Kachel ein und ruft
+        // OnGameAddedAsync auf den passenden Plugins.
+        var added = _manualGames.Add(displayName, installDir, engine: engine);
+        Logger.Info("Manual-Game vom Plugin angelegt: {Name} ({Dir}, engine={Engine})",
+            added.DisplayName, installDir, engine ?? "-");
+        return true;
+    }
+
+    public bool TryRemoveManualGame(string installDir)
+    {
+        if (_manualGames is null) return false;
+        if (string.IsNullOrWhiteSpace(installDir)) return false;
+        var entry = _manualGames.All.FirstOrDefault(g =>
+            string.Equals(g.InstallDir, installDir, StringComparison.OrdinalIgnoreCase));
+        if (entry is null)
+        {
+            Logger.Debug("TryRemoveManualGame: kein Manual-Eintrag für {Dir}", installDir);
+            return false;
+        }
+        var removed = _manualGames.Remove(entry.Id);
+        if (removed)
+            Logger.Info("Manual-Game vom Plugin entfernt: {Name} ({Dir})", entry.DisplayName, installDir);
+        return removed;
+    }
+
     public bool TrySetManualGameCover(string installDir, string coverPath)
     {
         if (_manualGames is null) return false;

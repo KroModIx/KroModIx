@@ -162,4 +162,40 @@ public interface IHostServices
     /// Contracts v1.10.3+ (bei älteren Hosts default = no-op — Sidebar
     /// verwaist bis zum nächsten Neustart).</summary>
     bool TryRenameManualGame(string oldInstallDir, string newInstallDir) => false;
+
+    /// <summary>Legt eine neue Manual-Game-Kachel an — fuer Plugins, die ein
+    /// Spiel selbst installieren statt nur ein vorhandenes zu verwalten
+    /// (Ren'Py Assist: Archiv aus dem Downloads-Ordner auspacken und als
+    /// Spiel registrieren).
+    ///
+    /// <para>Der Host legt den Eintrag an, persistiert ihn, blendet die Kachel
+    /// sofort in die Sidebar ein und meldet das Spiel ueber
+    /// <c>OnGameAddedAsync</c> an alle passenden Plugins zurueck — das
+    /// aufrufende eingeschlossen. Ein Plugin muss die Kachel also nicht selbst
+    /// nachtragen.</para>
+    ///
+    /// <para><paramref name="engine"/> ist der Slug, ueber den der Host das
+    /// Spiel einem Plugin zuordnet (<c>"renpy"</c>); er muss zu einem
+    /// <c>GameTarget.Engine</c> passen, sonst steht die Kachel ohne Plugin da.
+    /// Rueckgabe: false, wenn <paramref name="installDir"/> nicht existiert
+    /// oder schon eine Kachel darauf zeigt — doppelte Eintraege auf denselben
+    /// Ordner waren in der Vergangenheit die Quelle verwaister Kacheln.
+    /// Contracts v1.35+ (aeltere Hosts: no-op).</para></summary>
+    bool TryAddManualGame(string displayName, string installDir, string? engine = null) => false;
+
+    /// <summary>Entfernt die Manual-Game-Kachel, die auf
+    /// <paramref name="installDir"/> zeigt (case-insensitive): Eintrag,
+    /// Cover-Override und Favoriten-Markierung sind danach weg, die Kachel
+    /// verschwindet sofort aus der Sidebar.
+    ///
+    /// <para><b>Der Host fasst die Platte nicht an.</b> Ob und was dort
+    /// geloescht wird, entscheidet das Plugin — es kennt die Ordnerstruktur
+    /// seines Spiels, der Host kennt nur den Pfad. Die uebliche Reihenfolge
+    /// ist: erst loeschen, dann abmelden; schlaegt das Loeschen fehl, bleibt
+    /// die Kachel stehen und der User sieht, dass etwas offen ist.</para>
+    ///
+    /// <para>Rueckgabe: true wenn eine Kachel entfernt wurde. Fuer
+    /// Steam-Games no-op — die kommen bei der naechsten Discovery ohnehin
+    /// wieder. Contracts v1.35+ (aeltere Hosts: no-op).</para></summary>
+    bool TryRemoveManualGame(string installDir) => false;
 }

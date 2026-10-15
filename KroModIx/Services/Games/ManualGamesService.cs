@@ -123,10 +123,23 @@ public sealed class ManualGamesService
         return added;
     }
 
+    /// <summary>v1.35.0: Gegenstueck zu <see cref="GameAdded"/>. Feuert nach
+    /// jedem erfolgreichen <see cref="Remove"/> — die Host-VM nimmt die Kachel
+    /// daraufhin aus der Sidebar. Ohne das Event blieb eine vom Plugin
+    /// entfernte Kachel bis zum naechsten Discovery-Refresh stehen und zeigte
+    /// auf einen Ordner, den es nicht mehr gibt.</summary>
+    public event EventHandler<ManualGameEntry>? GameRemoved;
+
     public bool Remove(string id)
     {
+        var entry = _games.FirstOrDefault(g => g.Id == id);
         int removed = _games.RemoveAll(g => g.Id == id);
-        if (removed > 0) { Save(); Log.Info("Manuelles Spiel entfernt: {Id}", id); }
+        if (removed > 0)
+        {
+            Save();
+            Log.Info("Manuelles Spiel entfernt: {Id}", id);
+            if (entry is not null) GameRemoved?.Invoke(this, entry);
+        }
         return removed > 0;
     }
 
