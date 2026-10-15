@@ -51,6 +51,20 @@ public sealed class PluginManifest
 
     /// <summary>Spiele, die dieses Plugin bedient. Aus dem Manifest kann der
     /// Host discovern, ohne die DLL zu laden.</summary>
+    /// <summary>v1.36: Plugin auch dann aktivieren, wenn KEIN Zielspiel
+    /// installiert ist.
+    ///
+    /// <para>Nur fuer Plugins, die ueber <c>GetGlobalActions</c> etwas
+    /// anbieten, das ohne Spiel Sinn ergibt — Ren'Py Assist etwa legt Spiele
+    /// aus Archiven an, und genau dann gibt es noch keines. Ohne das Flag
+    /// greift die Regel „kein Zielspiel, keine Aktivierung", und das Plugin
+    /// koennte sein eigenes Henne-Ei-Problem nicht loesen.</para>
+    ///
+    /// <para>Default false. Ein Plugin, das nur Tabs beisteuert, hat ohne
+    /// Spiel nichts zu tun und soll auch nicht geladen werden.</para></summary>
+    [JsonPropertyName("activateWithoutGame")]
+    public bool ActivateWithoutGame { get; set; }
+
     [JsonPropertyName("targets")]
     public List<GameTarget> Targets { get; set; } = new();
 

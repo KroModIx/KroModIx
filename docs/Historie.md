@@ -6,6 +6,14 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.36.0 — `IGlobalAction`: Plugin-Aktionen ohne Spiel-Bezug (2026-10-15):**
+- **Anlass, gemeldet:** „muss ich ein Ren'Py-Spiel haben, um ein neues hinzuzufügen?" — ja, und das war eine echte Lücke. Alles, was ein Plugin an UI beisteuern konnte, lief über `IGameTabContribution`, und dessen beide Methoden bekommen ein `DetectedGame`. Der „Spiel aus Archiv"-Knopf (Ren'Py Assist v0.26) musste deshalb in die Übersicht irgendeines anderen Spiels — dort sucht ihn niemand, und ohne ein erstes Spiel ist er gar nicht erreichbar.
+- **`IGlobalAction`** (Contracts v1.36): Id, Label, Icon, optional Description/Order/IsEnabled, `InvokeAsync`. Plugins liefern sie über `IGameModPlugin.GetGlobalActions()` (Default leer). Der Host hängt sie in ein Flyout am neuen 🧩-Knopf in der Sidebar, sortiert nach Plugin-Name und `Order`. `IsEnabled` wird beim Öffnen ausgewertet, nicht gecacht.
+- **`GlobalActionRow`** kapselt jede Aktion: wirft ein Plugin in `InvokeAsync` oder `IsEnabled`, endet das dort als Toast und Log-Eintrag — die Sidebar bleibt bedienbar. Auch ein kaputtes `GetGlobalActions` kostet nur dieses eine Plugin, nicht die Liste.
+- **`PluginManifest.ActivateWithoutGame`**: Ohne das Flag hätte die Aktion das Henne-Ei-Problem nur verschoben — der Planner aktiviert ein Plugin nur, wenn ein Zielspiel existiert, und ein Plugin, dessen Zweck das *Anlegen* von Spielen ist, wäre genau dann nicht geladen, wenn man es braucht. Default false: ein Plugin, das nur Tabs beisteuert, hat ohne Spiel nichts zu tun.
+- **3 neue Tests** (Flag aktiviert ohne Zielspiel; ohne Flag bleibt es bei `NoTargetInstalled`; das Flag hebelt die MinHostVersion-Prüfung nicht aus). Suite 333/333 gruen.
+- **Grenze, die bleibt:** Bei einer blanken Neuinstallation ist das Plugin selbst noch nicht da — der Auto-Install hängt an einem erkannten Spiel. Für das allererste Ren'Py-Spiel führt der Weg weiterhin über den Host-Wizard „Ordner mit Spielen scannen". Danach greift die globale Aktion.
+
 **Host v1.35.0 — Plugins dürfen Manual-Kacheln anlegen und abmelden (2026-10-15):**
 - **Anlass:** Ren'Py Assist soll ein Spiel aus einem Archiv selbst installieren und ein nicht mehr gespieltes wieder loswerden. Beides ging nicht: der Contract kannte nur `TrySetManualGameCover` und `TryRenameManualGame` — ein Plugin konnte eine Kachel ändern, aber keine erzeugen und keine entfernen.
 - **`IHostServices.TryAddManualGame(displayName, installDir, engine)`**: legt den Eintrag an, persistiert, blendet die Kachel sofort ein und meldet das Spiel über `OnGameAddedAsync` an alle passenden Plugins zurück — das aufrufende eingeschlossen. Lehnt ab, wenn der Ordner nicht existiert oder schon eine Kachel darauf zeigt; dieser Dedup gehört in den Host, nicht in jedes Plugin.

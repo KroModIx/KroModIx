@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,4 +44,15 @@ public interface IGameModPlugin
     /// das neue Spiel im Plugin-Kontext ankommt.</para></summary>
     Task OnGameAddedAsync(DetectedGame game, CancellationToken ct = default)
         => Task.CompletedTask;
+
+    /// <summary>Aktionen, die zu keinem einzelnen Spiel gehoeren — der Host
+    /// haengt sie in der Sidebar neben „Spiel hinzufuegen" ein.
+    ///
+    /// <para>Fuer alles, was ein Plugin anbietet, ohne dass eine Kachel
+    /// ausgewaehlt sein muss: ein Spiel anlegen, einen Katalog pflegen, einen
+    /// Ordner einlesen. Spielbezogenes bleibt ein Tab.</para>
+    ///
+    /// <para>Wird bei jedem Oeffnen des Menues gerufen, nicht gecacht. Default
+    /// leer — aeltere Plugins bleiben unveraendert. Contracts v1.36+.</para></summary>
+    IEnumerable<IGlobalAction> GetGlobalActions() => Array.Empty<IGlobalAction>();
 }

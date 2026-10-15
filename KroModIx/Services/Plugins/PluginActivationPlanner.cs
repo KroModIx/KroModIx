@@ -110,13 +110,18 @@ public sealed class PluginActivationPlanner
             var matched = MatchGames(plugin.Manifest.Targets, games);
 
             bool forced = forceActive.Contains(plugin.Manifest.Id);
-            bool activate = matched.Count > 0 || forced;
+            // v1.36: Plugins mit spiel-unabhaengigen Aktionen duerfen auch
+            // ohne Zielspiel laufen. Sonst koennte ein Plugin, dessen Zweck
+            // das ANLEGEN von Spielen ist, nie starten — es braeuchte ein
+            // Spiel, um eines anzulegen.
+            bool ohneSpiel = plugin.Manifest.ActivateWithoutGame;
+            bool activate = matched.Count > 0 || forced || ohneSpiel;
 
             decisions.Add(new PluginActivationDecision(
                 plugin, activate,
                 activate
                     ? ActivationSkipReason.None
-                    : (forced ? ActivationSkipReason.None : ActivationSkipReason.NoTargetInstalled),
+                    : ActivationSkipReason.NoTargetInstalled,
                 matched));
         }
 

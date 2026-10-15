@@ -117,4 +117,51 @@ public class PluginActivationPlannerTests
 
         result[0].Activate.Should().BeTrue();
     }
+
+    [Fact]
+    public void ActivateWithoutGame_laedt_das_Plugin_auch_ohne_Zielspiel()
+    {
+        // v1.36: Ren'Py Assist legt Spiele aus Archiven an. Ohne dieses Flag
+        // braeuchte es ein Spiel, um eines anlegen zu koennen — die Aktion
+        // waere genau dann nicht erreichbar, wenn man sie braucht.
+        var planner = NewPlanner();
+        var plugin = FakePlugin("kroste.renpyassist", "1.0.0", "0.1.0");
+        plugin.Manifest.ActivateWithoutGame = true;
+
+        var result = planner.Plan(new[] { plugin },
+            new List<DiscoveredGame>(), new Version(1, 0, 0));
+
+        result[0].Activate.Should().BeTrue();
+        result[0].SkipReason.Should().Be(ActivationSkipReason.None);
+        result[0].MatchedGames.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Ohne_das_Flag_bleibt_es_bei_kein_Zielspiel_keine_Aktivierung()
+    {
+        var planner = NewPlanner();
+        var plugin = FakePlugin("kroste.nurtabs", "1.0.0", "0.1.0", (730, "CS2"));
+
+        var result = planner.Plan(new[] { plugin },
+            new List<DiscoveredGame>(), new Version(1, 0, 0));
+
+        result[0].Activate.Should().BeFalse();
+        result[0].SkipReason.Should().Be(ActivationSkipReason.NoTargetInstalled);
+    }
+
+    [Fact]
+    public void ActivateWithoutGame_hebelt_die_Host_Versionspruefung_nicht_aus()
+    {
+        // Ein zu alter Host bleibt ein zu alter Host — das Flag sagt nur
+        // etwas ueber Zielspiele, nicht ueber Kompatibilitaet.
+        var planner = NewPlanner();
+        var plugin = FakePlugin("kroste.neu", "1.0.0", "9.9.9");
+        plugin.Manifest.ActivateWithoutGame = true;
+
+        var result = planner.Plan(new[] { plugin },
+            new List<DiscoveredGame>(), new Version(1, 0, 0));
+
+        result[0].Activate.Should().BeFalse();
+        result[0].SkipReason.Should().Be(ActivationSkipReason.HostTooOld);
+    }
 }

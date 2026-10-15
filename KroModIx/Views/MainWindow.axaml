@@ -126,7 +126,7 @@
                         <TextBox Name="SidebarSearchBox"
                                  Text="{Binding SearchText, Mode=TwoWay}"
                                  PlaceholderText="{loc:Tr Main_Sidebar_Search_Placeholder}" />
-                        <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                             <!-- Toggle „Alle Spiele" statt binärer OnlyWithPlugin.
                                  An = zeigt auch Non-Plugin-Games (ausgegraut).
                                  Aus (Default) = nur Spiele mit Plugin. -->
@@ -137,14 +137,38 @@
                                           IsChecked="{Binding ShowAllGames, Mode=TwoWay}"
                                           Foreground="{DynamicResource KrosteSecondaryTextBrush}"
                                           FontSize="12" />
-                            <Button Name="AddFolderCollectionButton"
+            <!-- v1.36: Plugin-Aktionen ohne Spiel-Bezug. Sichtbar nur wenn
+                 ein geladenes Plugin welche anbietet — sonst waere hier ein
+                 Knopf, der ein leeres Menue oeffnet. -->
+                            <Button Name="PluginActionsButton"
                                     Grid.Column="1" Classes="ghost" FontSize="12"
+                                    Margin="0,0,6,0"
+                                    Content="🧩"
+                                    ToolTip.Tip="Aktionen der geladenen Plugins"
+                                    IsVisible="{Binding HasGlobalActions}">
+                                <Button.Flyout>
+                                    <MenuFlyout ItemsSource="{Binding GlobalActions}">
+                                        <MenuFlyout.ItemContainerTheme>
+                                            <ControlTheme TargetType="MenuItem"
+                                                          x:DataType="vm:GlobalActionRow"
+                                                          BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                <Setter Property="Header" Value="{Binding Label}" />
+                                                <Setter Property="Command" Value="{Binding InvokeCommand}" />
+                                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                                <Setter Property="ToolTip.Tip" Value="{Binding Description}" />
+                                            </ControlTheme>
+                                        </MenuFlyout.ItemContainerTheme>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Button Name="AddFolderCollectionButton"
+                                    Grid.Column="2" Classes="ghost" FontSize="12"
                                     Margin="0,0,6,0"
                                     Content="🎮"
                                     ToolTip.Tip="Ordner mit Spielen scannen (Ren'Py-Sammlung, …)"
                                     Command="{Binding AddFolderCollectionCommand}" />
                             <Button Name="AddGameButton"
-                                    Grid.Column="2" Classes="ghost" FontSize="12"
+                                    Grid.Column="3" Classes="ghost" FontSize="12"
                                     Content="{loc:Tr Main_Sidebar_AddGame}"
                                     Command="{Binding AddGameCommand}" />
                         </Grid>

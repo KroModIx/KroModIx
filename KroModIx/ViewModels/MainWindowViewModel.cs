@@ -93,6 +93,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _pluginActivator.LoadedChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             RefreshPluginStates();
+            RefreshGlobalActions();
             // v1.24.2: nach jedem Plugin-Load-Event einmal reconciliieren —
             // fixt den Fall dass ein Manual-Game mit Engine schon in der
             // Sidebar steht, das passende Plugin aber nachtraeglich geladen
@@ -239,6 +240,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// über <see cref="EnqueueToast"/>; nach 6 Sekunden werden sie via Timer
     /// wieder entfernt (kein Fade-Out — für die UX reicht ein instant remove).</summary>
     public ObservableCollection<ToastItem> Toasts { get; } = new();
+
+    /// <summary>v1.36: spiel-unabhaengige Aktionen der geladenen Plugins.
+    /// Wird bei jedem Plugin-Load-Event neu aufgebaut — ein Plugin darf seine
+    /// Aktionen vom eigenen Zustand abhaengig machen, der Host cached sie
+    /// deshalb nicht laenger als bis zum naechsten LoadedChanged.</summary>
+    public ObservableCollection<GlobalActionRow> GlobalActions { get; } = new();
+
+    /// <summary>Steuert die Sichtbarkeit des Plugin-Aktionen-Knopfs. Ohne
+    /// Aktionen bliebe sonst ein Knopf stehen, der ein leeres Menue oeffnet.</summary>
+    [ObservableProperty] private bool _hasGlobalActions;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedGame))]
@@ -672,6 +683,36 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         int dash = s.IndexOf('-'); if (dash >= 0) s = s[..dash];
         int plus = s.IndexOf('+'); if (plus >= 0) s = s[..plus];
         return Version.TryParse(s, out var v) ? v : new Version(0, 0);
+    }
+
+    /// <summary>Sammelt die spiel-unabhaengigen Aktionen aller geladenen
+    /// Plugins ein. Fehler eines Plugins blocken die anderen nicht — ein
+    /// kaputtes GetGlobalActions darf nicht die ganze Sidebar kosten.</summary>
+    private void RefreshGlobalActions()
+    {
+        GlobalActions.Clear();
+        foreach (var loaded in _pluginActivator.Loaded
+                     .OrderBy(l => l.Manifest.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            IReadOnlyList<IGlobalAction> actions;
+            try
+            {
+                actions = loaded.Plugin.GetGlobalActions()
+                    .OrderBy(a => a.Order).ThenBy(a => a.Label, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Plugin {Id}.GetGlobalActions warf", loaded.Manifest.Id);
+                continue;
+            }
+            foreach (var a in actions)
+                GlobalActions.Add(new GlobalActionRow(a, loaded.Manifest.Id, EnqueueToast, Log));
+        }
+        HasGlobalActions = GlobalActions.Count > 0;
+        if (GlobalActions.Count > 0)
+            Log.Info("Globale Plugin-Aktionen: {N} ({Ids})", GlobalActions.Count,
+                string.Join(", ", GlobalActions.Select(a => a.Id)));
     }
 
     private void RefreshPluginStates()
