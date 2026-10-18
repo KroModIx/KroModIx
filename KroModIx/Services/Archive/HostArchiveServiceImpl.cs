@@ -82,6 +82,23 @@ public sealed class HostArchiveServiceImpl : IArchiveService
         catch (Exception) { return false; }
     }
 
+    /// <summary>PAX-Header sind Tar-Metadaten, keine Dateien.
+    ///
+    /// <para>GNU tar legt fuer lange Namen, Zeitstempel in hoher Aufloesung
+    /// und erweiterte Attribute Pseudo-Eintraege an: <c>././@PaxHeader</c>
+    /// bzw. <c>PaxHeaders.0/&lt;name&gt;</c>. SharpCompress meldet sie wie
+    /// normale Eintraege. Gemessen am Ren'Py-SDK (18.10.2026): von 6571
+    /// gemeldeten Eintraegen sind rund die Haelfte solche Header, und der
+    /// allererste ist einer — wer das erste Segment als Archiv-Wurzel nimmt,
+    /// bekommt <c>.</c> statt <c>renpy-8.5.2-sdk</c> und filtert damit alles
+    /// weg.</para>
+    ///
+    /// <para>Das gehoert hierher und nicht in die Plugins: sonst stolpert
+    /// jeder Aufrufer einzeln darueber.</para></summary>
+    private static bool IsTarMetadata(string key)
+        => key.Contains("@PaxHeader", StringComparison.Ordinal)
+           || key.Contains("PaxHeaders", StringComparison.Ordinal);
+
     /// <summary>Tar-Varianten koennen nicht wahlfrei gelesen werden:
     /// ArchiveFactory lehnt ein tar.bz2 mit „Cannot determine compressed
     /// stream type" ab (nachgemessen 18.10.2026). SharpCompress' Reader-API
@@ -100,7 +117,9 @@ public sealed class HostArchiveServiceImpl : IArchiveService
             while (reader.MoveToNextEntry())
             {
                 if (reader.Entry.IsDirectory || string.IsNullOrEmpty(reader.Entry.Key)) continue;
-                seq.Add(new ArchiveEntry(Normalize(reader.Entry.Key!), reader.Entry.Size));
+                var k = Normalize(reader.Entry.Key!);
+                if (IsTarMetadata(k)) continue;
+                seq.Add(new ArchiveEntry(k, reader.Entry.Size));
             }
             return seq;
         }
@@ -129,8 +148,9 @@ public sealed class HostArchiveServiceImpl : IArchiveService
             while (reader.MoveToNextEntry())
             {
                 if (reader.Entry.IsDirectory || string.IsNullOrEmpty(reader.Entry.Key)) continue;
-                var ziel = PlanEntry(Normalize(reader.Entry.Key!), prefix, opts,
-                    targetDir, archivePath, skipped);
+                var key = Normalize(reader.Entry.Key!);
+                if (IsTarMetadata(key)) continue;
+                var ziel = PlanEntry(key, prefix, opts, targetDir, archivePath, skipped);
                 if (ziel is null) continue;
                 if (File.Exists(ziel) && !opts.Overwrite)
                     throw new IOException($"Datei existiert bereits: {ziel}");
@@ -222,7 +242,8 @@ public sealed class HostArchiveServiceImpl : IArchiveService
             while (reader.MoveToNextEntry())
             {
                 if (reader.Entry.IsDirectory || string.IsNullOrEmpty(reader.Entry.Key)) continue;
-                if (Normalize(reader.Entry.Key!) != wanted) continue;
+                var k = Normalize(reader.Entry.Key!);
+                if (IsTarMetadata(k) || k != wanted) continue;
                 Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
                 using var outStream = File.Create(destinationFile);
                 reader.WriteEntryTo(outStream);

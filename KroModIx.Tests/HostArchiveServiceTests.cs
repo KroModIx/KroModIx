@@ -332,4 +332,36 @@ public sealed class HostArchiveServiceTests : IDisposable
         var act = () => _svc.ExtractEntry(a, "gibtsnicht.txt", Path.Combine(_dir, "x"));
         act.Should().Throw<FileNotFoundException>();
     }
+
+    [Fact]
+    public void PAX_Header_zaehlen_nicht_als_Dateien()
+    {
+        // GNU tar legt fuer lange Namen und Zeitstempel in hoher Aufloesung
+        // Pseudo-Eintraege an (././@PaxHeader). SharpCompress meldet sie wie
+        // Dateien. Am Ren'Py-SDK gemessen: 6571 gemeldete Eintraege, davon
+        // 3437 solche Header — und der ALLERERSTE ist einer. Wer daraus die
+        // Archiv-Wurzel ableitet, bekommt "." statt "renpy-8.5.2-sdk" und
+        // filtert mit StripPrefix alles weg.
+        var langerName = new string('a', 120) + "/" + new string('b', 120) + ".txt";
+        var a = MakeTar("pax.tar.bz2", "j", (langerName, "inhalt"));
+
+        var liste = _svc.List(a);
+
+        liste.Should().NotContain(e => e.Path.Contains("PaxHeader"));
+        liste.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void PAX_Header_werden_auch_beim_Auspacken_uebersprungen()
+    {
+        var langerName = new string('c', 120) + "/datei.txt";
+        var a = MakeTar("pax2.tar.bz2", "j", (langerName, "inhalt"));
+        var ziel = Path.Combine(_dir, "out-pax");
+
+        var res = _svc.Extract(a, ziel);
+
+        res.Count.Should().Be(1);
+        Directory.EnumerateFiles(ziel, "*", SearchOption.AllDirectories)
+            .Should().NotContain(f => f.Contains("PaxHeader"));
+    }
 }
