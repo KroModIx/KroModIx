@@ -12,6 +12,16 @@ public enum ArchiveKind
     Zip,
     Rar,
     SevenZip,
+
+    /// <summary>Unkomprimiertes <c>.tar</c> (v1.37+).</summary>
+    Tar,
+
+    /// <summary><c>.tar.gz</c> / <c>.tgz</c> (v1.37+).</summary>
+    TarGz,
+
+    /// <summary><c>.tar.bz2</c> / <c>.tbz2</c> (v1.37+). Das Format, in dem
+    /// das Ren'Py-SDK ausgeliefert wird.</summary>
+    TarBz2,
 }
 
 /// <summary>Ein Eintrag in einem Archiv. <see cref="Path"/> ist
@@ -69,6 +79,14 @@ public sealed record ArchiveExtractResult(
 /// nicht aus dem Zielverzeichnis ausbricht.</para></summary>
 public interface IArchiveService
 {
+    /// <summary>Tar-Varianten werden sequentiell gelesen, nicht wahlfrei:
+    /// ein komprimiertes Tar hat kein Inhaltsverzeichnis, der Inhalt steht
+    /// erst nach dem Durchlauf fest. Fuer den Aufrufer aendert das nichts —
+    /// <see cref="List"/>, <see cref="Extract"/> und
+    /// <see cref="ExtractEntry"/> verhalten sich gleich. Wer aber aus einem
+    /// 146-MB-Archiv nur zwei Pfade braucht, spart mit
+    /// <see cref="ArchiveExtractOptions.Filter"/> echtes Entpacken, nicht nur
+    /// Plattenplatz.</summary>
     /// <summary>Die Endungen, die dieser Baukasten behandelt — als Vorfilter
     /// beim Durchsuchen eines Ordners. Die verbindliche Einordnung macht
     /// <see cref="DetectKind"/>.</summary>

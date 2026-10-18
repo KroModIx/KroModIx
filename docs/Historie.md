@@ -6,6 +6,14 @@ hinter einer aelteren Design-Entscheidung gebraucht wird.
 
 ## Aktueller Stand
 
+**Host v1.37.0 — `IArchiveService` kann Tar-Varianten (2026-10-18):**
+- **Anlass:** Ren'Py Assist soll Windows-only-Builds nativ lauffähig machen, indem es die fehlende Linux-Runtime aus dem offiziellen SDK nachrüstet. Das SDK kommt als `.tar.bz2`, und der Baukasten deckte nur ZIP, RAR und 7z ab.
+- **Gemessen, nicht angenommen:** `ArchiveFactory.Open` lehnt ein tar.bz2 ab — „Cannot determine compressed stream type. Supported Archive Formats: Zip, Rar, 7Zip, GZip, Tar". Auch der Umweg `BZip2Stream` + `TarArchive.Open` scheitert („Stream must be seekable"). Was trägt, ist SharpCompress' `ReaderFactory`: sequentiell, ohne Inhaltsverzeichnis.
+- **`ArchiveKind` += `Tar`, `TarGz`, `TarBz2`.** Erkennung an den Magic-Bytes: `BZh`, `1F 8B`, und für unkomprimiertes Tar `ustar` ab Offset 257 — ein Tar hat am Dateianfang nichts Eindeutiges.
+- **Zwei Lesewege, eine Entscheidung.** `List`, `Extract` und `ExtractEntry` schalten bei Tar auf den Reader um; die Logik, *was* wohin geschrieben wird (Filter, StripPrefix, Flatten, Zip-Slip), liegt jetzt gemeinsam in `PlanEntry`. Ohne diese Zusammenführung hätte der Zip-Slip-Schutz in zwei Fassungen existiert — genau die Konstellation, wegen der dieser Baukasten überhaupt entstanden ist.
+- **Der Filter wird dadurch wertvoller:** aus dem 146-MB-SDK zieht das Plugin nur `lib/py3-linux-x86_64/` und `renpy.sh` (~40 MB), statt alles auszupacken.
+- **8 neue Tests.** Die Archive baut das System-`tar`, nicht dieselbe Bibliothek, die sie gleich lesen soll. Suite 341/341 gruen.
+
 **Host v1.36.0 — `IGlobalAction`: Plugin-Aktionen ohne Spiel-Bezug (2026-10-15):**
 - **Anlass, gemeldet:** „muss ich ein Ren'Py-Spiel haben, um ein neues hinzuzufügen?" — ja, und das war eine echte Lücke. Alles, was ein Plugin an UI beisteuern konnte, lief über `IGameTabContribution`, und dessen beide Methoden bekommen ein `DetectedGame`. Der „Spiel aus Archiv"-Knopf (Ren'Py Assist v0.26) musste deshalb in die Übersicht irgendeines anderen Spiels — dort sucht ihn niemand, und ohne ein erstes Spiel ist er gar nicht erreichbar.
 - **`IGlobalAction`** (Contracts v1.36): Id, Label, Icon, optional Description/Order/IsEnabled, `InvokeAsync`. Plugins liefern sie über `IGameModPlugin.GetGlobalActions()` (Default leer). Der Host hängt sie in ein Flyout am neuen 🧩-Knopf in der Sidebar, sortiert nach Plugin-Name und `Order`. `IsEnabled` wird beim Öffnen ausgewertet, nicht gecacht.

@@ -236,4 +236,100 @@ public sealed class HostArchiveServiceTests : IDisposable
         result.SkippedUnsafe.Should().ContainSingle().Which.Should().Contain("raus.txt");
         File.Exists(Path.Combine(_dir, "raus.txt")).Should().BeFalse("nichts darf neben dem Ziel landen");
     }
+
+    // ---- Tar-Varianten (v1.37) ----
+    //
+    // ArchiveFactory lehnt ein tar.bz2 mit "Cannot determine compressed stream
+    // type" ab — nachgemessen am 18.10.2026. Deshalb der sequentielle
+    // Reader-Weg; diese Tests halten fest, dass er sich nach aussen genauso
+    // verhaelt wie der wahlfreie.
+
+    /// <summary>Baut ein Tar ueber das System-tar — so entsteht ein Archiv,
+    /// das wirklich aus der Welt kommt und nicht aus derselben Bibliothek,
+    /// die es gleich lesen soll.</summary>
+    private string MakeTar(string name, string tarFlag, params (string Path, string Content)[] entries)
+    {
+        var stage = Path.Combine(_dir, "stage-" + Guid.NewGuid().ToString("N"));
+        foreach (var (p, c) in entries)
+        {
+            var full = Path.Combine(stage, p.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+            File.WriteAllText(full, c);
+        }
+        var archiv = Path.Combine(_dir, name);
+        var psi = new System.Diagnostics.ProcessStartInfo("tar")
+        {
+            ArgumentList = { $"-c{tarFlag}f", archiv, "-C", stage, "." },
+            RedirectStandardError = true,
+        };
+        using var proc = System.Diagnostics.Process.Start(psi)!;
+        proc.WaitForExit();
+        if (proc.ExitCode != 0) throw new InvalidOperationException("tar: " + proc.StandardError.ReadToEnd());
+        return archiv;
+    }
+
+    [Theory]
+    [InlineData("j", "sdk.tar.bz2", ArchiveKind.TarBz2)]
+    [InlineData("z", "sdk.tar.gz", ArchiveKind.TarGz)]
+    [InlineData("", "sdk.tar", ArchiveKind.Tar)]
+    public void Tar_Varianten_werden_am_Inhalt_erkannt(string flag, string name, ArchiveKind erwartet)
+    {
+        var a = MakeTar(name, flag, ("lib/py3-linux-x86_64/renpy", "bin"));
+        _svc.DetectKind(a).Should().Be(erwartet);
+    }
+
+    [Fact]
+    public void Tar_bz2_laesst_sich_auflisten()
+    {
+        var a = MakeTar("sdk.tar.bz2", "j",
+            ("renpy.sh", "#!/bin/sh"),
+            ("lib/py3-linux-x86_64/renpy", "bin"),
+            ("lib/py3-windows-x86_64/renpy.exe", "exe"));
+
+        var liste = _svc.List(a).Select(e => e.Path).ToList();
+
+        liste.Should().HaveCount(3);
+        liste.Should().Contain(p => p.EndsWith("lib/py3-linux-x86_64/renpy"));
+    }
+
+    [Fact]
+    public void Tar_bz2_Filter_holt_nur_das_Gewuenschte()
+    {
+        // Der Anwendungsfall: aus einem 146-MB-SDK nur die Linux-Runtime
+        // ziehen, statt alles auszupacken.
+        var a = MakeTar("sdk.tar.bz2", "j",
+            ("renpy.sh", "#!/bin/sh"),
+            ("lib/py3-linux-x86_64/renpy", "bin"),
+            ("lib/py3-windows-x86_64/renpy.exe", "exe"),
+            ("doc/readme.txt", "egal"));
+        var ziel = Path.Combine(_dir, "out");
+
+        var res = _svc.Extract(a, ziel, new ArchiveExtractOptions(
+            Filter: k => k.Contains("py3-linux-x86_64") || k.EndsWith("renpy.sh")));
+
+        res.Count.Should().Be(2);
+        res.SkippedUnsafe.Should().BeEmpty();
+        Directory.Exists(Path.Combine(ziel, "doc")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Tar_bz2_ExtractEntry_holt_eine_einzelne_Datei()
+    {
+        var a = MakeTar("sdk.tar.bz2", "j",
+            ("renpy.sh", "#!/bin/sh\necho start"),
+            ("lib/x/y", "egal"));
+        var ziel = Path.Combine(_dir, "renpy.sh");
+
+        _svc.ExtractEntry(a, "./renpy.sh", ziel);
+
+        File.ReadAllText(ziel).Should().Contain("echo start");
+    }
+
+    [Fact]
+    public void Tar_bz2_ExtractEntry_meldet_einen_fehlenden_Eintrag()
+    {
+        var a = MakeTar("sdk.tar.bz2", "j", ("renpy.sh", "x"));
+        var act = () => _svc.ExtractEntry(a, "gibtsnicht.txt", Path.Combine(_dir, "x"));
+        act.Should().Throw<FileNotFoundException>();
+    }
 }
