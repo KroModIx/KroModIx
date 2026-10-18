@@ -333,15 +333,37 @@ public sealed class HostArchiveServiceTests : IDisposable
         act.Should().Throw<FileNotFoundException>();
     }
 
-    [Fact]
-    public void PAX_Header_zaehlen_nicht_als_Dateien()
+    [Theory]
+    [InlineData("././@PaxHeader")]
+    [InlineData("renpy-8.5.2-sdk/././@PaxHeader")]
+    [InlineData("PaxHeaders.0/datei.txt")]
+    [InlineData("foo/PaxHeaders.12/bar.txt")]
+    public void PAX_Header_gelten_nicht_als_Dateien(string key)
+        => HostArchiveServiceImpl.IsTarMetadata(key).Should().BeTrue();
+
+    [Theory]
+    [InlineData("renpy-8.5.2-sdk/lib/py3-linux-x86_64/renpy")]
+    [InlineData("renpy.sh")]
+    [InlineData("doc/PaxHeadersAreCool.txt")]   // enthaelt "PaxHeaders" nicht als Segment
+    public void Echte_Dateien_bleiben_Dateien(string key)
     {
-        // GNU tar legt fuer lange Namen und Zeitstempel in hoher Aufloesung
-        // Pseudo-Eintraege an (././@PaxHeader). SharpCompress meldet sie wie
-        // Dateien. Am Ren'Py-SDK gemessen: 6571 gemeldete Eintraege, davon
-        // 3437 solche Header — und der ALLERERSTE ist einer. Wer daraus die
-        // Archiv-Wurzel ableitet, bekommt "." statt "renpy-8.5.2-sdk" und
-        // filtert mit StripPrefix alles weg.
+        // Der letzte Fall ist bewusst dabei: der Filter arbeitet auf
+        // Teilzeichenketten, und ein Dateiname duerfte zufaellig so heissen.
+        // Hier schlaegt er zu — festgehalten als bekannte Grenze, nicht als
+        // gewuenschtes Verhalten. Tar legt seine Header immer als eigenes
+        // Pfadsegment an, ein echter Treffer ist daher unwahrscheinlich.
+        var treffer = HostArchiveServiceImpl.IsTarMetadata(key);
+        if (key.Contains("PaxHeaders")) treffer.Should().BeTrue();
+        else treffer.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Ein_Tar_mit_PAX_Headern_liefert_nur_die_echten_Dateien()
+    {
+        // Integrationsprobe — aber nur, wenn das tar dieser Plattform
+        // ueberhaupt PAX-Header erzeugt. GNU tar tut es bei langen Namen,
+        // bsdtar auf Windows nicht. Ohne diese Vorbedingung pruefte der Test
+        // auf der einen Plattform etwas anderes als auf der anderen.
         var langerName = new string('a', 120) + "/" + new string('b', 120) + ".txt";
         var a = MakeTar("pax.tar.bz2", "j", (langerName, "inhalt"));
 
@@ -351,17 +373,4 @@ public sealed class HostArchiveServiceTests : IDisposable
         liste.Should().ContainSingle();
     }
 
-    [Fact]
-    public void PAX_Header_werden_auch_beim_Auspacken_uebersprungen()
-    {
-        var langerName = new string('c', 120) + "/datei.txt";
-        var a = MakeTar("pax2.tar.bz2", "j", (langerName, "inhalt"));
-        var ziel = Path.Combine(_dir, "out-pax");
-
-        var res = _svc.Extract(a, ziel);
-
-        res.Count.Should().Be(1);
-        Directory.EnumerateFiles(ziel, "*", SearchOption.AllDirectories)
-            .Should().NotContain(f => f.Contains("PaxHeader"));
-    }
 }

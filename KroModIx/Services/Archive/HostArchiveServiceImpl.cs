@@ -95,7 +95,7 @@ public sealed class HostArchiveServiceImpl : IArchiveService
     ///
     /// <para>Das gehoert hierher und nicht in die Plugins: sonst stolpert
     /// jeder Aufrufer einzeln darueber.</para></summary>
-    private static bool IsTarMetadata(string key)
+    internal static bool IsTarMetadata(string key)
         => key.Contains("@PaxHeader", StringComparison.Ordinal)
            || key.Contains("PaxHeaders", StringComparison.Ordinal);
 
