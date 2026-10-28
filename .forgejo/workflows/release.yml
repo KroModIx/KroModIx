@@ -143,12 +143,16 @@ jobs:
         # nicht mehr in GitHub Packages. Die Plugins beziehen sie von dort
         # (siehe deren nuget.config).
         #
-        # Den Token stellt Forgejo je Lauf bereit; er hat Schreibrecht auf
-        # die Pakete des eigenen Besitzers.
+        # **Nicht secrets.GITHUB_TOKEN.** Den legt Forgejo je Lauf an, aber
+        # er gilt nur fuer dieses Repository -- Pakete gehoeren der
+        # Organisation, und dafuer fehlt ihm das Recht. Der Push lief
+        # deshalb am 28.10.2026 in "401 Unauthorized", obwohl beide
+        # .nupkg-Dateien fertig dalagen. KROMODIX_PAKET_TOKEN ist ein
+        # Organisations-Secret mit write:package.
         run: >
           dotnet nuget push "dist-nuget/*.nupkg"
           --source "${{ github.server_url }}/api/packages/${{ github.repository_owner }}/nuget/index.json"
-          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --api-key ${{ secrets.KROMODIX_PAKET_TOKEN }}
           --skip-duplicate
 
   release:
