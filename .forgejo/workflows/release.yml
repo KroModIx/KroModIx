@@ -185,7 +185,9 @@ jobs:
           [ -n "$id" ] || { echo "Keine Release-ID erhalten"; exit 1; }
 
           hochgeladen=0
-          for datei in KroModIx-*-linux-x64.tar.gz KroModIx-*-win-x64.zip KroModIx-*-x86_64.AppImage; do
+          # download-artifact@v3 legt je Artefakt ein Unterverzeichnis an,
+          # deshalb rekursiv suchen statt im Arbeitsverzeichnis zu raten.
+          for datei in $(find . -type f \( -name "KroModIx-*-linux-x64.tar.gz" -o -name "KroModIx-*-win-x64.zip" -o -name "KroModIx-*-x86_64.AppImage" \) | sort); do
             [ -f "$datei" ] || continue
             # Gleichnamigen Anhang vorher loeschen, sonst haengt Forgejo die
             # Datei ein zweites Mal an statt sie zu ersetzen.
