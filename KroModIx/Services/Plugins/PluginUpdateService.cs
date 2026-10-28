@@ -350,7 +350,7 @@ public sealed class PluginUpdateService
         return Version.TryParse(s, out v!);
     }
 
-    /// <summary>v1.19.3 Rate-Limit-Fallback: ruft <c>github.com/{Repo}/releases/latest</c>
+    /// <summary>v1.19.3 Rate-Limit-Fallback: ruft <c>&lt;forge&gt;/{Repo}/releases/latest</c>
     /// ohne AutoRedirect und liest den Tag aus dem Location-Header
     /// (<c>/tag/vX.Y.Z</c>). Baut daraus die Konventions-CDN-URL
     /// <c>/releases/download/{tag}/{RepoBase}-{version}.zip</c> (Naming-Schema

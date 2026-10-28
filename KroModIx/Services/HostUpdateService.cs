@@ -32,9 +32,11 @@ public sealed record UpdateCheckResult(
 /// </summary>
 public sealed class HostUpdateService
 {
-    // Repo ist github.com/KroModIx/KroModIx (Org-Slug, nicht User-Slug!) —
+    // Repo ist KroModIx/KroModIx (Org-Slug, nicht User-Slug!) --
     // "Kroste/KroModIx" ergibt HTTP 404 und der Update-Check lief still
-    // ins Leere. Verifiziert via `gh api repos/KroModIx/KroModIx`.
+    // ins Leere. Das gilt in der eigenen Forge genauso: Die
+    // Organisationsnamen wurden uebernommen, nur persoenliche Repos liegen
+    // dort unter `lars` statt unter `Kroste`.
     private const string Owner = "KroModIx";
     private const string Repo = "KroModIx";
     // Namensschema des Assembly/Exe (weicht vom Repo-Slug ab).
@@ -103,7 +105,7 @@ public sealed class HostUpdateService
         return _cached;
     }
 
-    /// <summary>v1.19.4 Rate-Limit-Fallback: ruft <c>github.com/{Owner}/{Repo}/releases/latest</c>
+    /// <summary>v1.19.4 Rate-Limit-Fallback: ruft <c>&lt;forge&gt;/{Owner}/{Repo}/releases/latest</c>
     /// ohne AutoRedirect. Der 302-Location-Header enthaelt <c>/tag/vX.Y.Z</c>;
     /// daraus wird das Konventions-Asset gebaut. KEIN API-Call, kein
     /// Rate-Limit. Bei fehlender/exotischer Plattform bleibt AssetUrl null,
@@ -292,7 +294,9 @@ setsid {Escape(Path.Combine(baseDir, ExeName))} >/dev/null 2>&1 &
         };
         var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd($"{ExeName}-UpdateCheck");
-        http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        // Forgejo kennt den GitHub-Medientyp nicht und antwortet auf
+        // application/json; GitHub hätte beides akzeptiert.
+        http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         return http;
     }
 

@@ -40,7 +40,7 @@ public sealed record GitHubRelease(
 /// die mit jeder neuen Loader-Ausgabe weiter veraltet. Dieser Baukasten
 /// merkt sich die Sperre <b>einmal für alle</b> Aufrufer und weicht auf den
 /// Umleitungs-Pfad aus: ein Aufruf von
-/// <c>github.com/&lt;repo&gt;/releases/latest</c> ohne Folgen der Umleitung
+/// <c>&lt;forge&gt;/&lt;repo&gt;/releases/latest</c> ohne Folgen der Umleitung
 /// verrät den Tag im <c>Location</c>-Kopf — kein API-Aufruf, kein Limit,
 /// immer aktuell.</para>
 ///
@@ -115,5 +115,5 @@ public sealed class NullGitHubService : IGitHubService
         => Task.FromResult<(GitHubRelease, GitHubAsset)?>(null);
 
     public string BuildAssetUrl(string repo, string tag, string assetName)
-        => $"https://github.com/{repo}/releases/download/{tag}/{assetName}";
+        => $"https://git.flexfamily.cloud/{repo}/releases/download/{tag}/{assetName}";
 }

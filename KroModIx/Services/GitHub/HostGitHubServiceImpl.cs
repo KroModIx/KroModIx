@@ -14,14 +14,24 @@ namespace KroModIx.Services.GitHub;
 
 /// <summary>Host-Implementierung von <see cref="IGitHubService"/>.
 ///
-/// <para><b>Zwei Wege, einer davon ohne Limit.</b> Erst die API
-/// (<c>api.github.com</c>) — sie liefert Tag und Dateiliste. Greift die
-/// Raten-Sperre (60 Anfragen pro Stunde ohne Anmeldung), schaltet der Dienst
+/// <para><b>Die Quelle ist seit dem 28.10.2026 die eigene Forge</b>
+/// (<c>git.flexfamily.cloud</c>), nicht mehr GitHub — Lars will GitHub
+/// abschalten. Forgejos Release-API ist feldgleich, deshalb bleiben
+/// <see cref="RawRelease"/> und die Auswertung unverändert.</para>
+///
+/// <para><b>Die Schnittstelle heißt weiter <c>IGitHubService</c>.</b> Sie
+/// liegt in den Plugin-Contracts; jedes der zehn Plugins bindet sie unter
+/// diesem Namen. Ein Umbenennen wäre ein Bruch für alle — der Name ist jetzt
+/// historisch, die Adresse nicht.</para>
+///
+/// <para><b>Zwei Wege, einer davon ohne Limit.</b> Erst die API — sie
+/// liefert Tag und Dateiliste. Greift eine Raten-Sperre, schaltet der Dienst
 /// auf den Umleitungs-Pfad um: ein Aufruf von
-/// <c>github.com/&lt;repo&gt;/releases/latest</c> <b>ohne</b> Folgen der
+/// <c>&lt;forge&gt;/&lt;repo&gt;/releases/latest</c> <b>ohne</b> Folgen der
 /// Umleitung verrät den Tag im <c>Location</c>-Kopf. Kein API-Aufruf, kein
 /// Limit — aber auch keine Dateiliste, deshalb trägt das Ergebnis
-/// <see cref="GitHubRelease.FromRedirectChase"/>.</para>
+/// <see cref="GitHubRelease.FromRedirectChase"/>. Die eigene Forge drosselt
+/// nicht; der Pfad bleibt, weil er auch bei Störungen der API trägt.</para>
 ///
 /// <para><b>Die Sperre gilt für alle Aufrufer gemeinsam.</b> Vorher entdeckte
 /// jeder der sieben Verbraucher sie für sich und verbrannte dabei eine
@@ -35,6 +45,12 @@ public sealed class HostGitHubServiceImpl : IGitHubService
     /// wird. GitHub setzt das Fenster auf eine Stunde; etwas Zugabe, damit
     /// der erste Versuch danach nicht gleich wieder ins Limit läuft.</summary>
     private static readonly TimeSpan RateLimitCooldown = TimeSpan.FromMinutes(65);
+
+    /// <summary>Wurzel der Releases-API der eigenen Forge.</summary>
+    private const string ApiRoot = "https://git.flexfamily.cloud/api/v1";
+
+    /// <summary>Wurzel für Seiten und Dateien (ohne <c>/api/v1</c>).</summary>
+    private const string WebRoot = "https://git.flexfamily.cloud";
 
     private readonly Lock _lock = new();
     private DateTime? _rateLimitedUntil;
@@ -88,7 +104,7 @@ public sealed class HostGitHubServiceImpl : IGitHubService
             try
             {
                 var raw = await GetApiAsync<RawRelease>(
-                    $"https://api.github.com/repos/{repo}/releases/latest", ct).ConfigureAwait(false);
+                    $"{ApiRoot}/repos/{repo}/releases/latest", ct).ConfigureAwait(false);
                 if (raw?.TagName is { Length: > 0 }) return Convert(raw);
                 Log.Debug("GitHub: {Repo} hat keine neueste Ausgabe", repo);
             }
@@ -108,7 +124,7 @@ public sealed class HostGitHubServiceImpl : IGitHubService
         try
         {
             var raws = await GetApiAsync<List<RawRelease>>(
-                $"https://api.github.com/repos/{repo}/releases?per_page={Math.Clamp(max, 1, 100)}",
+                $"{ApiRoot}/repos/{repo}/releases?limit={Math.Clamp(max, 1, 100)}",
                 ct).ConfigureAwait(false);
             if (raws is null) return [];
             return raws
@@ -158,9 +174,9 @@ public sealed class HostGitHubServiceImpl : IGitHubService
     }
 
     public string BuildAssetUrl(string repo, string tag, string assetName)
-        => $"https://github.com/{repo}/releases/download/{tag}/{assetName}";
+        => $"{WebRoot}/{repo}/releases/download/{tag}/{assetName}";
 
-    /// <summary>Umleitungs-Pfad: <c>releases/latest</c> auf github.com
+    /// <summary>Umleitungs-Pfad: <c>releases/latest</c> auf der Forge
     /// antwortet mit einer Umleitung auf <c>releases/tag/&lt;tag&gt;</c>.
     /// Ohne Folgen der Umleitung steht der Tag im <c>Location</c>-Kopf —
     /// kein API-Aufruf, also kein Limit.</summary>
@@ -171,7 +187,7 @@ public sealed class HostGitHubServiceImpl : IGitHubService
         {
             using var http = BuildClient(api: false);
 
-            using var resp = await http.GetAsync($"https://github.com/{repo}/releases/latest", ct)
+            using var resp = await http.GetAsync($"{WebRoot}/{repo}/releases/latest", ct)
                 .ConfigureAwait(false);
             var loc = resp.Headers.Location?.ToString() ?? "";
             var idx = loc.LastIndexOf("/tag/", StringComparison.Ordinal);
@@ -187,7 +203,7 @@ public sealed class HostGitHubServiceImpl : IGitHubService
             return new GitHubRelease(
                 Tag: tag,
                 Version: StripV(tag),
-                HtmlUrl: $"https://github.com/{repo}/releases/tag/{tag}",
+                HtmlUrl: $"{WebRoot}/{repo}/releases/tag/{tag}",
                 Assets: [],
                 FromRedirectChase: true);
         }
@@ -274,7 +290,7 @@ public sealed class HostGitHubServiceImpl : IGitHubService
             && int.TryParse(remaining, out var left))
             return left <= 0;
         // Kein Kopf da (etwa in einem Test oder hinter einem Proxy, der ihn
-        // schluckt): ein 403 von api.github.com ist dann am wahrscheinlichsten
+        // schluckt): ein 403 der Forge ist dann am wahrscheinlichsten
         // doch das Limit — aber nur, wenn der Antworttext es sagt.
         var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         return body.Contains("rate limit", StringComparison.OrdinalIgnoreCase)

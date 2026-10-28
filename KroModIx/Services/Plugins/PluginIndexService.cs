@@ -25,8 +25,14 @@ namespace KroModIx.Services.Plugins;
 /// </summary>
 public sealed class PluginIndexService
 {
+    /// <summary>Das Verzeichnis liegt seit dem 28.10.2026 in der eigenen Forge.
+    ///
+    /// <para>Forgejos Entsprechung zu raw.githubusercontent.com ist
+    /// <c>&lt;forge&gt;/&lt;owner&gt;/&lt;repo&gt;/raw/branch/&lt;zweig&gt;/&lt;datei&gt;</c>
+    /// — der Zweigname steht hinter <c>raw/branch/</c>, nicht direkt hinter
+    /// <c>raw/</c>. Ohne das <c>branch/</c> antwortet die Forge mit 404.</para></summary>
     private const string IndexUrl =
-        "https://raw.githubusercontent.com/KroModIx/KroModIx.PluginIndex/main/plugins.json";
+        "https://git.flexfamily.cloud/KroModIx/KroModIx.PluginIndex/raw/branch/main/plugins.json";
     private const int CacheTtlHours = 6;
 
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();

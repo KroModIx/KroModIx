@@ -34,8 +34,17 @@ internal sealed class FakeHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
 /// hat.</summary>
 public sealed class HostGitHubServiceTests
 {
-    private const string ApiLatest = "https://api.github.com/repos/Besitzer/Repo/releases/latest";
-    private const string PageLatest = "https://github.com/Besitzer/Repo/releases/latest";
+    private const string ApiLatest = "https://git.flexfamily.cloud/api/v1/repos/Besitzer/Repo/releases/latest";
+    private const string PageLatest = "https://git.flexfamily.cloud/Besitzer/Repo/releases/latest";
+
+    /// <summary>API-Weg oder Seiten-Weg?
+    ///
+    /// <para>Bei GitHub lagen die beiden auf verschiedenen Hosts
+    /// (<c>api.github.com</c> gegen <c>github.com</c>), und die Tests haben
+    /// daran unterschieden. In der eigenen Forge ist es derselbe Host; nur der
+    /// Pfad beginnt mit <c>/api/v1/</c>. Wer hier am Host vergleicht, bekommt
+    /// in jedem Testfall den API-Zweig.</para></summary>
+    private static bool IstApi(Uri u) => u.AbsolutePath.StartsWith("/api/v1/", StringComparison.Ordinal);
 
     private static HttpResponseMessage Json(string body)
         => new(HttpStatusCode.OK) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
@@ -49,14 +58,14 @@ public sealed class HostGitHubServiceTests
     private static HttpResponseMessage Redirect(string tag)
     {
         var r = new HttpResponseMessage(HttpStatusCode.Found);
-        r.Headers.Location = new Uri($"https://github.com/Besitzer/Repo/releases/tag/{tag}");
+        r.Headers.Location = new Uri($"https://git.flexfamily.cloud/Besitzer/Repo/releases/tag/{tag}");
         return r;
     }
 
     private const string ReleaseJson = """
         {
           "tag_name": "v3.0.1",
-          "html_url": "https://github.com/Besitzer/Repo/releases/tag/v3.0.1",
+          "html_url": "https://git.flexfamily.cloud/Besitzer/Repo/releases/tag/v3.0.1",
           "prerelease": false,
           "draft": false,
           "assets": [
@@ -107,7 +116,7 @@ public sealed class HostGitHubServiceTests
     public async Task BeiRatenSperreKommtDerUmleitungsPfad()
     {
         var handler = new FakeHttpHandler(req =>
-            req.RequestUri!.Host == "api.github.com" ? RateLimited() : Redirect("v2.5.2"));
+            IstApi(req.RequestUri!) ? RateLimited() : Redirect("v2.5.2"));
         var svc = new HostGitHubServiceImpl(_ => handler);
 
         var release = await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
@@ -130,14 +139,14 @@ public sealed class HostGitHubServiceTests
     public async Task NachDerSperreGehtKeineWeitereAnfrageAnDieApi()
     {
         var handler = new FakeHttpHandler(req =>
-            req.RequestUri!.Host == "api.github.com" ? RateLimited() : Redirect("v1.0.0"));
+            IstApi(req.RequestUri!) ? RateLimited() : Redirect("v1.0.0"));
         var svc = new HostGitHubServiceImpl(_ => handler);
 
         await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
         await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
         await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
 
-        handler.Requests.Count(u => u.StartsWith("https://api.github.com")).Should().Be(1,
+        handler.Requests.Count(u => u.StartsWith("https://git.flexfamily.cloud/api/v1")).Should().Be(1,
             "nur der erste Versuch darf ins Limit laufen");
         handler.Requests.Count(u => u == PageLatest).Should().Be(3);
     }
@@ -154,7 +163,7 @@ public sealed class HostGitHubServiceTests
     {
         var handler = new FakeHttpHandler(req =>
         {
-            if (req.RequestUri!.Host != "api.github.com") return Redirect("v1.2.3");
+            if (!IstApi(req.RequestUri!)) return Redirect("v1.2.3");
             // 403 OHNE Hinweis im Text, aber MIT dem Kopf.
             var r = new HttpResponseMessage(HttpStatusCode.Forbidden)
             {
@@ -180,7 +189,7 @@ public sealed class HostGitHubServiceTests
     {
         var handler = new FakeHttpHandler(req =>
         {
-            if (req.RequestUri!.Host != "api.github.com") return Redirect("v1.2.3");
+            if (!IstApi(req.RequestUri!)) return Redirect("v1.2.3");
             var r = new HttpResponseMessage(HttpStatusCode.Forbidden)
             {
                 Content = new StringContent("{\"message\":\"Must have admin rights\"}"),
@@ -200,7 +209,7 @@ public sealed class HostGitHubServiceTests
     public async Task ZuVieleAnfragenLoestDieSperreEbenfallsAus()
     {
         var handler = new FakeHttpHandler(req =>
-            req.RequestUri!.Host == "api.github.com"
+            IstApi(req.RequestUri!)
                 ? new HttpResponseMessage(HttpStatusCode.TooManyRequests)
                 : Redirect("v1.0.0"));
         var svc = new HostGitHubServiceImpl(_ => handler);
@@ -216,7 +225,7 @@ public sealed class HostGitHubServiceTests
     public async Task EinFehlendesReleaseLoestKeineSperreAus()
     {
         var handler = new FakeHttpHandler(req =>
-            req.RequestUri!.Host == "api.github.com"
+            IstApi(req.RequestUri!)
                 ? new HttpResponseMessage(HttpStatusCode.NotFound)
                 : Redirect("v9.9.9"));
         var svc = new HostGitHubServiceImpl(_ => handler);
@@ -231,7 +240,7 @@ public sealed class HostGitHubServiceTests
     public async Task OhneTagImLocationKopfKommtNull()
     {
         var handler = new FakeHttpHandler(req =>
-            req.RequestUri!.Host == "api.github.com"
+            IstApi(req.RequestUri!)
                 ? RateLimited()
                 : new HttpResponseMessage(HttpStatusCode.OK));
         var svc = new HostGitHubServiceImpl(_ => handler);
@@ -258,7 +267,9 @@ public sealed class HostGitHubServiceTests
             ]
             """;
         var svc = new HostGitHubServiceImpl(_ => new FakeHttpHandler(req =>
-            Json(req.RequestUri!.ToString().Contains("per_page") ? liste : ohneAsset)));
+            // Forgejo paginiert mit `limit`, GitHub mit `per_page` -- daran
+            // haengt hier die Unterscheidung Liste gegen Einzelausgabe.
+            Json(req.RequestUri!.ToString().Contains("limit=") ? liste : ohneAsset)));
 
         var found = await svc.FindLatestAssetAsync("Besitzer/Repo", n => n == "Loader.zip", TestContext.Current.CancellationToken);
 
@@ -305,10 +316,10 @@ public sealed class HostGitHubServiceTests
         => HostGitHubServiceImpl.StripV(tag).Should().Be(expected);
 
     [Fact]
-    public void AssetUrlFolgtDerGitHubKonvention()
+    public void AssetUrlFolgtDerKonvention()
         => new HostGitHubServiceImpl()
             .BuildAssetUrl("KroModIx/KroModIx", "v1.31.0", "KroModIx-1.31.0-x86_64.AppImage")
-            .Should().Be("https://github.com/KroModIx/KroModIx/releases/download/v1.31.0/" +
+            .Should().Be("https://git.flexfamily.cloud/KroModIx/KroModIx/releases/download/v1.31.0/" +
                          "KroModIx-1.31.0-x86_64.AppImage");
 
     [Fact]
@@ -322,6 +333,6 @@ public sealed class HostGitHubServiceTests
         // Die URL-Bildung ist reine Zeichenkettenarbeit und funktioniert auch
         // ohne Host — kein Grund, sie zu verweigern.
         svc.BuildAssetUrl("a/b", "v1", "x.zip").Should()
-            .Be("https://github.com/a/b/releases/download/v1/x.zip");
+            .Be("https://git.flexfamily.cloud/a/b/releases/download/v1/x.zip");
     }
 }
