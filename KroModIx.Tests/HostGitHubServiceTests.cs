@@ -34,8 +34,8 @@ internal sealed class FakeHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
 /// hat.</summary>
 public sealed class HostGitHubServiceTests
 {
-    private const string ApiLatest = "https://git.flexfamily.cloud/api/v1/repos/Besitzer/Repo/releases/latest";
-    private const string PageLatest = "https://git.flexfamily.cloud/Besitzer/Repo/releases/latest";
+    private const string ApiLatest = "https://git.flexfamily.de/api/v1/repos/Besitzer/Repo/releases/latest";
+    private const string PageLatest = "https://git.flexfamily.de/Besitzer/Repo/releases/latest";
 
     /// <summary>API-Weg oder Seiten-Weg?
     ///
@@ -58,14 +58,14 @@ public sealed class HostGitHubServiceTests
     private static HttpResponseMessage Redirect(string tag)
     {
         var r = new HttpResponseMessage(HttpStatusCode.Found);
-        r.Headers.Location = new Uri($"https://git.flexfamily.cloud/Besitzer/Repo/releases/tag/{tag}");
+        r.Headers.Location = new Uri($"https://git.flexfamily.de/Besitzer/Repo/releases/tag/{tag}");
         return r;
     }
 
     private const string ReleaseJson = """
         {
           "tag_name": "v3.0.1",
-          "html_url": "https://git.flexfamily.cloud/Besitzer/Repo/releases/tag/v3.0.1",
+          "html_url": "https://git.flexfamily.de/Besitzer/Repo/releases/tag/v3.0.1",
           "prerelease": false,
           "draft": false,
           "assets": [
@@ -146,7 +146,7 @@ public sealed class HostGitHubServiceTests
         await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
         await svc.GetLatestReleaseAsync("Besitzer/Repo", TestContext.Current.CancellationToken);
 
-        handler.Requests.Count(u => u.StartsWith("https://git.flexfamily.cloud/api/v1")).Should().Be(1,
+        handler.Requests.Count(u => u.StartsWith("https://git.flexfamily.de/api/v1")).Should().Be(1,
             "nur der erste Versuch darf ins Limit laufen");
         handler.Requests.Count(u => u == PageLatest).Should().Be(3);
     }
@@ -319,7 +319,7 @@ public sealed class HostGitHubServiceTests
     public void AssetUrlFolgtDerKonvention()
         => new HostGitHubServiceImpl()
             .BuildAssetUrl("KroModIx/KroModIx", "v1.31.0", "KroModIx-1.31.0-x86_64.AppImage")
-            .Should().Be("https://git.flexfamily.cloud/KroModIx/KroModIx/releases/download/v1.31.0/" +
+            .Should().Be("https://git.flexfamily.de/KroModIx/KroModIx/releases/download/v1.31.0/" +
                          "KroModIx-1.31.0-x86_64.AppImage");
 
     [Fact]
@@ -333,6 +333,6 @@ public sealed class HostGitHubServiceTests
         // Die URL-Bildung ist reine Zeichenkettenarbeit und funktioniert auch
         // ohne Host — kein Grund, sie zu verweigern.
         svc.BuildAssetUrl("a/b", "v1", "x.zip").Should()
-            .Be("https://git.flexfamily.cloud/a/b/releases/download/v1/x.zip");
+            .Be("https://git.flexfamily.de/a/b/releases/download/v1/x.zip");
     }
 }

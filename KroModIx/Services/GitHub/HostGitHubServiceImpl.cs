@@ -15,7 +15,7 @@ namespace KroModIx.Services.GitHub;
 /// <summary>Host-Implementierung von <see cref="IGitHubService"/>.
 ///
 /// <para><b>Die Quelle ist seit dem 28.10.2026 die eigene Forge</b>
-/// (<c>git.flexfamily.cloud</c>), nicht mehr GitHub — Lars will GitHub
+/// (<c>git.flexfamily.de</c>), nicht mehr GitHub — Lars will GitHub
 /// abschalten. Forgejos Release-API ist feldgleich, deshalb bleiben
 /// <see cref="RawRelease"/> und die Auswertung unverändert.</para>
 ///
@@ -47,10 +47,10 @@ public sealed class HostGitHubServiceImpl : IGitHubService
     private static readonly TimeSpan RateLimitCooldown = TimeSpan.FromMinutes(65);
 
     /// <summary>Wurzel der Releases-API der eigenen Forge.</summary>
-    private const string ApiRoot = "https://git.flexfamily.cloud/api/v1";
+    private const string ApiRoot = "https://git.flexfamily.de/api/v1";
 
     /// <summary>Wurzel für Seiten und Dateien (ohne <c>/api/v1</c>).</summary>
-    private const string WebRoot = "https://git.flexfamily.cloud";
+    private const string WebRoot = "https://git.flexfamily.de";
 
     private readonly Lock _lock = new();
     private DateTime? _rateLimitedUntil;

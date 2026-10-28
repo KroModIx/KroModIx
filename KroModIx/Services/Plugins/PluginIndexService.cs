@@ -32,7 +32,7 @@ public sealed class PluginIndexService
     /// — der Zweigname steht hinter <c>raw/branch/</c>, nicht direkt hinter
     /// <c>raw/</c>. Ohne das <c>branch/</c> antwortet die Forge mit 404.</para></summary>
     private const string IndexUrl =
-        "https://git.flexfamily.cloud/KroModIx/KroModIx.PluginIndex/raw/branch/main/plugins.json";
+        "https://git.flexfamily.de/KroModIx/KroModIx.PluginIndex/raw/branch/main/plugins.json";
     private const int CacheTtlHours = 6;
 
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();

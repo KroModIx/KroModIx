@@ -115,5 +115,5 @@ public sealed class NullGitHubService : IGitHubService
         => Task.FromResult<(GitHubRelease, GitHubAsset)?>(null);
 
     public string BuildAssetUrl(string repo, string tag, string assetName)
-        => $"https://git.flexfamily.cloud/{repo}/releases/download/{tag}/{assetName}";
+        => $"https://git.flexfamily.de/{repo}/releases/download/{tag}/{assetName}";
 }
